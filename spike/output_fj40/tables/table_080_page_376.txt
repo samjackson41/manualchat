@@ -1,0 +1,13 @@
+                                                          0                                                        1                                                      2
+0           SteeringKnuckleBearing Preload (While Rotating)          SteeringKnuckleBearing Preload (While Rotating)                     Standard kg (Ib) 1.8-2.3 (3.9-5.0)
+1                                                  Part No.                                                 Part No.                                                       
+2                                                                                            43233-60010 43234-60010                                            0.2 (0.008)
+3                     SteeringKnuckleAdjustingShimThickness                                                                                                     0.5 (0.020)
+4                                                                                                        43233-60020                                            1.0 (0.040)
+5   Free Wheel FreeWheel HubInner To Hub Ring Oil Clearance  Free Wheel FreeWheel HubInner To Hub Ring Oil Clearance                                            0.3 (0.012)
+6                                     Front Wheel Alignment                                    Front Wheel Alignment                                  Front Wheel Alignment
+7                                                    Toe-In                                    3-5 mm (0.12-0.2 in.)                                  3-5 mm (0.12-0.2 in.)
+8                                                    Camber                                                       1°                                                     1°
+9                                                    Caster                                                       1°                                                     1°
+10                                     King Pin Inclination                                                    9°30'                                                  9°30'
+11                                           Steering Angle                                           Inside Outside  32° (26° For 9.00-15 Tire) 30° (24° For 9.00-15 Tire)

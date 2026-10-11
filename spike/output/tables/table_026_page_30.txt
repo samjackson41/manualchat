@@ -1,0 +1,6 @@
+                                           Part to be tightened. Thread size. Tightening torque.Nm Tightening torque.m· kg Tightening torque.ft· Ib                   
+0                  Ring gear bearing housing and final gear case          M10                   40                     4.0                       29  Left-hand thread.
+1                                                                          M8                   23                     2.3                       17  Left-hand thread.
+2                                          Ring gear stopper nut           M8                   16                     1.6                       11  Left-hand thread.
+3  Bearing retainer and final gear pinion gear bear- ing housing          M65                  170                    17.0                      125  Left-hand thread.
+4          Drive shaft coupling gear and final drive pinion gear          M12                   80                     8.0                       58  Left-hand thread.

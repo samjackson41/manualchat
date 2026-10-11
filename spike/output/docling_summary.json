@@ -1,0 +1,120 @@
+{
+  "real_page_count": 42,
+  "born_digital": true,
+  "sample_fonts": [
+    "HQSWKJ+Arial",
+    "Helvetica",
+    "Helvetica-Bold",
+    "HiddenHorzOCR",
+    "Times-Bold",
+    "Times-Italic",
+    "Times-Roman"
+  ],
+  "text_layer_char_lens": {
+    "0": 2452,
+    "10": 518,
+    "21": 1573,
+    "31": 1211,
+    "41": 1232
+  },
+  "pipeline_config": {
+    "do_ocr": false,
+    "do_table_structure": true,
+    "table_mode": "FAST",
+    "num_threads": 2
+  },
+  "docling_status": "success",
+  "input_pdf": "/home/sam/dev/aie-capstone/spike/output/_subset_q6.pdf",
+  "input_pdf_is_subset": true,
+  "wall_seconds": 335.73,
+  "peak_rss_gb": 2.918,
+  "docling_num_pages": 42,
+  "page_count_matches": true,
+  "pipeline_timings": {},
+  "item_census": {
+    "section_header": 71,
+    "text": 174,
+    "list_item": 159,
+    "picture": 75,
+    "document_index": 5,
+    "table": 29
+  },
+  "total_items": 513,
+  "heading_count": 71,
+  "document_index_count": 5,
+  "table_count": 34,
+  "spec_keyword_hit_pages": {
+    "torque": [
+      2,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      37
+    ],
+    "engine oil": [
+      2
+    ],
+    "oil capacity": [],
+    "valve clearance": [
+      35,
+      36,
+      37,
+      38,
+      42
+    ],
+    "specifications": [
+      2,
+      3,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      19,
+      20,
+      21,
+      22,
+      23,
+      31
+    ]
+  },
+  "table_pages": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    39
+  ]
+}

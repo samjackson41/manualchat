@@ -1,0 +1,45 @@
+   GRIDE LOCATION                                        COMPONENTS GRIDE LOCATION                            COMPONENTS
+0             F-2                                        ALTERNATOR           F-13             TURN SIGNAL, FRONT, LH.RH
+1            D-18                                       ANTENA(OPT)           G-15              TURN SIGNAL, REAR, LH.RH
+2             D-3                                           BATTERY           G-13          TURN SIGNAL INDICATOR, LH.RH
+3            C-20                             CIGARETTELIGHTER(OPT)                                              MOTORS:
+4             E-3                                     CIRCUITBRAKER            C-6                  HEATER BLOWER, FRONT
+5             C-4                                 COMBINATION METER            E-7             HEATER BLOWER, REAR (OPT)
+6                                                       DISTRIBUTOR            D-2                               STARTER
+7             D-4                                                              G-3                             TAIL GATE
+8                  EMISSION CONTROLSYSTEM: EMISSION CONTROLCOMPUTER           C-20                     WINDSHIELD WASHER
+9       G-22 E-21                      EMISSIONINSPECTION CONNECTOR           F-20                      WINDSHIELD WIPER
+10           C-22                     MAINTENANCE INTERVAL DETECTOR            E-4  OILPRESSUREGAUGE OIL PRESSURE SENDER
+11           F-23                         MAINTENANCE WARNING LIGHT            E-5                                      
+12           G-21                                      SPEED SENSOR           C-19                            RADIO(OPT)
+13           G-21                        THREMO SENSOR at EGR Valve            E-2                             REGULATOR
+14           G-21                          THERMOSENSORatCarburetor                                              RELAYS:
+15           F·21                    THERMO SWITCH for Coolant Temp            F-8                      FRONT DRIVE(OPT)
+16           G-22                          THROTTLE POSITION SWITCH           C-12                                  HORN
+17           F-23                              VACUUMSWITCHINGVALVE            E-4                             TAIL GATE
+18           D-13                     FLASHER, TURN SIGNAL & HAZARD                                                     
+19           C-23                                 FUEL CUT SOLENOID           E-19                          SPEAKER(OPT)
+20        G-4 G-5                            FUEL GAUGE FUEL SENDER           D-10                SWITCHS: BACK-UP LIGHT
+21            B-4                                          FUSE BOX           E-11                         BRAKE WARNING
+22            C-3                                      FUSIBLE LINK           F-17                                DIMMER
+23           D-12                                       HORNS,LO-HI            E-9                      FRONT DRIVE(OPT)
+24            C-4                                           IGNITER            D-9              FRONTDRIVEINDICATORLIGHT
+25            C-3                                     IGNITION COIL           D-14                  HAZARD WARNING LIGHT
+26           E-21                             INSPECTIONLIGHTSOCKET            E-6                  HEATER BLOWER, FRONT
+27                                                                             C-7             HEATER BLOWER, REAR (OPT)
+28                                                          LIGHTS:           D-12                                  HORN
+29            G-9                                   BACK-UP, LH, RH            B-1                                      
+30           D-10                            BRAKE WARNINGINDICATOR           D-21                              IGNITION
+31           E-17                            COMBINATION METERPILOT           D-16          INTERIOR LIGHT LIGHT CONTROL
+32            D-4                                 DISCHARGE WARNING           D-11                         PARKING BRAKE
+33            E-9                               FRONTDRIVEINDICATOR           C-11                            STOP LIGHT
+34           G-18                                  HEADLIGHT, LH.RH            F-3                     TAIL GATE CONTROL
+35           E-17                          HEATER CONTROL INDICATOR            F-4              TAIL GATE REMOTE CONTROL
+36           F-18                               HIGH BEAM INDICATOR            G-3                      TAIL GATE SAFETY
+37           D·21                                          INTERIOR            C-8                TRANSFERINDICATOR(OPT)
+38           D-15                                     LICENSE PLATE           E-13                           TURN SIGNAL
+39           D·16                              LIGHT CONTROL SWITCH           E-19           WINDSHIELD WIPER AND WASHER
+40           E-16                           MARKER,FRONT SIDE,LH.RH                                                     
+41           F-16                           MARKER, REAR SIDE, LHRH            G-7          VACUUMSWITCHINGSOLENOID(OPT)
+42           E-15                                     PARKING,FRONT            F-4               WATER TEMPERATURE GAUGE
+43      G-15 G·16                           STOP, LH.RH TAIL, LH.RH            F-5               WATERTEMPERATURE SENDER

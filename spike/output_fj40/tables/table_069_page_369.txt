@@ -1,0 +1,3 @@
+                        Location            kg-m (ft-lb)
+0  RearAxleShaft X Rear Axle Hub  2.8- 4.0 ( 20.3- 28.9)
+1   Rear Axle Housing X Lock Nut             8-10(58-72)

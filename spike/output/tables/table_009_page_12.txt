@@ -1,0 +1,11 @@
+                                                                                                             Standard                       Limit
+0  Item Cylinder head Maximum warpage * ---- " "....* D@                                                                      0.03 mm (0.0012 in)
+1                        Cylinder Bore Measuring point *  102.000 - 102.010 mm (4.0157 - 4.0161 in) 50.0 mm (1.97 in)      102.080 mm (4.0189 in)
+2                                          Maximum taper                                                               0.05 mm (0.002 in) 0.05 mm
+3                                           Out of round                                                                                         
+4         Camshaft Drive system Camshaft lobe dimensions                                                  Chain drive                            
+5                             I---B- measurement "A" "8"                                   36.950 - 37.050 mm (1.4547       (1.6685 in) 36.850 mm
+6                                                 Intake                                   42.481 - 42.581 mm (1.6725                   42.381 mm
+7                                        measurement "A"                                   43.129 - 43.229 mm (1.6980                   43.029 mm
+8                                            Exhaust "8"                                   36.982 - 37.082 mm (1.4560       (1.6941 in) 36.882 mm
+9                                Maximum camshaft runout                                                                                 0.015 mm

@@ -1,0 +1,18 @@
+                                              puge
+0                                FUSE BLOCK   12-2
+1                           IGNITIONSWITCH·    12-
+2                            STARTER SWITCH  12- 5
+3                       HEADLIGHT&TAILLIGHT      6
+4                   TURN SIGNAL&HAZARDLIGHT  12- 8
+5                      TRAILER SOCKETSWITCH  12-13
+6                           WIPER 55 SERIES  12-14
+7                                 40 SERIES  12-18
+8                         COMBINATION METER  12-21
+9   FUELGAUGE&WARTERTEMPERATUREGAUGE..12-26       
+10                       OIL PRESSUREGAUGE.  12-29
+11                                  AMMETER  12-30
+12                      BRAKE WARNING LIGHT  12-31
+13                FRONT DRIVE VACUUMCONTROL  12-32
+14                     POWER WINDOWTAILGATE  12-38
+15                         HEATER 55 SERIES  12-44
+16                                40 SERIES  12-51

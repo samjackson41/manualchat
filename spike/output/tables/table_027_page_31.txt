@@ -1,0 +1,4 @@
+        0  1           2         3
+0  METRIC     MULTIPLIER  IMPERIAL
+1   ** mm  x     0.03937     ** in
+2     2mm  x     0.03937   0.08 in

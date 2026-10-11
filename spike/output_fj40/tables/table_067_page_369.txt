@@ -1,0 +1,9 @@
+                                                    Location kg-m (ft-lb) kg-m (ft-lb)  kg-m (ft-lb) kg-m (ft-lb) kg-m (ft-lb) kg-m (ft-lb) kg-m (ft-lb) kg-m (ft-lb)
+0  Transmission Case X Transmission Case Cover (For 4-Speed)                      3.0-  4.5 ( 21.7 -        32.6)                                                    
+1                           Transmission CaseX Transfer Case            5            8           (36        一 58）                                                    
+2                          Transmission CaseX Clutch Housing            5          一 8           (36         58 ）                                                    
+3                Transmission Output ShaftX Nut(For 4-Speed)           11         一 14          ( 80         -101                                                    
+4                                              (For 3-Speed)           14         一 15          (101       -109 ）                                                    
+5                              TransferOutputFrontShaftX Nut           11         一 14            80         -101                                                    
+6                      TransferCaseXParkingBrakeBackingPlate            2          一 3            14           22                                                    
+7             Transfer Output Shaft XParking Brake DrumX Nut           11         一 14          （ 80         -101                                                    

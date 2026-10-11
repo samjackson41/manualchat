@@ -1,0 +1,13 @@
+# OS / editor noise
+.DS_Store
+.vscode/
+
+# Python artifacts
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Large PDF binaries under manuals/
+manuals/*.pdf
+manuals/**/*.pdf

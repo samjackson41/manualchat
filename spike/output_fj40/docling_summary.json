@@ -1,0 +1,23 @@
+{
+  "question": "Q2/Q3",
+  "total_pages": 412,
+  "pages_processed": 253,
+  "batches": 11,
+  "statuses": {
+    "success": 11
+  },
+  "peak_rss_gb": 2.278,
+  "wall_seconds": 2135.8,
+  "item_census": {
+    "picture": 914,
+    "section_header": 444,
+    "text": 851,
+    "document_index": 14,
+    "list_item": 392,
+    "table": 78,
+    "caption": 423
+  },
+  "table_count": 92,
+  "heading_count": 444,
+  "ocr_vs_native_written": "ocr_vs_native.json"
+}

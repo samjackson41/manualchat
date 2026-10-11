@@ -1,0 +1,19 @@
+                                                                            Item                                                                      Standard                                         Limit
+0   Valve-stem-to-valve-guide clearance Intake 0.010 - 0.037 mm (0.0004 - 0.0015  Valve-stem-to-valve-guide clearance Intake 0.010 - 0.037 mm (0.0004 - 0.0015                                      0.080 mm
+1                                                                            in)                                                                           in)                                   (0.0031 in)
+2                                  Exhaust 0.025 - 0.052 mm (0.0010 - 0.0020 in)                                 Exhaust 0.025 - 0.052 mm (0.0010 - 0.0020 in)                          0.100 mm (0.0039 in)
+3                                                              Valve stem runout                                                             Valve stem runout                                      0.040 mm
+4                                                                                                                                                                                                (0.0016 in)
+5                                                                                                                                                                                               2.5°/1.80 mm
+6                                                                                                                                                               (2.5°10.071 in) 2.5°/1.80 mm (2.5°10.071 in)
+7                                                Installed length (valve closed)                                               Installed length (valve closed)                                              
+8                                                      Intake 35.00 mm (1.38 in)                                                     Intake 35.00 mm (1.38 in)                                              
+9                                                     Exhaust 35.00 mm (1.38 in)                                                    Exhaust 35.00 mm (1.38 in)                                              
+10                      Intake 171 - 197 N (17.44 - 20.09 kgf, 38.44 - 44.29 Ib)                      Intake 171 - 197 N (17.44 - 20.09 kgf, 38.44 - 44.29 Ib)                                              
+11                     Exhaust 171 - 197 N (17.44 - 20.09 kgf, 38.44 - 44.29 Ib)                     Exhaust 171 - 197 N (17.44 - 20.09 kgf, 38.44 - 44.29 Ib)                                              
+12                                                                 Spring tilt *                                                                 Spring tilt *                                              
+13                                                                        Intake                                                                        Intake                                              
+14                                                                       Exhaust                                                                       Exhaust                                              
+15                                                  Winding direction (top view)                                                  Winding direction (top view)                                              
+16                                                              Intake Clockwise                                                              Intake Clockwise                                              
+17                                                             Exhaust Clockwise                                                             Exhaust Clockwise                                              

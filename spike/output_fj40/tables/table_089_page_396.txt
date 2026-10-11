@@ -1,0 +1,44 @@
+   GRIDE LOCATION                                          COMPONENTS GRIDE LOCATION                          COMPONENTS
+0             F-3                                          ALTERNATOR            D-6                  OIL PRESSURE GAUGE
+1             C-6                                             AMMETER            D-7                  OILPRESSURE SENDER
+2            C-20                                        ANTENNA(OPT)            D-4                OVERINJECTION MAGNET
+3             D-4                                             BATTERY       C-20 E-3                RADIO(OPT) REGULATOR
+4            E-22                               CIGARETTELIGHTER(OPT)            E-9                            RESISTOR
+5             C-6                                    COMBINATIONMETER                 (For Front Drive Indicator Switch)
+6            D-22                               EDIC CONTROLLER ASSY.           D-16  RESISTOR(For Light Control Switch)
+7            F-23                                   EDIC RELAY ASSY.‘           D-22     RESISTOR(For Cigarette Lighter)
+8            G-23                                      EDICMOTORASSY.           D-23         RESISTOR(ForEDICController)
+9            D·23                                 ENGINE SPEED SENSOR           E-23         RESISTOR(ForEDICController)
+10           D-14                                FLASHER, TURN SIGNAL                                            RELAYS:
+11                                                                               F-8                   FRONT DRIVE (OPT)
+12            F-6                              FUEL SENDER FUEL GAUGE            E-4                           GLOW PLUG
+13            E-7                                                               C-12                                HORN
+14            B-6                                            FUSE BOX            C-2                             STARTER
+15            C-4                                        FUSIBLE LINK           D-20                        SPEAKER(OPT)
+16            G-4                         GLOWPLUG GLOWPLUGCONTROLLER                                          SWITCHES:
+17            F-5                                                               C-10                       BACK-UP LIGHT
+18           F-13                                         HORNS,LO-HI           F-11                 BRAKE WARNING (OPT)
+19           C-23                               INSPECTIONLIGHTSOCKET           F-22                          COLD START
+20                                                                              E-19                              DIMMER
+21                                                            LIGHTS:           G-22                  ENGINE OILPRESSURE
+22           G-10                                      BACK-UP, LH.RH           C-15                     FOG LIGHT (OPT)
+23           D-18                              CQMBINATION METERPILOT            E-9                    FRONT DRIVE(OPT)
+24           D-15                          FOG LIGHT (Except ECE OPT)            D-9            FRONTDRIVEINDICATORLIGHT
+25            G·9                            FRONTDRIVEINDICATOR(OPT)           D-14         HAZARD WARNING SIGNAL (OPT)
+26           G-19                                    HEADLIGHT, LH.RH            C-8      HEATER BLOWER (Except ECE OPT)
+27           E-20                                  HIGH BEAMINDICATOR           E-12                                HORN
+28           G-21                                            INTERIOR           G-21                      INTERIOR LIGHT
+29           D-17                                       LICENSE PLATE           C-17                       LIGHT CONTROL
+30           C-17                                LIGHT CONTROL SWITCH           E-11           PARKING BRAKE LIGHT (OPT)
+31           C-11                                 PARKING BREAK (OPT)            B-2                             STARTER
+32           D-16                                      PARKING, FRONT           D·12                          STOP LIGHT
+33           G-12                                         STOP, LH.RH           E·16        TRAILERSOCKETCHANGEOVER(OPT)
+34      G-17 F-14                                         TAIL, LH.RH            C-9              TRANSFERINDICATOR(OPT)
+35           G-15  TURN SIGNAL, FRONT, LH.RH TURN SIGNAL, REAR, LH.RH      E-14 E-10           TURN SIGNAL VACUUMWARNING
+36           H-14                        TURN SIGNAL INDICATOR, LH.RH           D-21                                    
+37           G-14                            TURN SIGNAL, SIDE, LH.RH                          WINDSHIELD WIPER & WASHER
+38                                                            MOTORS:       E-17 G-8        VACUUMSWITCHINGSOLENOID(OPT)
+39            E-8                      HEATER BLOWER (Except ECE OPT)           C-10               VACUUM WARNING BUZZER
+40            C-3                                             STARTER            E-6             WATER TEMPERATURE GAUGE
+41           C-21                             WINDSHIELD WASHER (OPT)                                                   
+42           F-21                                    WINDSHIELD WIPER            E-7            WATER TEMPERATURE SENDER

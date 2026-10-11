@@ -1,0 +1,4 @@
+  TERMINAL SWITCH POSITION FL RL  B FR RR Ss
+0                     LEFT        o         
+1                  NEUTRAL     o           o
+2                    RIGHT           O      

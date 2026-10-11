@@ -1,0 +1,5 @@
+                          0   1   2   3   4
+0  TERMINAL SWITCH POSITION  HD  HL  HU  HF
+1                   LOWBEAM       o        
+2                 HIGH BEAM                
+3         HEADLIGHT FLASHER               o

@@ -1,0 +1,41 @@
+   GRIDE LOCATION                                                     COMPONENTS GRIDE LOCATION                                     COMPONENTS
+0             G-2                                                     ALTERNATOR            E-8                          HEATERBLOWERREAR(OPT)
+1             C-5                                          AMMETER(ExceptTandem)            C-2                                        STARTER
+2            C-20                                                   ANTENNA(OPT)            G-4                                      TAIL GATE
+3             D-3                                                        BATTERY           C-21                        WINDSHIELD WASHER (OPT)
+4            D-22                                          CIGARETTELIGHTER(OPT)           F-21                                WINDSHIELDWIPER
+5             E-4                                                 CIRCUITBREAKER            E-5                               OILPRESSUREGAUGE
+6             C-5                                               COMBINATIONMETER            E-6                              OILPRESSURESENDER
+7                                                                                          D-20                                               
+8             D-4                                                    DISTRIBUTOR                                                    RADIO(OPT)
+9                                    EMISSIONCONTROLSYSTEM: SPEED SENSOR(ForECE)        E-2 F-2  REGULATOR (ForTandem) REGULATOR(ExceptTandem)
+10           G-23                                                                                                                      RELAYS:
+11           E-23  THROTTLEPOSITIONCOMPUTER(ForECE) VACUUMSWITCHINGVALVE(ForECE)            F-9                              FRONT DRIVE (OPT)
+12      G-23 D-14                                     FLASHER,TURN SIGNAL&HAZARD           C-13                                           HORN
+13           C-24                                        FUELCUTSOLENOID(ForECE)            F-4                                      TAIL GATE
+14            G-5                                                     FUEL GAUGE           E-20                                   SPEAKER(OPT)
+15            G-6                                                    FUEL SENDER                                                      SWITCHS:
+16            B-5                                                       FUSE BOX           C-11                                  BACK-UP LIGHT
+17            C.3                                                    FUSIBLELINK           E-12                      BRAKE WARNiNG (ForTandem)
+18           E-13                                                    HORNS,LO-HI           E-19                                         DIMMER
+19                                                                  IGNITIONCOIL           E-10                               FRONT DRIVE(OPT)
+20            D-4                                          INSPECTIONLIGHTSOCKET           D.10                  FRONTDRIVEINDICATORLIGHT(OPT)
+21           G-22                                                                          D-15                           HAZARD WARNING LIGHT
+22                                                        LIGHTS: BACK-UP, LH.RH           C-18                                  LIGHT CONTROL
+23      G-11 C-12                                          BRAKEWARNINGINDICATOR        E-7 D-8                        HEATERBLOWER,FRONT(OPT)
+24                                                                  (For Tandem)           E-14                  HEATER BLOWER, REAR(OPT) HORN
+25           G-19                                              COMBINATION METER            B-2                                       IGNITION
+26            D-5                                DISCHARGE WARNING (For Tandem))           G-22                                 INTERIOR LIGHT
+27           E-10                                            FRONTDRIVEINDICATOR           D-12                     PARKING BRAKE (For Tandem)
+28           G-20                                               HEADLIGHT, LH.RH           C-13                                     STOP LIGHT
+29           E-20                                             HIGH BEAMINDICATOR            G-4                              TAIL GATE CONTROL
+30           G-22                                                       INTERIOR            F-5                       TAIL GATE REMOTE CONTROL
+31           E-18                                                  LICENSE PLATE            H·4                                TAILGATE SAFETY
+32           F-18                                                  PARKING FRONT           F-16                 TRAILER SOCKET CHANGEOVER(OPT)
+33           G-13                                                   STOP, LH. RH            C-9                         TRANSFERINDICATOR(OPT)
+34           G-18                                                    TAIL, LH.RH           E-15                                    TURN SIGNAL
+35           F-15                                      TURN SIGNAL, FRONT, LH.RH           D-21                       WINDSHIELDWIPERANDWASHER
+36      F-17 G-15          TURN SIGNAL, REAR, LH.RH TURN SIGNAL,INDICATOR, LH.RH           D-17                             TRAILERSOCKET(OPT)
+37           G-15                                         TURN SIGNAL,SIDE,LH.RH            G-9                   VACUUMSWITCHINGSOLENOID(OPT)
+38                                                                                          F-5                          WATERTEMPERATUREGAUGE
+39            C-7                             MOTORS: HEATER BLOWER, FRONT (OPT)            F-6                        WATER TEMPERATURESENDER

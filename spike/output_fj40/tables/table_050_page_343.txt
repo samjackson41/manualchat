@@ -1,0 +1,4 @@
+  AmbientTemperature     Load Timefor Contacts to Open Time for Contacts to Closs
+0        55°C(131°F)  12V,24A                2-10 sec.             Within 80 sec.
+1       20°C ( 68°F)  12V,24A               3--13 sec.             Within 30 sec.
+2       20°℃ ( 68°F)  12V,20A           Within 60 sec.             Within 30 sec.

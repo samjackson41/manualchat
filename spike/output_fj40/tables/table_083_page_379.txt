@@ -1,0 +1,7 @@
+                              VacuumPump  Limit mm (in.)
+0     Rotor To Spline ShaftPlay(OnRotor)     2.4 (0.095)
+1                PumpCasingInnerDiameter   58.19 (2.291)
+2  PumpDriveEndFrameBushingInnerDiameter  16.14 (0.6354)
+3                        Pump Blad Heigh        12 (0.47
+4                                  Width    6.92 (0.272)
+5                                 Length   34.98 (1.377)

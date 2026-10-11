@@ -1,0 +1,7 @@
+{
+  "question": "Q4",
+  "tesseract_binary": null,
+  "pytesseract_import": "MISSING",
+  "pymupdf_ocr_note": "PyMuPDF get_text('ocr') / get_textpage_ocr() require the Tesseract binary, which is NOT installed.",
+  "verdict": "Tesseract is not installed -> PyMuPDF/Tesseract direct OCR cannot run. Install with: sudo apt-get install tesseract-ocr, then re-run Q4."
+}

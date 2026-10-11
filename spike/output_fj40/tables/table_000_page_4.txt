@@ -1,0 +1,15 @@
+                               0        1
+0                   NAME GENERAL  SECTION
+1                         CLUTCH        2
+2         TRANSMISSION &TRANSFER        3
+3                PROPELLER SHAFT        4
+4                      REAR AXLE        5
+5                     FRONT AXLE        6
+6                       STEERING        7
+7                          BRAKE        8
+8                    FRONT WINCH        9
+9                          FRAME       10
+10                          BODY        1
+11               BODY ELECTRICAL       12
+12  SST & SERVICE SPECIFICATIONS         
+13                                     13

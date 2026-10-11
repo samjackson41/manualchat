@@ -1,0 +1,6 @@
+               0           1
+0    Temperature  Resistance
+1   60°C (140°F)  90 S2 app.
+2      80C(176F)     50 app.
+3    100°C(212F)   27 S2app.
+4  105°C (221°F)      23app.

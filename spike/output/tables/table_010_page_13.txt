@@ -1,0 +1,32 @@
+                                        Item                                 Standard                             Limit
+0                               Timing chain                                                                           
+1                      Model/number of links                            98XRH2010/126                                  
+2                          Tensioning system                                Automatic                                  
+3                Rocker arm/rocker arm shaft                                                                           
+4                 Rocker arm inside diameter  12.000 - 12.018 mm (0.4724 - 0.4731 in)                                  
+5                     Shaft outside diameter  11.981 - 11.991 mm (0.4717 - 0.4721 in)                                  
+6   Rocker-arm-to-rocker-arm-shaft clearance    0.009 - 0.037 mm (0.0004 - 0.0015 in)                                  
+7             Valve, valve seat, valve guide                                                                           
+8              Valve clearance-intake (cold)      0.09 - 0.13 mm (0.0035 - 0.0051 in)                                  
+9             Valve clearance-exhaust (cold)      0.16 - 0.20 mm (0.0063 - 0.0079 in)                                  
+10                          Valve dimensions                                                                           
+11                                  1\ 1 ~ID                                 1\ 1 ~ID                          1\ 1 ~ID
+12                  Head Diameter Face Width                        Seat Width Margin                         Thickness
+13                   Valve head diameter "A"                                                                           
+14                                    Intake    37.90 - 38.10 mm (1.4921 - 1.5000 in)                                  
+15                                   Exhaust    31.90 - 32.10 mm (1.2559 - 1.2638 in)                                  
+16                      Valve face width "8"                                                                           
+17                                    Intake                      2.26 mm (0.0890 in)                                  
+18                                   Exhaust                      2.26 mm (0.0890 in)                                  
+19                      Valve seat width "G"                                                                           
+20                                    Intake      1.00 - 1.20 mm (0.0394 - 0.0472 in)               1.60 mm (0.0630 in)
+21                                   Exhaust      1.00 - 1.20 mm (0.0394 - 0.0472 in)               1.60 mm (0.0630 in)
+22                Valve margin thickness "D"                                                                           
+23                                    Intake      0.80 - 1.20 mm (0.0315 - 0.0472 in)                                  
+24                                   Exhaust      0.80 - 1.20 mm (0.0315 - 0.0472 in)                                  
+25                       Valve stem diameter                                                                           
+26                                    Intake    5.975 - 5.990 mm (0.2352 - 0.2358 in)                          5.945 mm
+27                                   Exhaust    5.960 - 5.975 mm (0.2346 - 0.2352 in)              5.930 mm (0.2335 in)
+28               Valve guide inside diameter                                                                           
+29                                    Intake    6.000 - 6.012 mm (0.2362 - 0.2367 in)                          6.050 mm
+30                                   Exhaust    6.000 - 6.012 mm (0.2362 - 0.2367 in)  (0.2382 in) 6.050 mm (0.2382 in)

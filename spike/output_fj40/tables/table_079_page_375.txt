@@ -1,0 +1,19 @@
+                                                   Gear Ratio Except USAAnd Canada ForUSA And Canada (Except USAAnd CanadaOPT)                                              3.700 4.111
+0                                                    Backlash                                                         Backlash                                        Standard mm (in.)
+1                          Pinion Gear or Side Gear Ring Gear                               Pinion Gear or Side Gear Ring Gear      0.02-0.20 (0.0008-0.0079) 0.15-0.20 (0.0059-0.0079)
+2                                   RearAxleShaftEndClearance                                                Standard mm (in.)                               0.016-0.46 (0.0006-0.0181)
+3                                           Ring Gear Run-Out                                                   Limit mm (in.)                                              0.1 (0.004)
+4                                          Preload (Starting)                                                      New Bearing                                         Original Bearing
+5                           Drive Pinion Bearing TotalPreload             19-26 (16.5-22.6) 4-6(3.5-5.2)+ Drive Pinion Preload                                          9-13 (7.8-11.3)
+6                              Washer,SpacerAnd ShimThickness                                                         Part No.                                       Thickness mm (in.)
+7                                     Side Gear Thrust Washer                                          Side Gear Thrust Washer      1.60 (0.063) 1.75 (0.069) 1.90 (0.075) 2.05 (0.081)
+8                                                                                          41344-35010 41345-35010 41346-35010                                29.8 (1.173) 30.2 (1.189)
+9                                         Pinion Shaft Spacer                                          41347-35010 41348-35010                   30.6 (1.204) 29.0 (1.142) 29.4 (1.157)
+10  (For Prelord) Drive Pinion Adjusting Washer (For Prelord)        (For Prelord) Drive Pinion Adjusting Washer (For Prelord)                              0.25 (0.0098) 0.30 (0.0118)
+11                                                                 90560-30187 09560-30188 09560-30190 09560-30191 09560-30192  2.84 (0.1118) 2.87 (0.1130) 2.90 (0.1142) 2.93 (0.1154)
+12                                                                                                     90560-30185 90560-30186                              2.78 (0.1094) 2.81 (0.1106)
+13                                                                                                                 90560-30184                                            2.75 (0.1083)
+14                                                                                                                 90560-30199                                            2.96 (0.1165)
+15                                Drive Pinion Adjusting Shim                                      Drive Pinion Adjusting Shim                                                         
+16                                                                                                                                                                        2.99 (0.1177)
+17                                                                                                                 90564-30035                                            0.25 (0.0098)

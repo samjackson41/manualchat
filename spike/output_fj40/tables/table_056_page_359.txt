@@ -1,0 +1,8 @@
+  Illustration     Tool No.                                               Tool Name
+0               09301-55022                                       Clutch Guide Tool
+1               09302-25010                      Clutch Pressure Lever Height Gauge
+2               09303-35010        Input Shaft Front Bearing Puller (For BJ Series)
+3               09303-55010    Input Shaft Front Bearing Puller (For FJ, HJ Series)
+4               09304-30012          InputShaftFrontBearingReplacer (For BJ Series)
+5               09304-47010  Input Shaft Front Bearing Replacer (For FJ, HJ Series)
+6               09315-00021               Clutch Release Bearing Remover & Replacer

@@ -1,0 +1,181 @@
+{
+  "original_mb": 22.18,
+  "raster": [
+    {
+      "page": 8,
+      "dpi": 150,
+      "fmt": "png",
+      "w_px": 1275,
+      "h_px": 1613,
+      "size_kb": 235.3,
+      "render_sec": 0.4277,
+      "file": "raster/page_008_150dpi.png",
+      "kind": "text_heavy"
+    },
+    {
+      "page": 8,
+      "dpi": 150,
+      "fmt": "webp",
+      "w_px": 1275,
+      "h_px": 1613,
+      "size_kb": 152.1,
+      "render_sec": 0.097,
+      "file": "raster/page_008_150dpi.webp",
+      "kind": "text_heavy"
+    },
+    {
+      "page": 8,
+      "dpi": 300,
+      "fmt": "png",
+      "w_px": 2550,
+      "h_px": 3225,
+      "size_kb": 277.2,
+      "render_sec": 0.6653,
+      "file": "raster/page_008_300dpi.png",
+      "kind": "text_heavy"
+    },
+    {
+      "page": 8,
+      "dpi": 300,
+      "fmt": "webp",
+      "w_px": 2550,
+      "h_px": 3225,
+      "size_kb": 295.5,
+      "render_sec": 0.3443,
+      "file": "raster/page_008_300dpi.webp",
+      "kind": "text_heavy"
+    },
+    {
+      "page": 3,
+      "dpi": 150,
+      "fmt": "png",
+      "w_px": 1275,
+      "h_px": 1613,
+      "size_kb": 139.5,
+      "render_sec": 0.3408,
+      "file": "raster/page_003_150dpi.png",
+      "kind": "diagram_heavy"
+    },
+    {
+      "page": 3,
+      "dpi": 150,
+      "fmt": "webp",
+      "w_px": 1275,
+      "h_px": 1613,
+      "size_kb": 55.6,
+      "render_sec": 0.101,
+      "file": "raster/page_003_150dpi.webp",
+      "kind": "diagram_heavy"
+    },
+    {
+      "page": 3,
+      "dpi": 300,
+      "fmt": "png",
+      "w_px": 2550,
+      "h_px": 3225,
+      "size_kb": 192.4,
+      "render_sec": 0.5903,
+      "file": "raster/page_003_300dpi.png",
+      "kind": "diagram_heavy"
+    },
+    {
+      "page": 3,
+      "dpi": 300,
+      "fmt": "webp",
+      "w_px": 2550,
+      "h_px": 3225,
+      "size_kb": 107.4,
+      "render_sec": 0.3676,
+      "file": "raster/page_003_300dpi.webp",
+      "kind": "diagram_heavy"
+    },
+    {
+      "page": 48,
+      "dpi": 150,
+      "fmt": "png",
+      "w_px": 1275,
+      "h_px": 1613,
+      "size_kb": 285.2,
+      "render_sec": 0.3611,
+      "file": "raster/page_048_150dpi.png",
+      "kind": "spec_table"
+    },
+    {
+      "page": 48,
+      "dpi": 150,
+      "fmt": "webp",
+      "w_px": 1275,
+      "h_px": 1613,
+      "size_kb": 113.9,
+      "render_sec": 0.0904,
+      "file": "raster/page_048_150dpi.webp",
+      "kind": "spec_table"
+    },
+    {
+      "page": 48,
+      "dpi": 300,
+      "fmt": "png",
+      "w_px": 2550,
+      "h_px": 3225,
+      "size_kb": 380.1,
+      "render_sec": 0.6159,
+      "file": "raster/page_048_300dpi.png",
+      "kind": "spec_table"
+    },
+    {
+      "page": 48,
+      "dpi": 300,
+      "fmt": "webp",
+      "w_px": 2550,
+      "h_px": 3225,
+      "size_kb": 250.1,
+      "render_sec": 0.3894,
+      "file": "raster/page_048_300dpi.webp",
+      "kind": "spec_table"
+    }
+  ],
+  "slices": [
+    {
+      "label": "page47_window",
+      "range": "44-50",
+      "n_pages": 7,
+      "size_kb": 348.1,
+      "size_mb": 0.34,
+      "slice_sec": 0.294,
+      "file": "slices/page47_window_pages_44-50.pdf"
+    },
+    {
+      "label": "enclosing_section",
+      "range": "43-49",
+      "n_pages": 7,
+      "size_kb": 356.7,
+      "size_mb": 0.348,
+      "slice_sec": 0.304,
+      "file": "slices/enclosing_section_pages_43-49.pdf",
+      "section_title": "MEASURING THE COMPRESSION PRESSURE"
+    }
+  ],
+  "slice_verification": [
+    {
+      "file": "slices/page47_window_pages_44-50.pdf",
+      "opens": true,
+      "pages_in_slice": 7,
+      "first_page_text_chars": 1216,
+      "text_selectable": true,
+      "renders": true
+    },
+    {
+      "file": "slices/enclosing_section_pages_43-49.pdf",
+      "opens": true,
+      "pages_in_slice": 7,
+      "first_page_text_chars": 1831,
+      "text_selectable": true,
+      "renders": true
+    }
+  ],
+  "avg_kb_per_page_300dpi_png": 283.2,
+  "slice_kb_per_page": [
+    49.7,
+    51.0
+  ]
+}

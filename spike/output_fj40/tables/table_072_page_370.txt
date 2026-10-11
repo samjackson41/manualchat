@@ -1,0 +1,4 @@
+                                     Location             kg-m (ft-lb)
+0  TransferOutputShaftXParking BrakeDrumX Nut          11-14 (80 -101)
+1             Disc Brake DiscX Front Axle Hub  4.0 - 5.5( 28.9 - 39.8)
+2           DiscBrake CaliperXSteeringKnuckle    7.5-10.5( 54.2- 76.0)

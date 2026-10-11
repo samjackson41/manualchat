@@ -1,0 +1,44 @@
+                              Item                       Standard Limit
+0                    Starter relay                                     
+1               Model/manufacturer              RC19-080AlMITSUBA  ----
+2                  Amperage rating                        180.0 A  ----
+3          Coil winding resistance  4.18 - 4.62 Q at 20°C (68 OF)  ----
+4                      Fuel sender                                     
+5    Sender unit resistance (full)                19.00 - 21.00 Q  ----
+6   Sender unit resistance (empty)              137.00 - 143.00 Q  ----
+7      Fuel injection system relay                                     
+8               Model/manufacturer            ACM33211/MATSUSHITA  ----
+9                  Coil resistance                          96.0Q  ----
+10        Radiator fan motor relay                                     
+11              Model/manufacturer      ACM33211/MATSUSHITA 96.0Q  ----
+12                 Coil resistance                                 ----
+13              Load control relay                                     
+14              Model/manufacturer            ACM33211/MATSUSHITA  ----
+15                 Coil resistance                          96.0Q  ----
+16  Four-wheel-drive motor relay 3                                     
+17              Model/manufacturer            ACM33211/MATSUSHITA  ----
+18                 Coil resistance                          96.0Q  ----
+19                 Headlight relay                                     
+20              Model/manufacturer             G8HN-1C4T-DJ/OMRON  ----
+21                 Coil resistance                        105.0 Q  ----
+22  Four-wheel-drive motor relay 1                                     
+23              Model/manufacturer             G8HN-1C4T-DJ/OMRON  ----
+24                 Coil resistance                        105.0 Q  ----
+25  Four-wheel-drive motor relay 2                                     
+26              Model/manufacturer             G8HN-1C4T-DJ/OMRON  ----
+27                 Coil resistance                        105.0 Q  ----
+28                 Circuit breaker                                     
+29            Circuit breaker type                           Fuse  ----
+30                           Fuses                                     
+31                       Main fuse                         40.0 A  ----
+32                  Headlight fuse                         15.0 A  ----
+33           Signaling system fuse                         10.0 A  ----
+34                   Ignition fuse                         10.0 A  ----
+35          Auxiliary DC jack fuse                         10.0 A  ----
+36      Fuel injection system fuse                         10.0 A  ----
+37     Four-wheel-drive motor fuse                         10.0 A  ----
+38                     Backup fuse                         10.0 A  ----
+39         Radiator fan motor fuse                         25.0 A  ----
+40                      Spare fuse                         25.0 A  ----
+41                                                         15.0 A  ----
+42                                                         10.0 A  ----

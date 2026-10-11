@@ -1,0 +1,430 @@
+{
+  "start": 320,
+  "end": 360,
+  "status": "success",
+  "error": null,
+  "wall_seconds": 184.39,
+  "peak_rss_gb": 2.265,
+  "ocr_backend_configured": "rapidocr (backend=onnxruntime, lang=['english'])",
+  "docling_log_lines": [
+    "Registered picture descriptions: ['picture_description_vlm_engine', 'vlm', 'api']",
+    "Registered ocr engines: ['auto', 'easyocr', 'kserve_v2_ocr', 'ocrmac', 'rapidocr', 'tesserocr', 'tesseract']",
+    "Registered layout engines: ['layout_object_detection', 'docling_layout_default', 'docling_experimental_table_crops_layout']",
+    "Registered table structure engines: ['docling_tableformer', 'docling_tableformer_v2', 'granite_vision_table']"
+  ],
+  "per_page_chars": {
+    "321": 345,
+    "323": 455,
+    "324": 145,
+    "325": 91,
+    "327": 9,
+    "328": 386,
+    "330": 341,
+    "331": 955,
+    "332": 1181,
+    "333": 632,
+    "335": 323,
+    "336": 46,
+    "338": 10,
+    "341": 10,
+    "342": 42,
+    "343": 224,
+    "344": 461,
+    "345": 21,
+    "346": 252,
+    "347": 455,
+    "348": 28,
+    "351": 301,
+    "352": 126,
+    "354": 262,
+    "359": 25
+  },
+  "per_page_text": {
+    "321": "INSPECTION\nFig.12-34\nFig.12-35\nFig. 12-36\nWiper Motor\nTerminal connections\n（一）....\nGround\n+ 1\n...\nTowiper switch\"+1\"terminal\n+2\nB\nTo wiper switch\"+2\"terminal\nTofuse(wiper)(auto stop power\nsource)\nTowiper switch\"S'terminal\nWiper Switch\nTerminal connections\nW\n....\nTowashermotor\nTERMINAL\nSWITCH\nPOSITION\nOFF1\n1ST STEP\n2ND STEP\nS\n+1\n+2\nB\no\no\nW\no-\no",
+    "323": "Fig.12-38\nFig. 12-39\nFig. 12-40\nFig 12-41\nDisconnect the link from the wiper motor.\nRemove the defroster nozzle at the front passenger seat side.\nPosition the wiper arm upward，and remove the defroster nozzle in the order shown by numbered arrows.\nRemove the wiper blades and wiper pivots, and take out the wiper link.\nINSTALLATION\nPerform the removal in reverse order.\nNote\nInstall the wiper link with the link convex part fitted into thebody concavepart.",
+    "324": "INSPECTION\nFig. 12-42\nFig. 12-43\nFig. 12-44\nWiper Motor\nTerminal connections\nWiper Switch\nTerminal connections\nW\n....Towasher motor\n(一)....Ground",
+    "325": "COMBINATIONMETER\nREMOVAL\n55 Series\nRemove the parts in the order numbered below.\nFig. 12-45",
+    "327": "40 Series",
+    "328": "INSPECTION\n55 Series Fig. 12-51\nTerminal No.\nConnection\nTo Oil Pressure Gauge OilPressure Sender Gauge\n2 From Ignition Switch(PowerSource)\n3 Ground\nTo MeterPilot Light>Light Switch\n5 To PKB Light Parking Brake Switch & StopLight Switch\nTerminal No.\nConnection\n6 To CHG Light Alternator Regulator \"L\" Terminal\nToTemperature GaugeTemperature Sender Gauge\n8 To Fuel Gauge→Fuel Sender Gauge",
+    "330": "FUELGAUGE&WATERTEMPERATUREGAUGE\nINSPECTION\nFig.12-53\nFig. 12-54\nFuel ReceiverGauge\nPull out the connector from the fuel sender gauge and ground the terminal through a 3.4W bulb.When the ignition switch is turn on,the bulb should light(but start toflash afterfew seconds)and thegaugepointer should deflect,if the gauge is in proper condition.",
+    "331": "Fig. 12-55\nFig. 12-56\nFig. 12-57\nFig. 12-58\nIf the above test shows defective condition, removethecombinationmeterassembly and check on the following points.\n(1）,Withthe multi-terminal connector plugged in to the combination meter, turn ontheignition switch andverify thatbatteryvoltageispresentat terminal (A).\nAt the above condition,there should bea constantly varying voltage at terminal(B)thatis fluctuating between 2V and 7V.\n-Note-\nWhen theignition switch is turned on,the12V battery voltage will be indicated but after a few seconds,thevoltagewill drop down tobetween 2V and 7V.\nMeasure the resistance between terminals (B) and (C).\nStandardresistance\nCaution-\nDo not check the7V terminal at12Vor 24V.\nFuel SenderGauge\nRemovethesendergaugeandmeasure the resistance between the terminaland ground with acircuit tester.The resistance should change smoothlywhen thefloatarm ismoved,and be of the values shown in following table.\n55 Series\n40 Series\n25",
+    "332": "Fig. 12-59\nFig. 12-60\nFig. 12-61\nFig. 12-62\nWaterTemperatureReceiverGauge\n1.Pullout the connector fromthe water temperaturesendergaugeandground its terminalthrougha3.4Wbulb.Whenthe ignition switchis turned ON,the bulb should light(but start to flash after few seconds)and the gauge pointer should deflect, if the gauge is in proper condition.\nIf the above test shows defective condition, removethecombinationmeterassembly and check on the following points.\n(1)Withthe multi-terminalconnector plugged in to the combination meter, turn on theignition switch and verify that battery voltage is present at terminal (A).\nAt the above condition,there should bea constantly varyingvoltage at terminal(B)that is fluctuating between 2V and 7V.\nNote-\nWhen the ignition switch is turned on, the 12V batteryvoltage willbe indicated but afterafew seconds,thevoltagewilldropdowntobetween 2V and 7V.\n(3） Measuretheresistancebetweenterminals (B) and (C).\n25Ω\nStandard resistance\n-Caution-\nDonotcheckthe7Vterminalat12Vor24V.\nWaterTemperatureSenderGauge\nMeasuretheresistancebetweentheterminaland groundwitha circuittester.The resistance shouldvarywiththewater temperatureas shown in the table below.",
+    "333": "OILPRESSUREGAUGE\nINSPECTION\nFig 12-63\nFig. 12-64\nFig. 12-65\nOil Pressure Receiver Gauge\nPullout the connector from oil pressure sender gaugeandgroundthe terminal througha 3.4Wbulb.When theignition switch is turned on，the bulb should light and gaugepointershould deflect.\nIf the abovetest shows defective condition, removethecombinationmeterassembly and check on the following points.\n（1） Withthemulti-terminalconnector plugged in to the combination meter, turnon theignitionswitch andverify thatbatteryvoltageispresent at terminal (A).\nMeasuretheresistancebetweenterminals (A) and (B).\nStandardresistance\n44 Ω....Except BJ\n66Ω....BJ",
+    "335": "BRAKEWARNINGLIGHT\nINSPECTION\nFig. 12-69\nFig. 12-70\nB'\nStopLight Switch\nBrake Pedal\nFig. 12-71\nStopLightSwitch.A-A'\nOFF\nON\nOFF\nON\nWarningLightSwitchB-B'\nStop Light Switch\nA .... To stop light\nTerminalConnections\nA'....To fuse (stop) (power source)\nB To brake warning light switch\nB'....Tobrake warning light (power source)\nB",
+    "336": "FRONT DRIVE VACUUMCONTROL\nOPERATION\nFig. 12-72",
+    "338": "Fig. 12-74",
+    "341": "Fig. 12-80",
+    "342": "POWER WINDOWTAILGATE\nINSPECTION\nFig. 12-81",
+    "343": "Fig. 12-82\nCircuit Breaker\nTerminal connections\nOut of the two terminals,one connects tofusible link(power source)and the other to tail gate relay\"B'terminaland tailgatecontrolswitch \"B\"terminal.\nCircuitBreakerSpecifications",
+    "344": "B (L)\nTo tailgate relay\"R\" terminal(powersourse)\nUp (L · W)\nTo tail gate motor \"Up\" terminal andtailgate control switch \"Up' ter- minal\nDown (L·B)\nTo tail gate motor \"Down\" terminal and tail gate control switch \"Down\" terminal.\nTerminal connections\nB (L)\nTo circuitbreaker(power source)\nUp (L · W)\nTo tail gate motor \"Up\" terminal and remote control switch\"Up'ter- minal.\nDown (L·B)\nTo tail gate motor ,Umoa.. terminal and remote control switch \"Down\" terminal.",
+    "345": "Fig. 12-86\nFig. 12-87",
+    "346": "TAILGATEREGULATORMOTOR\nFig. 12-88\nFig. 12-89\nFig. 12-90\nRemoval\nRemove theregulatorfrom thetailgate (refer to P11-14).\nRemove the screw and nut from the regulator, and take off the motor.\nDisassembly\nRemove the nuts and bolts and disassemble the motor.",
+    "347": "Fig. 12-91\nFig.12-92\nFig.12-93\nFig.12-94\nAssembly\nFittogether the convex and concaveparts of theyoke and brushholder.\nTheballwillbe easier to installif coated with grease.\nFittogethertheprotrudedandslotted parts of the end frame and yoke.\n4 Assemblethebearing holder totheyoke withtheconvexpartfittedintothe concave part.\nAdjustment\nAdjustthearmaturethrustgapwiththrust washer andsetscrew sothatit willbeinthe range of 0.05 to 0.30 mm (0.002 to 0.012 in.)",
+    "348": "HEATER (55 SERIES)\nFig.12-95",
+    "351": "Fig.12-101\nFig.12-102\nFig.12-103\nFig.12-104\n2 Removethetwoboltsattachingthe ventilationlouver,andtake ofthelouver.\nDisconnectthetwowaterhosesfromthe heaterradiator.\nDisconnectthedefrostercontrolcable from theheaterradiator.\nRemovethefourboltsattachingtheheater radiatorassembly.andtakeoffthe assembly.",
+    "352": "HEATERCONTROL&SWITCH\nRemoval\nRemove the parts in the order numbered below.\nFig.12-105\nFig.12-106\nRemove theheater controlknob.",
+    "354": "INSPECTION\nFig. 12-111\nFig. 12-112\nFig.12-113\nM\nH\nLo\nHeaterBlowerMotor\nTerminal connections\nB....To heater fuse (power source)\nM. .. Toheater switch\"M'terminal\nHi .. Toheater switch\"Hi'terminal\nToheater switch\"Lo\"terminal\nHeater Switch\nTerminalconnections\nGround",
+    "359": "SPECIALSERVICETOOL CLUTCH"
+  },
+  "item_census": {
+    "picture": 96,
+    "section_header": 50,
+    "caption": 41,
+    "text": 110,
+    "list_item": 36,
+    "table": 11,
+    "document_index": 1
+  },
+  "tables": [
+    {
+      "page": 324,
+      "shape": [
+        4,
+        2
+      ],
+      "text": "     0                              1\n0  + 1  To wiper switch \"+1\" terminal\n1   +2     Towiper switch\"+2\"terminal\n2    B  To fuse (wiper)(power source)\n3    S     To wiper switch\"S'terminal"
+    },
+    {
+      "page": 324,
+      "shape": [
+        2,
+        5
+      ],
+      "text": "                          0  1    2    3         4\n0  TERMINAL SWITCH POSITION  S  + 1   +2         W\n1     OFF 1ST STEP 2ND STEP          o o  o··o ..o"
+    },
+    {
+      "page": 331,
+      "shape": [
+        4,
+        2
+      ],
+      "text": "                0               1\n0  Float Position  Resistance($2)\n1               F        17 ± 2.1\n2             1/2        40 ± 4.5\n3               E       120 ± 6.5"
+    },
+    {
+      "page": 331,
+      "shape": [
+        3,
+        2
+      ],
+      "text": "  Float Position Resistance (S2)\n0              F        17 ± 2.1\n1            1/2        45 ± 4.5\n2              E       120 ± 6.5"
+    },
+    {
+      "page": 332,
+      "shape": [
+        5,
+        2
+      ],
+      "text": "               0           1\n0    Temperature  Resistance\n1   60°C (140°F)  90 S2 app.\n2      80C(176F)     50 app.\n3    100°C(212F)   27 S2app.\n4  105°C (221°F)      23app."
+    },
+    {
+      "page": 343,
+      "shape": [
+        3,
+        4
+      ],
+      "text": "  AmbientTemperature     Load Timefor Contacts to Open Time for Contacts to Closs\n0        55°C(131°F)  12V,24A                2-10 sec.             Within 80 sec.\n1       20°C ( 68°F)  12V,24A               3--13 sec.             Within 30 sec.\n2       20°℃ ( 68°F)  12V,20A           Within 60 sec.             Within 30 sec."
+    },
+    {
+      "page": 344,
+      "shape": [
+        4,
+        4
+      ],
+      "text": "                                   0  1    2    3\n0  WIRING COLOR CODE SWITCH POSITION  L  L·W  L·B\n1                                 Up             \n2                                  N             \n3                               Down             "
+    },
+    {
+      "page": 344,
+      "shape": [
+        4,
+        4
+      ],
+      "text": "                                   0  1      2    3\n0  WIRING COLOR CODE SWITCH POSITION  L  L · W  L·B\n1                                 Up  o      O     \n2                                  N               \n3                               Down               "
+    },
+    {
+      "page": 354,
+      "shape": [
+        5,
+        5
+      ],
+      "text": "                          0  1   2  3   4\n0  TERMINAL SWITCH POSITION  E  Lo  M  Hi\n1                       OFF              \n2                  1ST STEP  o   o       \n3                  2ND STEP         o    \n4                  3RD STEP  o           "
+    },
+    {
+      "page": 357,
+      "shape": [
+        4,
+        5
+      ],
+      "text": "                          0    1    2    3    4\n0  TERMINAL SWITCH POSITION    B   Lo   Hi    R\n1                       OFF  OFF  OFF  OFF  OFF\n2                  1ST STEP    o    o          \n3                  2ND STEP    o         o     "
+    },
+    {
+      "page": 358,
+      "shape": [
+        5,
+        2
+      ],
+      "text": "                                    0                                         1\n0               SPECIAL SERVICE TOOL·                                     .13-2\n1                                      STANDARD BOLT TIGHTENING TORQUES..:13-10\n2  MAIN PARTS TIGHTENING TORQUES ....                               ..... 13-12\n3              SERVICESPECIFICATIONS·                                     13-14\n4                           LUBRICANT                                     13-23"
+    },
+    {
+      "page": 359,
+      "shape": [
+        7,
+        3
+      ],
+      "text": "  Illustration     Tool No.                                               Tool Name\n0               09301-55022                                       Clutch Guide Tool\n1               09302-25010                      Clutch Pressure Lever Height Gauge\n2               09303-35010        Input Shaft Front Bearing Puller (For BJ Series)\n3               09303-55010    Input Shaft Front Bearing Puller (For FJ, HJ Series)\n4               09304-30012          InputShaftFrontBearingReplacer (For BJ Series)\n5               09304-47010  Input Shaft Front Bearing Replacer (For FJ, HJ Series)\n6               09315-00021               Clutch Release Bearing Remover & Replacer"
+    }
+  ],
+  "headings": [
+    {
+      "label": "section_header",
+      "text": "INSPECTION",
+      "page": 321
+    },
+    {
+      "label": "section_header",
+      "text": "Wiper Motor",
+      "page": 321
+    },
+    {
+      "label": "section_header",
+      "text": "Wiper Switch",
+      "page": 321
+    },
+    {
+      "label": "section_header",
+      "text": "INSTALLATION",
+      "page": 323
+    },
+    {
+      "label": "section_header",
+      "text": "INSPECTION",
+      "page": 324
+    },
+    {
+      "label": "section_header",
+      "text": "Wiper Motor",
+      "page": 324
+    },
+    {
+      "label": "section_header",
+      "text": "Wiper Switch",
+      "page": 324
+    },
+    {
+      "label": "section_header",
+      "text": "COMBINATIONMETER",
+      "page": 325
+    },
+    {
+      "label": "section_header",
+      "text": "REMOVAL",
+      "page": 325
+    },
+    {
+      "label": "section_header",
+      "text": "55 Series",
+      "page": 325
+    },
+    {
+      "label": "section_header",
+      "text": "40 Series",
+      "page": 327
+    },
+    {
+      "label": "section_header",
+      "text": "INSPECTION",
+      "page": 328
+    },
+    {
+      "label": "section_header",
+      "text": "Terminal No.",
+      "page": 328
+    },
+    {
+      "label": "section_header",
+      "text": "Terminal No.",
+      "page": 328
+    },
+    {
+      "label": "section_header",
+      "text": "FUELGAUGE&WATERTEMPERATUREGAUGE",
+      "page": 330
+    },
+    {
+      "label": "section_header",
+      "text": "INSPECTION",
+      "page": 330
+    },
+    {
+      "label": "section_header",
+      "text": "Fig. 12-54",
+      "page": 330
+    },
+    {
+      "label": "section_header",
+      "text": "Fuel ReceiverGauge",
+      "page": 330
+    },
+    {
+      "label": "section_header",
+      "text": "-Note-",
+      "page": 331
+    },
+    {
+      "label": "section_header",
+      "text": "Fuel SenderGauge",
+      "page": 331
+    },
+    {
+      "label": "section_header",
+      "text": "WaterTemperatureReceiverGauge",
+      "page": 332
+    },
+    {
+      "label": "section_header",
+      "text": "WaterTemperatureSenderGauge",
+      "page": 332
+    },
+    {
+      "label": "section_header",
+      "text": "OILPRESSUREGAUGE",
+      "page": 333
+    },
+    {
+      "label": "section_header",
+      "text": "INSPECTION",
+      "page": 333
+    },
+    {
+      "label": "section_header",
+      "text": "Fig. 12-65",
+      "page": 333
+    },
+    {
+      "label": "section_header",
+      "text": "Oil Pressure Receiver Gauge",
+      "page": 333
+    },
+    {
+      "label": "section_header",
+      "text": "Standardresistance",
+      "page": 333
+    },
+    {
+      "label": "section_header",
+      "text": "BRAKEWARNINGLIGHT",
+      "page": 335
+    },
+    {
+      "label": "section_header",
+      "text": "INSPECTION",
+      "page": 335
+    },
+    {
+      "label": "section_header",
+      "text": "Stop Light Switch",
+      "page": 335
+    },
+    {
+      "label": "section_header",
+      "text": "FRONT DRIVE VACUUMCONTROL",
+      "page": 336
+    },
+    {
+      "label": "section_header",
+      "text": "OPERATION",
+      "page": 336
+    },
+    {
+      "label": "section_header",
+      "text": "POWER WINDOWTAILGATE",
+      "page": 342
+    },
+    {
+      "label": "section_header",
+      "text": "INSPECTION",
+      "page": 342
+    },
+    {
+      "label": "section_header",
+      "text": "Circuit Breaker",
+      "page": 343
+    },
+    {
+      "label": "section_header",
+      "text": "CircuitBreakerSpecifications",
+      "page": 343
+    },
+    {
+      "label": "section_header",
+      "text": "TAILGATEREGULATORMOTOR",
+      "page": 346
+    },
+    {
+      "label": "section_header",
+      "text": "Removal",
+      "page": 346
+    },
+    {
+      "label": "section_header",
+      "text": "Disassembly",
+      "page": 346
+    },
+    {
+      "label": "section_header",
+      "text": "Assembly",
+      "page": 347
+    },
+    {
+      "label": "section_header",
+      "text": "Adjustment",
+      "page": 347
+    },
+    {
+      "label": "section_header",
+      "text": "HEATER (55 SERIES)",
+      "page": 348
+    },
+    {
+      "label": "section_header",
+      "text": "HEATERCONTROL&SWITCH",
+      "page": 352
+    },
+    {
+      "label": "section_header",
+      "text": "Removal",
+      "page": 352
+    },
+    {
+      "label": "section_header",
+      "text": "Fig.12-105",
+      "page": 352
+    },
+    {
+      "label": "section_header",
+      "text": "Fig.12-106",
+      "page": 352
+    },
+    {
+      "label": "section_header",
+      "text": "INSPECTION",
+      "page": 354
+    },
+    {
+      "label": "section_header",
+      "text": "HeaterBlowerMotor",
+      "page": 354
+    },
+    {
+      "label": "section_header",
+      "text": "Heater Switch",
+      "page": 354
+    },
+    {
+      "label": "section_header",
+      "text": "SPECIALSERVICETOOL CLUTCH",
+      "page": 359
+    }
+  ],
+  "markdown": "<!-- image -->\n\n## INSPECTION\n\nFig.12-34\n\n<!-- image -->\n\nFig.12-35\n\nFig. 12-36\n\n## Wiper Motor\n\nTerminal connections\n\n（一）....\n\nGround\n\n+ 1\n\n...\n\nTowiper switch\"+1\"terminal\n\n+2\n\nB\n\nTo wiper switch\"+2\"terminal\n\nTofuse(wiper)(auto stop power\n\nsource)\n\nTowiper switch\"S'terminal\n\n## Wiper Switch\n\nTerminal connections\n\nW\n\n....\n\nTowashermotor\n\nTERMINAL\n\nSWITCH\n\nPOSITION\n\nOFF1\n\n1ST STEP\n\n2ND STEP\n\nS\n\n+1\n\n+2\n\nB\n\no\n\no\n\nW\n\no-\n\no\n\n<!-- image -->\n\nFig.12-38\n\n<!-- image -->\n\nFig. 12-39\n\n<!-- image -->\n\nFig. 12-40\n\n<!-- image -->\n\nFig 12-41\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n- Disconnect the link from the wiper motor.\n2. Remove the defroster nozzle at the front passenger seat side.\n\nPosition the wiper arm upward，and remove the defroster nozzle in the order shown by numbered arrows.\n\n3. Remove the wiper blades and wiper pivots, and take out the wiper link.\n\n## INSTALLATION\n\nPerform the removal in reverse order.\n\nNote\n\nInstall the wiper link with the link convex part fitted into thebody concavepart.\n\n## INSPECTION\n\nFig. 12-42\n\n<!-- image -->\n\nFig. 12-43\n\n<!-- image -->\n\nFig. 12-44\n\n<!-- image -->\n\n## Wiper Motor\n\nTerminal connections\n\n| + 1   | To wiper switch \"+1\" terminal   |\n|-------|---------------------------------|\n| +2    | Towiper switch\"+2\"terminal      |\n| B     | To fuse (wiper)(power source)   |\n| S     | To wiper switch\"S'terminal      |\n\n## Wiper Switch\n\nTerminal connections\n\nW\n\n....Towasher motor\n\n(一)....Ground\n\n<!-- image -->\n\n| TERMINAL SWITCH POSITION   | S   | + 1   | +2   | W        |\n|----------------------------|-----|-------|------|----------|\n| OFF 1ST STEP 2ND STEP      |     |       | o o  | o··o ..o |\n\n## COMBINATIONMETER\n\n## REMOVAL\n\n## 55 Series\n\nRemove the parts in the order numbered below.\n\nFig. 12-45\n\n<!-- image -->\n\n<!-- image -->\n\n## 40 Series\n\n<!-- image -->\n\n## INSPECTION\n\n55 Series Fig. 12-51\n\n<!-- image -->\n\n## Terminal No.\n\nConnection\n\n- To Oil Pressure Gauge OilPressure Sender Gauge\n- 2 From Ignition Switch(PowerSource)\n- 3 Ground\n- To MeterPilot Light&gt;Light Switch\n- 5 To PKB Light Parking Brake Switch &amp; StopLight Switch\n\n## Terminal No.\n\nConnection\n\n- 6 To CHG Light Alternator Regulator \"L\" Terminal\n- ToTemperature GaugeTemperature Sender Gauge\n- 8 To Fuel Gauge→Fuel Sender Gauge\n\n<!-- image -->\n\n## FUELGAUGE&amp;WATERTEMPERATUREGAUGE\n\n## INSPECTION\n\nFig.12-53\n\n<!-- image -->\n\n## Fig. 12-54\n\n<!-- image -->\n\n<!-- image -->\n\n## Fuel ReceiverGauge\n\n- Pull out the connector from the fuel sender gauge and ground the terminal through a 3.4W bulb.When the ignition switch is turn on,the bulb should light(but start toflash afterfew seconds)and thegaugepointer should deflect,if the gauge is in proper condition.\n\nFig. 12-55\n\n<!-- image -->\n\nFig. 12-56\n\n<!-- image -->\n\nFig. 12-57\n\n<!-- image -->\n\nFig. 12-58\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n2. If the above test shows defective condition, removethecombinationmeterassembly and check on the following points.\n2. (1）,Withthe multi-terminal connector plugged in to the combination meter, turn ontheignition switch andverify thatbatteryvoltageispresentat terminal (A).\n- (2) At the above condition,there should bea constantly varying voltage at terminal(B)thatis fluctuating between 2V and 7V.\n\n## -Note-\n\nWhen theignition switch is turned on,the12V battery voltage will be indicated but after a few seconds,thevoltagewill drop down tobetween 2V and 7V.\n\n- (3) Measure the resistance between terminals (B) and (C).\n\nStandardresistance\n\nCaution-\n\nDo not check the7V terminal at12Vor 24V.\n\n## Fuel SenderGauge\n\nRemovethesendergaugeandmeasure the resistance between the terminaland ground with acircuit tester.The resistance should change smoothlywhen thefloatarm ismoved,and be of the values shown in following table.\n\n55 Series\n\n| Float Position   | Resistance($2)   |\n|------------------|------------------|\n| F                | 17 ± 2.1         |\n| 1/2              | 40 ± 4.5         |\n| E                | 120 ± 6.5        |\n\n40 Series\n\n| Float Position   | Resistance (S2)   |\n|------------------|-------------------|\n| F                | 17 ± 2.1          |\n| 1/2              | 45 ± 4.5          |\n| E                | 120 ± 6.5         |\n\n25\n\nFig. 12-59\n\n<!-- image -->\n\nFig. 12-60\n\n<!-- image -->\n\nFig. 12-61\n\n<!-- image -->\n\nFig. 12-62\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n## WaterTemperatureReceiverGauge\n\n- 1.Pullout the connector fromthe water temperaturesendergaugeandground its terminalthrougha3.4Wbulb.Whenthe ignition switchis turned ON,the bulb should light(but start to flash after few seconds)and the gauge pointer should deflect, if the gauge is in proper condition.\n- If the above test shows defective condition, removethecombinationmeterassembly and check on the following points.\n- (1)Withthe multi-terminalconnector plugged in to the combination meter, turn on theignition switch and verify that battery voltage is present at terminal (A).\n- (2) At the above condition,there should bea constantly varyingvoltage at terminal(B)that is fluctuating between 2V and 7V.\n- Note-\n\nWhen the ignition switch is turned on, the 12V batteryvoltage willbe indicated but afterafew seconds,thevoltagewilldropdowntobetween 2V and 7V.\n\n(3） Measuretheresistancebetweenterminals (B) and (C).\n\n25Ω\n\nStandard resistance\n\n-Caution-\n\nDonotcheckthe7Vterminalat12Vor24V.\n\n## WaterTemperatureSenderGauge\n\nMeasuretheresistancebetweentheterminaland groundwitha circuittester.The resistance shouldvarywiththewater temperatureas shown in the table below.\n\n| Temperature   | Resistance   |\n|---------------|--------------|\n| 60°C (140°F)  | 90 S2 app.   |\n| 80C(176F)     | 50 app.      |\n| 100°C(212F)   | 27 S2app.    |\n| 105°C (221°F) | 23app.       |\n\n## OILPRESSUREGAUGE\n\n## INSPECTION\n\nFig 12-63\n\n<!-- image -->\n\nFig. 12-64\n\n<!-- image -->\n\n## Fig. 12-65\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n## Oil Pressure Receiver Gauge\n\n- Pullout the connector from oil pressure sender gaugeandgroundthe terminal througha 3.4Wbulb.When theignition switch is turned on，the bulb should light and gaugepointershould deflect.\n2. If the abovetest shows defective condition, removethecombinationmeterassembly and check on the following points.\n- （1） Withthemulti-terminalconnector plugged in to the combination meter, turnon theignitionswitch andverify thatbatteryvoltageispresent at terminal (A).\n- (2) Measuretheresistancebetweenterminals (A) and (B).\n\n## Standardresistance\n\n44 Ω....Except BJ\n\n66Ω....BJ\n\n<!-- image -->\n\n## BRAKEWARNINGLIGHT\n\n## INSPECTION\n\nFig. 12-69\n\nFig. 12-70\n\n<!-- image -->\n\nB'\n\nStopLight Switch\n\nBrake Pedal\n\nFig. 12-71\n\nStopLightSwitch.A-A'\n\nOFF\n\nON\n\nOFF\n\nON\n\nWarningLightSwitchB-B'\n\n## Stop Light Switch\n\nA .... To stop light\n\nTerminalConnections\n\nA'....To fuse (stop) (power source)\n\nB To brake warning light switch\n\nB'....Tobrake warning light (power source)\n\nB\n\n## FRONT DRIVE VACUUMCONTROL\n\n## OPERATION\n\nFig. 12-72\n\n<!-- image -->\n\n<!-- image -->\n\nFig. 12-74\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\nFig. 12-80\n\n<!-- image -->\n\n## POWER WINDOWTAILGATE\n\n## INSPECTION\n\nFig. 12-81\n\n<!-- image -->\n\nFig. 12-82\n\n<!-- image -->\n\n## Circuit Breaker\n\nTerminal connections\n\n<!-- image -->\n\nOut of the two terminals,one connects tofusible link(power source)and the other to tail gate relay\"B'terminaland tailgatecontrolswitch \"B\"terminal.\n\n## CircuitBreakerSpecifications\n\n| AmbientTemperature   | Load    | Timefor Contacts to Open   | Time for Contacts to Closs   |\n|----------------------|---------|----------------------------|------------------------------|\n| 55°C(131°F)          | 12V,24A | 2-10 sec.                  | Within 80 sec.               |\n| 20°C ( 68°F)         | 12V,24A | 3--13 sec.                 | Within 30 sec.               |\n| 20°℃ ( 68°F)         | 12V,20A | Within 60 sec.             | Within 30 sec.               |\n\n<!-- image -->\n\n| WIRING COLOR CODE SWITCH POSITION   | L   | L·W   | L·B   |\n|-------------------------------------|-----|-------|-------|\n| Up                                  |     |       |       |\n| N                                   |     |       |       |\n| Down                                |     |       |       |\n\n| WIRING COLOR CODE SWITCH POSITION   | L   | L · W   | L·B   |\n|-------------------------------------|-----|---------|-------|\n| Up                                  | o   | O       |       |\n| N                                   |     |         |       |\n| Down                                |     |         |       |\n\nB (L)\n\nTo tailgate relay\"R\" terminal(powersourse)\n\nUp (L · W)\n\nTo tail gate motor \"Up\" terminal andtailgate control switch \"Up' ter- minal\n\nDown (L·B)\n\nTo tail gate motor \"Down\" terminal and tail gate control switch \"Down\" terminal.\n\nTerminal connections\n\nB (L)\n\nTo circuitbreaker(power source)\n\nUp (L · W)\n\nTo tail gate motor \"Up\" terminal and remote control switch\"Up'ter- minal.\n\nDown (L·B)\n\nTo tail gate motor ,Umoa.. terminal and remote control switch \"Down\" terminal.\n\n<!-- image -->\n\nFig. 12-86\n\n<!-- image -->\n\nFig. 12-87\n\n<!-- image -->\n\n## TAILGATEREGULATORMOTOR\n\nFig. 12-88\n\n<!-- image -->\n\nFig. 12-89\n\n<!-- image -->\n\nFig. 12-90\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n## Removal\n\n- Remove theregulatorfrom thetailgate (refer to P11-14).\n2. Remove the screw and nut from the regulator, and take off the motor.\n\n## Disassembly\n\nRemove the nuts and bolts and disassemble the motor.\n\nFig. 12-91\n\n<!-- image -->\n\nFig.12-92\n\n<!-- image -->\n\n<!-- image -->\n\nFig.12-93\n\n<!-- image -->\n\nFig.12-94\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n## Assembly\n\n- Fittogether the convex and concaveparts of theyoke and brushholder.\n2. Theballwillbe easier to installif coated with grease.\n- Fittogethertheprotrudedandslotted parts of the end frame and yoke.\n- 4 Assemblethebearing holder totheyoke withtheconvexpartfittedintothe concave part.\n\n## Adjustment\n\nAdjustthearmaturethrustgapwiththrust washer andsetscrew sothatit willbeinthe range of 0.05 to 0.30 mm (0.002 to 0.012 in.)\n\n## HEATER (55 SERIES)\n\nFig.12-95\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\nFig.12-101\n\n<!-- image -->\n\nFig.12-102\n\n<!-- image -->\n\nFig.12-103\n\n<!-- image -->\n\nFig.12-104\n\n<!-- image -->\n\n<!-- image -->\n\n- 2 Removethetwoboltsattachingthe ventilationlouver,andtake ofthelouver.\n3. Disconnectthetwowaterhosesfromthe heaterradiator.\n- Disconnectthedefrostercontrolcable from theheaterradiator.\n5. Removethefourboltsattachingtheheater radiatorassembly.andtakeoffthe assembly.\n\n## HEATERCONTROL&amp;SWITCH\n\n## Removal\n\nRemove the parts in the order numbered below.\n\n## Fig.12-105\n\n<!-- image -->\n\n## Fig.12-106\n\n<!-- image -->\n\n<!-- image -->\n\n- Remove theheater controlknob.\n\n<!-- image -->\n\n## INSPECTION\n\nFig. 12-111\n\n<!-- image -->\n\nFig. 12-112\n\nFig.12-113\n\nM\n\nH\n\nLo\n\n## HeaterBlowerMotor\n\nTerminal connections\n\nB....To heater fuse (power source)\n\nM. .. Toheater switch\"M'terminal\n\nHi .. Toheater switch\"Hi'terminal\n\nToheater switch\"Lo\"terminal\n\n## Heater Switch\n\nTerminalconnections\n\nGround\n\n| TERMINAL SWITCH POSITION   | E   | Lo   | M   | Hi   |\n|----------------------------|-----|------|-----|------|\n| OFF                        |     |      |     |      |\n| 1ST STEP                   | o   | o    |     |      |\n| 2ND STEP                   |     |      | o   |      |\n| 3RD STEP                   | o   |      |     |      |\n\n<!-- image -->\n\n<!-- image -->\n\n| TERMINAL SWITCH POSITION   | B   | Lo   | Hi   | R   |\n|----------------------------|-----|------|------|-----|\n| OFF                        | OFF | OFF  | OFF  | OFF |\n| 1ST STEP                   | o   | o    |      |     |\n| 2ND STEP                   | o   |      | o    |     |\n\n<!-- image -->\n\n| SPECIAL SERVICE TOOL·              | .13-2                                    |\n|------------------------------------|------------------------------------------|\n|                                    | STANDARD BOLT TIGHTENING TORQUES..:13-10 |\n| MAIN PARTS TIGHTENING TORQUES .... | ..... 13-12                              |\n| SERVICESPECIFICATIONS·             | 13-14                                    |\n| LUBRICANT                          | 13-23                                    |\n\n<!-- image -->\n\n## SPECIALSERVICETOOL CLUTCH\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n<!-- image -->\n\n| Illustration   | Tool No.    | Tool Name                                              |\n|----------------|-------------|--------------------------------------------------------|\n|                | 09301-55022 | Clutch Guide Tool                                      |\n|                | 09302-25010 | Clutch Pressure Lever Height Gauge                     |\n|                | 09303-35010 | Input Shaft Front Bearing Puller (For BJ Series)       |\n|                | 09303-55010 | Input Shaft Front Bearing Puller (For FJ, HJ Series)   |\n|                | 09304-30012 | InputShaftFrontBearingReplacer (For BJ Series)         |\n|                | 09304-47010 | Input Shaft Front Bearing Replacer (For FJ, HJ Series) |\n|                | 09315-00021 | Clutch Release Bearing Remover & Replacer              |",
+  "num_pages": 40
+}

@@ -1,0 +1,12 @@
+                                 Item                                                                 Standard             Limit
+0                       Parking brake                                                                                           
+1                                Type                                                                     Disc              ----
+2   Disc outside diameter x thickness                                          165.0 x 3.5 mm (6.50 x 0.14 in)              ----
+3        Brake disc minimum thickness                                                         3.0 mm (0.12 in)              ----
+4       Brake disc maximum deflection                                                        0.1 mm (0.004 in)              ----
+5    Brake pad lining thickness-inner                                                         3.2 mm (0.13 in)            1.0 mm
+6    Brake pad lining thickness-outer                                                         3.2 mm (0.13 in)  1.0 mm (0.04 in)
+7         Brake lever and brake pedal                                                                                           
+8         Accelerator pedal free play                                                              o mm (0 in)              ----
+9               Brake pedal free play                                                              o mm (0 in)              ----
+10      Parking brake cable free play  The maximum free play is equal to one click of the parking brake lever.              ----

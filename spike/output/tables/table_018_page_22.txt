@@ -1,0 +1,37 @@
+                                             Item                                     Standard    Limit
+0                                  System voltage                                         12 V     ----
+1                                 Ignition system                                                      
+2                      Ignition timing (B.T.D.C.)                              12°/1,400 r/min     ----
+3                                   Advancer type                                      Digital     ----
+4                    Transistorized coil ignition                                                      
+5   Crankshaft position sensor resis- tance/color       459 - 561 Qat 20°C (68 °F)/ gray/black     ----
+6                       ECU (engine control unit)                                                      
+7                              Model/manufacturer                          F8T83871/MITSUBISHI     ----
+8                                   Ignition coil                                                      
+9                              Model/manufacturer                                    2JNNAMAHA     ----
+10                     Minimum ignition spark gap                             6.0 mm (0.24 in)     ----
+11                        Primary coil resistance                2.16 - 2.64 Q at 20°C (68 OF)     ----
+12                      Secondary coil resistance              8.64 - 12.96 kQ at 20°C (68 OF)     ----
+13                                 Spark plug cap                                                      
+14                                       Material                                        Resin     ----
+15                                     Resistance                                      10.0 kQ     ----
+16                                     AC magneto                                                      
+17                             Model/manufacturer                        F004T39372/MITSUBISHI     ----
+18                                Standard output                 14.0 V 33.5 A at 5,000 r/min     ----
+19                   Stator coil resistance/color  0.099 - 0.121 Qat 20°C (68 °F)/ white-white     ----
+20                            Rectifier/regulator                                                      
+21                                           Type                  Semiconductor-short-circuit     ----
+22                             Model/manufacturer                           FH012AAlSHINDENGEN     ----
+23                 No load regulated voltage (DC)                                14.2 - 14.8 V     ----
+24                             Rectifier capacity                                       50.0 A     ----
+25                              Withstand voltage                                       40.0 V     ----
+26                       Electric starting system                                                      
+27                                           Type                                Constant mesh     ----
+28                                  Starter motor                                                      
+29                             Model/manufacturer                                SM-13/MITSUBA     ----
+30                                   Power output                                      0.80 kW     ----
+31                       Armature coil resistance            0.0250 - 0.0350 Q at 20°C (68 OF)     ----
+32                           Brush overall length                            12.5 mm (0.49 in)  5.00 mm
+33                                   Spring force                               7.65 - 10.01 N     ----
+34                            Commutator diameter                            28.0 mm (1.10 in)  27.0 mm
+35                          Mica undercut (depth)                            0.70 mm (0.03 in)     ----

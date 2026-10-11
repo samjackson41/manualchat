@@ -1,0 +1,4 @@
+                       0                   1
+0           Height limit  mm (in.) 12 (0.47)
+1   Width limit mm (in.)        0.92 (0.272)
+2  Length limit mm (in.)       34.98 (1.377)

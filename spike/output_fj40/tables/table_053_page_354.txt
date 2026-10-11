@@ -1,0 +1,6 @@
+                          0  1   2  3   4
+0  TERMINAL SWITCH POSITION  E  Lo  M  Hi
+1                       OFF              
+2                  1ST STEP  o   o       
+3                  2ND STEP         o    
+4                  3RD STEP  o           

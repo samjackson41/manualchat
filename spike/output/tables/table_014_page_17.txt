@@ -1,0 +1,35 @@
+                                                    Item                                                                      Standard                Limit
+0                                          Throttle body                                                                                                   
+1                          Model/manufacturer x quantity                                                             41 EHS/MIKUNI x 1                 ----
+2                                      Engine idle speed                                                           1,550 - 1,650 r/min                 ----
+3                                          Intake vacuum                                                40.0 kPa (300 mmHg, 11.8 inHg)                 ----
+4                                      Water temperature                                                                     80 - 90°C                 ----
+5                                        Oil temperature                                                                    60 - 70 °C                 ----
+6                                              Fuel pump                                                                                                   
+7                                              Pump type                                                                    Electrical                 ----
+8                                     Model/manufacturer                                                                     5B4/AISAN                 ----
+9                                        Oil filter type                                                             Cartridge (paper)                 ----
+10                                              Oil pump                                                                                                   
+11                                         Oil pump type                                                                      Trochoid                 ----
+12                 Inner-rotor-to-outer-rotor-tip clear-                                                 Less than 0.12 mm (0.0047 in)              0.20 mm
+13                                                  ance                                                                                (0.0079 in) 0.24 mm
+14             Outer-rotor-to-oil-pump-housing clearance                                         0.090 - 0.170 mm (0.0035 - 0.0067 in)          (0.0094 in)
+15  Oil-pump-housing-to-inner-and- outer-rotor clearance                                           0.03 - 0.10 mm (0.0012 - 0.0039 in)  0.17 mm (0.0067 in)
+16                                    Oil pressure (hot)  50.0 kPa at 1,600 r/min (0.50 kg/cm2 at 1,600 r/min, 7.1 psi at 1,600 r/min)                 ----
+17                               Pressure check location                                                                 Cylinder head                 ----
+18                                        Cooling system                                                                                                   
+19                                         Radiator core                                                                                                   
+20                                                 Width                                                           400.0 mm (15.75 in)                 ----
+21                                                Height                                                           266.0 mm (10.47 in)                 ----
+22                                                 Depth                                                             26.0 mm (1.02 in)                 ----
+23                         Radiator cap opening pressure                                                              93.3 - 122.7 kPa                 ----
+24                            Coolant reservoir capacity                                                                                                   
+25                          Up to the maximum level mark                                              0.32 L (0.28 Imp qt, 0.34 US qt)                 ----
+26                                From low to full level                                              0.21 L (0.18 Imp qt, 0.22 US qt)                 ----
+27                                            Water pump                                                                                                   
+28                                       Water pump type                                               Single-suction centrifugal pump                 ----
+29                                       Reduction ratio                                                                 32131 (1.032)                 ----
+30                                           Shaft drive                                                                                                   
+31                                  Middle gear backlash                                           0.10 - 0.30 mm (0.0039 - 0.0118 in)                 ----
+32                                   Final gear backlash                                           0.10 - 0.30 mm (0.0039 - 0.0118 in)                 ----
+33                            Differential gear backlash                                           0.05 - 0.25 mm (0.0020 - 0.0098 in)                 ----

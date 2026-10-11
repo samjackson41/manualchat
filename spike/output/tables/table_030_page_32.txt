@@ -1,0 +1,37 @@
+                       Lubrication points  Lubricant
+0                           Oil seal lips          ~
+1                                Bearings         -e
+2                                  O-ring          ~
+3                     Cylinder head bolts          ~
+4                          Crankshaft pin         -e
+5   Connecting rod big end thrust surface         -e
+6                     Crankshaft sprocket          ~
+7                 Inner race (crankshaft)         -e
+8                Buffer boss (crankshaft)         -e
+9                         Crankshaft seal         -e
+10                             Piston pin         -e
+11                Piston and ring grooves         -e
+12       Valve stems (intake and exhaust)  -----.(3J
+13   Valve stem ends (intake and exhaust)  -----.(3J
+14                      Rocker arm shafts         -e
+15                         Camshaft lobes  -----.(3J
+16                 Decompressor lever pin         -e
+17              Decompressor lever spring         -e
+18       Rocker arms (intake and exhaust)          ~
+19                         Oil pump shaft         -e
+20          O-ring (oil filter cartridge)          ~
+21              Water pump impeller shaft          ~
+22                Dipstick mating surface         -e
+23       Starter idler gear inner surface         -e
+24               Starter idler gear shaft         -e
+25                     Starter wheel gear         -e
+26                         Torque limiter         -e
+27               Clutch housing shaft end          ~
+28                Clutch carrier assembly         -e
+29                 One-way clutch bearing         -e
+30       Clutch dog and middle drive gear  -----.(3J
+31                Reverse idle gear shaft         -e
+32                             Shift drum         -e
+33   Shift forks and shift fork guide bar         -e
+34              Ball (shift drum stopper)         -e
+35            Shift lever 2 inner surface          ~

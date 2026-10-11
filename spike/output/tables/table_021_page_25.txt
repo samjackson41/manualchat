@@ -1,0 +1,36 @@
+                                                               Item  Part name Thread.size Q'ty Tightening torque.Nm Tightening torque.m· kg Tightening torque.ft· Ib              Remarks.
+0                                                   Air intake duct       Bolt          M6    2                    7                     0.7                      5.1                      
+1                                                           Muffler       Bolt          M8    2                   20                     2.0                       14                      
+2                                                   Muffler bracket       Bolt          M8    4                   30                     3.0                       22                      
+3                                                      Exhaust pipe        Nut          M8    4                   20                     2.0                       14                      
+4                                                          Tailpipe       Bolt          M6    3                   10                     1.0                      7.2                      
+5                                        Radiator inlet pipe holder       Bolt          M6    1                    7                     0.7                      5.1                      
+6                                       Radiator outlet pipe holder                     M6    1                    7                     0.7                      5.1                      
+7                                Oil cooler inlet pipe 1/oil cooler       Bolt                                                                                                             
+8                                              outlet pipe 1 holder       Bolt          M6    1                    7                     0.7                      5.1                      
+9           Oil cooler inlet pipe 2/oil cooler outlet pipe 2 holder       Bolt          M6    2                    7                     0.7                      5.1                      
+10  Oil cooler inlet pipe 1/oil cooler outlet pipe 1 and oil cooler       Bolt         M17    2                   21                     2.1                       15                      
+11                                                       Oil cooler        Nut          M6    4                    7                     0.7                      5.1                      
+12                                                         Radiator       Bolt          M6    2                    7                     0.7                      5.1                      
+13                                                Coolant reservoir       Bolt          M6    2                    7                     0.7                      5.1                      
+14                                               Water pump housing       Bolt          M6    2                   10                     1.0                      7.2                      
+15                                               Coolant drain bolt       Bolt          M6    1                   10                     1.0                      7.2                      
+16                 Water pump air bleed bolt Water pump outlet pipe  Bolt Bolt       M6 M6  1 1                10 10                 1.0 1.0                  7.2 7.2                      
+17                                               Water jacket joint       Bolt          M6    2                   10                     1.0                      7.2                      
+18                                   Crankshaft end accessing screw       Bolt         M36    1                   10                     1.0                      7.2                      
+19                                      Timing mark accessing screw       Bolt         M14    1                    6                     0.6                      4.3                      
+20                                                 Drive belt cover       Bolt          M6   12                   10                     1.0                      7.2                      
+21                                                  Drive belt case       Bolt          M6    8                   10                     1.0                      7.2                      
+22                                    V-belt cooling duct 1 bracket       Bolt          M6    2                   10                     1.0                      7.2                      
+23                        Bearing housing (primary sheave assembly)       Bolt          M6    4                   10                     1.0                      7.2                      
+24                               Bearing retainer (bearing housing)       Bolt          M6    1                   10                     1.0                      7.2                      
+25                                                 AC magneto cover       Bolt          M6   11                   10                     1.0                      7.2                      
+26              AC magneto/crankshaft position sen- sor lead holder       Bolt          M5    2                    7                                              5.1                   --G
+27                                                                       Screw          M8    3                                          0.7                       22                   --G
+28                   Starter one-way clutch Clutch housing assembly       Bolt          M6    9                30 10                 3.0 1.0                      7.2                      
+29                                          Clutch carrier assembly        Nut         M22    1                  190                    19.0                      140                Stake.
+30                                     Middle drive pinion gear nut        Nut         M22    1                  190                    19.0                      140              ~ Stake.
+31                              Middle driven shaft bearing housing       Bolt          M8    4                   32                     3.2                       23                   --G
+32                              Middle drive shaft bearing retainer                                                                                                                  Stake.
+33                                                                       Screw          M8    4                   29                     2.9                       21                   --G
+34                             Middle driven shaft bearing retainer        Nut         M55    1                   80                     8.0                       58  Left-hand thread --G
