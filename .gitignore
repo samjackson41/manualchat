@@ -11,3 +11,10 @@ __pycache__/
 # Large PDF binaries under manuals/
 manuals/*.pdf
 manuals/**/*.pdf
+
+# Personal makefile — machine-specific aliases
+Makefile.local
+
+# Cline personal rules
+.clinerules
+.clinerules/

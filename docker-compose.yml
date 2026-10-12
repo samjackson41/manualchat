@@ -1,0 +1,34 @@
+# ManualChat — two services, started one-per-terminal (never `docker compose up`
+# all-in-one, never detached). The only secret is OPENROUTER_API_KEY, passed
+# through from the host shell; it is never stored in the repo.
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      # Passed through from the host shell. Never hardcoded or committed.
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    ports:
+      - "8000:8000"
+    volumes:
+      # Bind-mount the package source (`backend/` == the importable package) to
+      # /app/backend so `import backend` resolves (PYTHONPATH=/app). The image's
+      # /app/.venv sits OUTSIDE this mount and survives; uvicorn --reload watches
+      # the mounted source for hot reload.
+      - ./backend:/app/backend
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      # Cache-busted at build; the browser reads this at runtime to find the API.
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      # Anonymous volume preserves the image's node_modules across the mount.
+      - /app/node_modules
