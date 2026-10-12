@@ -11,3 +11,6 @@ __pycache__/
 # Large PDF binaries under manuals/
 manuals/*.pdf
 manuals/**/*.pdf
+
+# Personal makefile — machine-specific aliases (do NOT commit)
+Makefile.local
