@@ -14,7 +14,10 @@
   (`simple-english` and `open-pr`). Cline was retired on 2026-10-12 after a
   working validation run. The `open-pr` skill opens one PR per branch with the
   `gh` CLI and replaced `pr-description` on 2026-10-12. It was tested on PR #2
-  for branch `chore/copilot-migration`.
+  for branch `chore/copilot-migration`. On 2026-10-12 the `.github/` agent files
+  (instructions, skills, and `copilot-instructions.md`) became local only and
+  git-ignored, like the old `.clinerules`. `.github/workflows/ci.yml` and
+  `.github/PULL_REQUEST_TEMPLATE.md` stay tracked.
 
 ## What is left
 
