@@ -7,6 +7,11 @@
 - Frontend: Next.js chat box with a model selector.
 - Docker Compose runs the backend and the frontend in two terminals.
 - Git workflow: Conventional Commits, feature branches, squash merges.
+- The dev coding assistant is VS Code Copilot Chat with OpenRouter models
+  (the OpenRouter Maestro extension, model `deepseek/deepseek-v4-pro-0813`).
+  Repo rules live in `AGENTS.md`, `.github/instructions/`, and
+  `.github/copilot-instructions.md`; skills live in `.github/skills/`. Cline
+  was retired on 2026-10-12 after a working validation run.
 
 ## What is left
 

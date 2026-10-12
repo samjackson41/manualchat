@@ -102,6 +102,23 @@ Short-lived feature branches + PRs into a protected `main` (GitHub Flow). See
 [`CONTRIBUTING.md`](CONTRIBUTING.md) for branch naming, commit conventions, the
 PR template, and the one-time branch-protection setup.
 
+## Coding assistant (Copilot Chat)
+
+Development runs in the built-in VS Code Copilot Chat with OpenRouter models.
+The **OpenRouter Maestro** extension is the language provider: it puts any
+OpenRouter model into the chat model picker. The model in use is DeepSeek V4
+Pro 0813 (`deepseek/deepseek-v4-pro-0813`). Your OpenRouter API key goes into
+the Maestro panel (VS Code SecretStorage), never into the repo.
+
+Agent rules and skills live in Copilot formats:
+
+- `AGENTS.md` — project-wide rules, read at the start of every task
+- `.github/instructions/*.instructions.md` — targeted rules for `backend/**`,
+  `frontend/**`, and `**/*.md`
+- `.github/copilot-instructions.md` — the same project rules for GitHub PR review
+- `.github/skills/` — the `simple-english` and `pr-description` skills, ported
+  from the former Cline setup (`~/.cline/skills`, retired)
+
 ## Deviations from DECISIONS.md (flagged, not silent)
 
 1. **Config surface: env vars, not `.env`.** DECISIONS P1 says "Pydantic

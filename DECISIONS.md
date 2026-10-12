@@ -119,6 +119,19 @@ is harmless either way).
 
 ---
 
+## Dev tooling (coding assistant)
+
+| # | Decision | Notes |
+|---|---|---|
+| W1 | The development assistant is the built-in VS Code Copilot Chat with **OpenRouter Maestro** as the language-provider extension (any OpenRouter model appears in the chat model picker). Cline is retired. | Chat model in use: `deepseek/deepseek-v4-pro-0813` (DeepSeek V4 Pro 0813). The API key lives in VS Code SecretStorage, not in the repo. |
+| W2 | Repo instructions and skills live in Copilot formats: `AGENTS.md` (project), `.github/instructions/*.instructions.md` (targeted, `applyTo` scopes), `.github/copilot-instructions.md` (GitHub PR review), `.github/skills/{simple-english,pr-description}/SKILL.md`. | The old `.clinerules/` and `~/.cline/skills/` copies were removed on 2026-10-12. |
+
+Source: https://code.visualstudio.com/docs/agent-customization/custom-instructions and
+https://marketplace.visualstudio.com/items?itemName=husamettinulutas.openrouter-maestro
+Last-checked: 2026-10-12
+
+---
+
 ## Deferred / undecided (no decision now — revisit later)
 
 - **OCR-engine head-to-head** — deferred with the whole scanned/FJ40 path (S1).
