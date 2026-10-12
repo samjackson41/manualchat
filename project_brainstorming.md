@@ -122,11 +122,11 @@ post-MVP and safe to defer now.
 
 Two separate things, previously bundled; split them per §6 Q4/Q8:
 
-- **Model picker (build now, it's cheap and useful)** — a `model` selector in the UI
-  covering OpenRouter's many models, mapping straight onto the existing
-  `"<provider>:<model>"` string convention already used by `LLMClient`. With a
-  single-user MVP this just lets *you* switch between a cheap agent model and a stronger
-  judge/eval model without editing `.env`.
+- **Model picker (build now, it's cheap and useful)** — a single `model` selector in the
+  UI covering OpenRouter's many models, mapping straight onto the existing
+  `"<provider>:<model>"` string convention already used by `LLMClient`. One selection
+  powers *every* process (planning, synthesis, summarization, eval judge) — no per-role
+  tiers — so switching models is a one-click change without editing `.env`.
 - **BYOK (defer until the app is shared)** — letting a visitor supply their own
   OpenRouter key (an `api_key` override on `shared/llm`, or an `X-OpenRouter-Key` header
   at the API layer) only matters once other people use the app and you don't want to eat
@@ -450,9 +450,9 @@ both of which resolve *from the spike results* (§7), not from more discussion.
    optional course tools that don't earn their keep.
 4. **Model-cost posture** — **Resolved: cost is a non-issue for MVP because it's
    single-user (you, alone) until post-Week 8.** No BYOK pressure before the demo. Model
-   selection default is **cheap endpoints via OpenRouter** — the user wants reasonably
-   priced models like a DeepSeek-class chat model for the agent loop, reserving any
-   stronger model only where it materially buys accuracy (e.g. the §3.4 judge, where one
+   selection default is **a single affordable OpenRouter endpoint** — a reasonably priced
+   model like a DeepSeek-class chat model that drives the whole agent loop (including the
+   §3.4 judge, where one
    call per eval case is a tiny absolute cost). The `cost_meter()` in `shared.llm` is
    worth wiring up early anyway — it's free observability and becomes the guardrail if
    the app is ever shared (Q8).

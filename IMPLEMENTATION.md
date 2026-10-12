@@ -10,7 +10,7 @@
 | **Vector Database** | Qdrant (local Docker / local service) | Single collection with payload filtering (`vehicle_id`, `manual_id`). Low overhead, dense cosine index. |
 | **Embeddings & Re-ranking** | `sentence-transformers` | `multi-qa-mpnet-base-dot-v1` (768-dim) for first-pass bi-encoder retrieval; `cross-encoder/ms-marco-MiniLM-L-6-v2` for citation re-ranking. Reused from cohort repository. |
 | **Agent Orchestration** | LangGraph (`StateGraph`) | Explicit tool-calling loop: Supervisor/Planner $\to$ Tool nodes (`search_manual`, `extract_specs`, `get_section_context`) $\to$ Synthesizer node. |
-| **LLM Gateway** | OpenRouter (`shared.llm.client`) | Provider-agnostic gateway. Primary chat: DeepSeek-class or Qwen model; Judge: Claude 3.5 Sonnet or GPT-4o mini. |
+| **LLM Gateway** | OpenRouter (`shared.llm.client`) | Provider-agnostic gateway. A single, UI-selectable model (`models.default`) drives chat, planning, summarization, and the eval judge. |
 | **Session & State Memory** | LangGraph `InMemorySaver` / `RedisSaver` | Swappable checkpointer from cohort memory patterns. Scoped per vehicle session. |
 | **API Backend** | FastAPI | Async endpoints for ingestion (`POST /manuals/upload`), chat stream (`POST /chat/stream`), and sliced document retrieval (`GET /manuals/{id}/pages/{start}-{end}`). |
 | **Frontend** | Next.js 14+ (App Router), Tailwind CSS, shadcn/ui, `react-pdf` | Dedicated garage chat interface with split-pane PDF viewer using `react-pdf` in PDF slice mode. |

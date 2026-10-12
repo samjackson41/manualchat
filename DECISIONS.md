@@ -26,7 +26,7 @@ workspace secret rules.
 |---|---|
 | S1 | **Scanned-manual / FJ40 spike work is out of MVP.** Deferred to post-MVP. |
 | S2 | MVP is **digital-only**: every manual has a PDF text layer → `do_ocr=False` everywhere. |
-| S3 | **Dev/test manuals**: two new manuals for another vehicle, both with a PDF text layer and fewer diagrams than the FJ40. (These replace the FJ40 as the working set.) |
+| S3 | **Dev/test manuals**: Yamaha Rhino 700 Service Manual (503 p) + two Johnson outboard manuals — the 2002/2003 SN/ST 60° V 2-stroke Service Manual (375 p) and the 2004 90–175 hp PL/PX/CX/GL Operator's Guide (56 p). (These form the digital-only working set; the FJ40 is out of MVP per S1.) |
 | S4 | "Has text layer?" probe still runs at ingest so future scanned uploads are handled safely, but no scanned manual is expected in MVP. |
 
 **Consequence**: the OCR-engine choice (RapidOCR vs. Tesseract/Surya/Paddle) drops out of
@@ -48,23 +48,33 @@ path returns — no spike, no config churn, just a deferred note.
 | D7 | Rolling-buffer `keep_last` message count | `8` | `memory.keep_last_messages` |
 | D8 | Token counter for compaction | `cl100k_base` (tiktoken proxy) | `memory.tokenizer` |
 
-D1–D3 apply defensively to the two digital manuals (they may or may not carry the ghost
-OCR layer the Rhino manual had — sanitize-at-source is harmless either way).
+D1–D3 apply defensively to the Rhino + Johnson manuals (the Rhino was produced through an
+Acrobat "Paper Capture" pipeline, so it may carry the ghost OCR layer — sanitize-at-source
+is harmless either way).
 
 ---
 
-## Model tiering (cheap-first)
+## Model selection (single model, UI-selectable)
 
-| Role | Model | Config key |
+> Replaces the earlier "cheap-first tiering" plan. One active model powers **every**
+> process — planning, synthesis, summarization/compaction, and the eval judge. The user
+> picks it via a simple dropdown in the UI; there are no per-role tiers to reason about.
+
+| # | Decision | Config key |
 |---|---|---|
-| planning / internal steps | DeepSeek **Flash** | `models.planning` |
-| synthesis / final answer | DeepSeek **Pro** | `models.synthesis` |
-| summarization (compaction) | DeepSeek Flash (cheap bucket) | `models.summarizer` |
-| eval judge (LangSmith) | DeepSeek Pro (or Flash to start) | `models.judge` |
+| M1 | A single active model drives all agent processes (planning, synthesis, summarization, judge) | `models.default` = **DeepSeek Flash** |
+| M2 | The ordered list of models offered in the UI selector | `models.options` = **["DeepSeek Flash", "DeepSeek Pro"]** to start |
+| M3 | The UI selection is a **runtime override** of `models.default`, scoped to the session (in-memory for MVP — no persistence yet) | (session override) |
 
-> Exact OpenRouter slugs get pinned in config (not the code) and should be confirmed at
-> implementation time — "Flash"/"Pro" are the *tiers*; the concrete model IDs live under
-> the keys above.
+> **Later improvement**: expand `models.options` with more models — no schema/flow change,
+> it's just a longer list feeding the same dropdown.
+>
+> OpenRouter slugs (pinned in config, not code):
+> - DeepSeek Pro → `deepseek/deepseek-pro-latest`
+> - DeepSeek Flash → `deepseek/deepseek-flash-latest`
+>
+> Reasoning: both models run with **medium** reasoning effort for now
+> (`models.reasoning_effort = "medium"`).
 
 ---
 
@@ -86,11 +96,26 @@ OCR layer the Rhino manual had — sanitize-at-source is harmless either way).
 
 ---
 
+## Spec ledger storage
+
+| Item | Decision |
+|---|---|
+| L1 | The spec ledger lives in **Qdrant** and is **populated lazily** — only when the agent retrieves a table that answers a spec question. Values are parsed **verbatim from the source table** (never from model prose output) and upserted keyed by `(vehicle_id, manual_id, subject)`. No full-manual preprocessing at ingest. |
+| L2 | **MVP scope = table-derived specs only.** A value buried in prose is answered with citation grounding, not written into the ledger. |
+| L3 | Revisit Postgres **only if** post-MVP multi-manual conflict attribution requires relational joins across manuals. |
+
+---
+
+## Manual Viewer (PDF pane)
+
+| Item | Decision |
+|---|---|
+| V1 | A dedicated **Manual Viewer** mode — a UI toggle that opens a full-width PDF view of the pages the agent deemed relevant (the top-scored `search_manual` chunk page-set, gated by a rerank-score threshold), rendered with `react-pdf` in `[Page−2, Page+2]` 5-page slices. (See SPECIFICATION §2.1 and IMPLEMENTATION Tasks 2/6.) |
+
+---
+
 ## Deferred / undecided (no decision now — revisit later)
 
-- **Spec-ledger storage (item C)** — undecided. Options on the table: Qdrant metadata
-  payloads (fastest to MVP), Postgres (clean relational fit), Redis (already in scope).
-  Revisit before implementing `MEMORY_DESIGN.md` §3's ledger.
 - **OCR-engine head-to-head** — deferred with the whole scanned/FJ40 path (S1).
 - **Normalization rules catalog** — the *existence* of the stage is decided (D3); the
   exact unit/header repair rules (`lb`/`Ib`, `m· kg`, `SPECiFiCATIONS`, diagram-symbol

@@ -112,7 +112,7 @@ def should_compact(state) -> bool:
 
 def compact(state):
     older, recent = split_messages(state["messages"], keep_last=N)
-    new_summary = cheap_model.invoke(SUMMARIZE_PROMPT(state["summary"], older))
+    new_summary = active_model.invoke(SUMMARIZE_PROMPT(state["summary"], older))
     return {
         "summary": new_summary,
         "messages": [summarize_msg(new_summary)] + recent,   # replace old with one message
@@ -131,8 +131,8 @@ buffer window before they migrate to the ledger.
 
 ### OpenAI / OpenRouter cost
 
-Summarization uses a **cheap model** — the same bucket already reserved for "fast models
-for internal planning" in the proposal. Neither trigger costs meaningfully.
+Summarization uses the **active model** — the single UI-selected `models.default` — not a
+separate "cheap" tier. Neither trigger costs meaningfully.
 
 ---
 
@@ -174,6 +174,6 @@ panel in the Next.js chat — visible and user-auditable, not silent rewriting.
       `RedisSaver`.
 - [ ] Pick the token-counting method (tiktoken proxy vs. model tokenizer) and the exact
       threshold fraction.
-- [ ] Define the spec-ledger schema + where it lives (Qdrant metadata vs. Redis vs.
-      Postgres) and its filter key (vehicle/manual), reusing the existing tag convention.
+- [ ] Define the spec-ledger schema + filter key (vehicle/manual), reusing the existing
+      tag convention. Storage is decided: Qdrant metadata payloads (DECISIONS L1).
 - [ ] Decide keep_last=N buffer size.
