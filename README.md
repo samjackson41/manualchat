@@ -96,6 +96,12 @@ request entirely.
 - **Memory** → add `summary` field + compaction node (MEMORY_DESIGN §4-5) and a
   checkpointer.
 
+## Git workflow
+
+Short-lived feature branches + PRs into a protected `main` (GitHub Flow). See
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for branch naming, commit conventions, the
+PR template, and the one-time branch-protection setup.
+
 ## Deviations from DECISIONS.md (flagged, not silent)
 
 1. **Config surface: env vars, not `.env`.** DECISIONS P1 says "Pydantic
