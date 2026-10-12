@@ -15,7 +15,7 @@ manuals/**/*.pdf
 # Personal makefile — machine-specific aliases
 Makefile.local
 
-# Copilot personal rules and skills (local only, like the old .clinerules)
+# Copilot personal rules and skills (kept out of git)
 .github/copilot-instructions.md
 .github/instructions/
 .github/skills/

@@ -111,16 +111,15 @@ Pro 0813 (`deepseek/deepseek-v4-pro-0813`). Your OpenRouter API key goes into
 the Maestro panel (VS Code SecretStorage), never into the repo.
 
 Agent rules and skills live in Copilot formats. The `.github/` agent files are
-local only and git-ignored, like the old `.clinerules`:
+local only and git-ignored:
 
 - `AGENTS.md` — project-wide rules, read at the start of every task, tracked
 - `.github/instructions/*.instructions.md` — targeted rules for `backend/**`,
   `frontend/**`, and `**/*.md`, local only
 - `.github/copilot-instructions.md` — the same project rules for GitHub PR
   review, local only
-- `.github/skills/` — the `simple-english` and `open-pr` skills, ported from the
-  former Cline setup (`~/.cline/skills`, retired), local only. `open-pr` replaces
-  the old `pr-description` skill and opens a PR with the `gh` CLI.
+- `.github/skills/` — the `simple-english` and `open-pr` skills, local only.
+  `open-pr` opens a PR with the `gh` CLI.
 
 `.github/workflows/ci.yml` and `.github/PULL_REQUEST_TEMPLATE.md` stay tracked,
 because GitHub needs them.
