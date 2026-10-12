@@ -1,3 +1,0 @@
-  Illustration     Tool No.                   Tool Name
-0               09325-12010         TransmissionOilPlug
-1               09330-00020  CompanionFlangeHoldingTool

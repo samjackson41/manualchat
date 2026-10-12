@@ -1,6 +1,0 @@
-                                               page
-0                                CUTAWAYVIEW    5-2
-1  REAR AXLE SHAFT(SEMI-FLOATING TYPE)· 5- 3       
-2      REARAXLE SHAFT(FULL FLOATING TYPE)5-8       
-3  REAR AXLE HUB(FULL FLOATING TYPE) ...5-11       
-4                               DIFFERENTIAL  ·5-16

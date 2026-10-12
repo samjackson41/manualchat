@@ -1,5 +1,0 @@
-                                   0  1      2    3
-0  WIRING COLOR CODE SWITCH POSITION  L  L · W  L·B
-1                                 Up  o      O     
-2                                  N               
-3                               Down               

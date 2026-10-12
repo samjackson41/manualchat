@@ -1,4 +1,0 @@
-                         Location              kg-m (ft-lb)
-0    Differential CaseX Ring Gear  10.5- 12.0( 75.9 - 86.8)
-1  DifferentialCarrierXBearingCap       9 - 11 (65.1- 79.6)
-2     Drive Pinion X Flange X Nut       20 一 24 (144 - 173)

@@ -1,4 +1,0 @@
-  TERMINAL SWITCH POSIT1ON TL TB TR
-0                     LEFT  O      
-1                  NEUTRAL         
-2                    RIGHT         

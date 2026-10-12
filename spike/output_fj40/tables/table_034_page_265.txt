@@ -1,6 +1,0 @@
-                              0     1
-0  IMPORTANT DIMENSION OF FRAME      
-1              FJ40,BJ40 SERIES  10-2
-2              FJ43,BJ43 SERIES  10-3
-3             FJ45, HJ45 SERIES  10-4
-4                    FJ55SERIES  10-5

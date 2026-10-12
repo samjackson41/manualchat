@@ -1,3 +1,0 @@
-  TERMINAL SWITCH POSITION TB TL PL HB HD
-0                      OFF        o      
-1                 1ST STEP        o      

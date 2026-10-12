@@ -1,5 +1,0 @@
-                          0    1    2    3    4
-0  TERMINAL SWITCH POSITION    B   Lo   Hi    R
-1                       OFF  OFF  OFF  OFF  OFF
-2                  1ST STEP    o    o          
-3                  2ND STEP    o         o     
