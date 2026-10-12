@@ -12,5 +12,9 @@ __pycache__/
 manuals/*.pdf
 manuals/**/*.pdf
 
-# Personal makefile — machine-specific aliases (do NOT commit)
+# Personal makefile — machine-specific aliases
 Makefile.local
+
+# Cline personal rules
+.clinerules
+.clinerules/

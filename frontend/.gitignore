@@ -9,6 +9,7 @@
 .DS_Store
 *.pem
 npm-debug.log*
+*.tsbuildinfo
 
 # env files (never commit a real key)
 .env*

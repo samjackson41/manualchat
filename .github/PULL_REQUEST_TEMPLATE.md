@@ -1,27 +1,36 @@
+<!-- Write this description in plain English per the Simple English skill. -->
+
 ## Summary
-<!-- What does this change and why? 1-2 sentences. -->
+
+<!-- One or two sentences. Say what changed and why. -->
 
 ## Scope
-<!-- Does this stay within current MVP scope, or does it pull in anything
-     still undecided (Qdrant, Redis, embeddings, Docling, ...)? -->
+
+<!-- State whether this stays inside the MVP scope. Name anything still
+     undecided that it pulls in, such as Qdrant, Redis, embeddings, or Docling. -->
 
 ## Deviations from DECISIONS.md
-<!-- If this PR corrects or contradicts a ratified decision, flag it EXPLICITLY
-     and update DECISIONS.md. Never silently diverge from the decision log. -->
+
+<!-- If this PR corrects or contradicts a ratified decision, say so here and
+     update DECISIONS.md. Do not diverge silently. -->
 
 ## How to test
-<!-- Exact commands to run and what "good output" looks like (the repo's
-     "done when" convention). -->
+
+<!-- Give the exact commands to run and the output that a correct run shows. -->
 
 ## Evidence
-<!-- Screenshot for UI, or console output for backend/API. -->
 
-## Secrets & config
-<!-- Confirm no keys in the diff; any new env/config keys documented in README.
-     OPENROUTER_API_KEY is env-provided only, never committed. -->
+<!-- Add a screenshot for UI work or console output for backend and API work. -->
+
+## Secrets and configuration
+
+<!-- Make sure that the diff has no keys. Document any new environment variable
+     or configuration key in README.md. OPENROUTER_API_KEY comes from the
+     environment and is never committed. -->
 
 ## Checklist
+
 - [ ] Ran it locally and it works
-- [ ] Conventional-commit message
-- [ ] No secrets or build artifacts in the diff
-- [ ] New config keys documented in `README.md`
+- [ ] Conventional Commit message
+- [ ] No keys or build artifacts in the diff
+- [ ] New configuration keys documented in `README.md`

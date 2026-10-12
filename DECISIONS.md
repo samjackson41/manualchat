@@ -4,6 +4,11 @@
 > `SPIKE_FINDINGS.md`, and `MEMORY_DESIGN.md`. Each entry states the decision,
 > the governing default, and (where the value is arbitrary/tunable) the config key
 > that surfaces it.
+>
+> Recording sources. When a decision rests on external documentation, add
+> `Source:` and `Last-checked:` lines to the entry. `Source:` is a URL or a doc
+> title. `Last-checked:` is an ISO date (`YYYY-MM-DD`). This makes a stale
+> decision easy to see.
 
 ---
 
