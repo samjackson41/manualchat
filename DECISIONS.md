@@ -124,7 +124,7 @@ is harmless either way).
 | # | Decision | Notes |
 |---|---|---|
 | W1 | The development assistant is the built-in VS Code Copilot Chat with **OpenRouter Maestro** as the language-provider extension (any OpenRouter model appears in the chat model picker). Cline is retired. | Chat model in use: `deepseek/deepseek-v4-pro-0813` (DeepSeek V4 Pro 0813). The API key lives in VS Code SecretStorage, not in the repo. |
-| W2 | Repo instructions and skills live in Copilot formats: `AGENTS.md` (project), `.github/instructions/*.instructions.md` (targeted, `applyTo` scopes), `.github/copilot-instructions.md` (GitHub PR review), `.github/skills/{simple-english,pr-description}/SKILL.md`. | The old `.clinerules/` and `~/.cline/skills/` copies were removed on 2026-10-12. |
+| W2 | Repo instructions and skills live in Copilot formats: `AGENTS.md` (project), `.github/instructions/*.instructions.md` (targeted, `applyTo` scopes), `.github/copilot-instructions.md` (GitHub PR review), `.github/skills/{simple-english,open-pr}/SKILL.md`. | The old `.clinerules/` and `~/.cline/skills/` copies were removed on 2026-10-12. On 2026-10-12 the `pr-description` skill was replaced by `open-pr`, which opens the PR with the `gh` CLI. |
 
 Source: https://code.visualstudio.com/docs/agent-customization/custom-instructions and
 https://marketplace.visualstudio.com/items?itemName=husamettinulutas.openrouter-maestro

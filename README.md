@@ -116,8 +116,9 @@ Agent rules and skills live in Copilot formats:
 - `.github/instructions/*.instructions.md` — targeted rules for `backend/**`,
   `frontend/**`, and `**/*.md`
 - `.github/copilot-instructions.md` — the same project rules for GitHub PR review
-- `.github/skills/` — the `simple-english` and `pr-description` skills, ported
-  from the former Cline setup (`~/.cline/skills`, retired)
+- `.github/skills/` — the `simple-english` and `open-pr` skills, ported
+  from the former Cline setup (`~/.cline/skills`, retired). `open-pr` replaces
+  the old `pr-description` skill and opens a PR with the `gh` CLI.
 
 ## Deviations from DECISIONS.md (flagged, not silent)
 
