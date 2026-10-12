@@ -10,8 +10,11 @@
 - The dev coding assistant is VS Code Copilot Chat with OpenRouter models
   (the OpenRouter Maestro extension, model `deepseek/deepseek-v4-pro-0813`).
   Repo rules live in `AGENTS.md`, `.github/instructions/`, and
-  `.github/copilot-instructions.md`; skills live in `.github/skills/`. Cline
-  was retired on 2026-10-12 after a working validation run.
+  `.github/copilot-instructions.md`; skills live in `.github/skills/`
+  (`simple-english` and `open-pr`). Cline was retired on 2026-10-12 after a
+  working validation run. The `open-pr` skill opens one PR per branch with the
+  `gh` CLI and replaced `pr-description` on 2026-10-12. It was tested on PR #2
+  for branch `chore/copilot-migration`.
 
 ## What is left
 
