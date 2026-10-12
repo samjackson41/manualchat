@@ -7,6 +7,14 @@
 - Frontend: Next.js chat box with a model selector.
 - Docker Compose runs the backend and the frontend in two terminals.
 - Git workflow: Conventional Commits, feature branches, squash merges.
+- The dev coding assistant is VS Code Copilot Chat with OpenRouter models
+  (the OpenRouter Maestro extension, model `deepseek/deepseek-v4-pro-0813`).
+  Repo rules live in `AGENTS.md`, `.github/instructions/`, and
+  `.github/copilot-instructions.md`; skills live in `.github/skills/`
+  (`simple-english` and `open-pr`). The `open-pr` skill opens one PR per branch
+  with the `gh` CLI. The `.github/` agent files (instructions, skills, and
+  `copilot-instructions.md`) are local only and git-ignored.
+  `.github/workflows/ci.yml` and `.github/PULL_REQUEST_TEMPLATE.md` stay tracked.
 
 ## What is left
 

@@ -119,6 +119,19 @@ is harmless either way).
 
 ---
 
+## Dev tooling (coding assistant)
+
+| # | Decision | Notes |
+|---|---|---|
+| W1 | The development assistant is the built-in VS Code Copilot Chat with **OpenRouter Maestro** as the language-provider extension (any OpenRouter model appears in the chat model picker). | Chat model in use: `deepseek/deepseek-v4-pro-0813` (DeepSeek V4 Pro 0813). The API key lives in VS Code SecretStorage, not in the repo. |
+| W2 | Agent customization lives in Copilot formats: `AGENTS.md` (project, tracked), `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` (targeted, `applyTo` scopes), and `.github/skills/{simple-english,open-pr}/SKILL.md`. The `.github/` agent files are local only and git-ignored. `AGENTS.md`, `.github/workflows/ci.yml`, and `.github/PULL_REQUEST_TEMPLATE.md` stay tracked. | GitHub Copilot code review cannot read `.github/copilot-instructions.md` while that file is untracked. |
+
+Source: https://code.visualstudio.com/docs/agent-customization/custom-instructions and
+https://marketplace.visualstudio.com/items?itemName=husamettinulutas.openrouter-maestro
+Last-checked: 2026-10-12
+
+---
+
 ## Deferred / undecided (no decision now — revisit later)
 
 - **OCR-engine head-to-head** — deferred with the whole scanned/FJ40 path (S1).

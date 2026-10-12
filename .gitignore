@@ -12,9 +12,8 @@ __pycache__/
 manuals/*.pdf
 manuals/**/*.pdf
 
-# Personal makefile — machine-specific aliases
 Makefile.local
 
-# Cline personal rules
-.clinerules
-.clinerules/
+.github/copilot-instructions.md
+.github/instructions/
+.github/skills/
