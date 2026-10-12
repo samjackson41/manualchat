@@ -23,7 +23,9 @@ request without a clear instruction. Never read or print a secret, key, token, o
 - Every tunable value lives in config. Never hardcode it (DECISIONS P1).
 - Secrets stay out of config and out of git.
 - Write a comment only when the code, the name, or the file cannot say it.
-  Never restate the obvious.
+  Never restate the obvious. Keep an in-code comment to two lines at most, and
+  prefer one line. Move anything longer into the docstring, the top of the file,
+  or the wiki.
 - Write docs and pull request descriptions in plain English per the
   `simple-english` skill (`.github/skills/simple-english/SKILL.md`).
 - Update `PROGRESS.md` at the end of each session.

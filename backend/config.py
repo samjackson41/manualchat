@@ -17,14 +17,8 @@ from functools import lru_cache
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Cosmetic display names for the model selector only. The slugs held in
-# `model_options` are the source of truth (DECISIONS M2); these labels are
-# UI-only and can be extended freely when `models.options` grows.
-#
-# NOTE: the `~` prefix is REQUIRED by OpenRouter — DeepSeek's `-latest` aliases
-# are served as "prerelease" (prefixed `~`) at the time of writing. DECISIONS.md
-# pinned the slugs *without* the `~`; that was corrected against the live
-# OpenRouter catalog (see README "Deviations").
+# Display labels for the model selector. The slugs in `model_options` are the
+# source of truth (DECISIONS M2). OpenRouter requires the `~` prefix.
 _MODEL_LABELS: dict[str, str] = {
     "~deepseek/deepseek-flash-latest": "DeepSeek Flash",
     "~deepseek/deepseek-pro-latest": "DeepSeek Pro",
@@ -34,9 +28,8 @@ _MODEL_LABELS: dict[str, str] = {
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=None, extra="ignore")
 
-    # --- Secret (DECISIONS: secrets stay out of config; managed via env) ---
-    # Not required at import so that /health + /models still respond without a
-    # key. `llm.chat()` fails fast with a clear error when it's missing.
+    # --- Secret (env only) ---
+    # Not required at import, so /health works without a key.
     openrouter_api_key: str = ""
 
     # OpenRouter base URL (chat completions endpoint is appended in llm.py).
@@ -51,9 +44,7 @@ class Settings(BaseSettings):
         ]
     )
 
-    # --- Generation params (TBD — under research; surfaced so they can be
-    # tuned via env without code edits). Unset/empty values are omitted from
-    # the request so the provider applies its own default. ---
+    # --- Generation params (tunable via env; unset values are omitted) ---
     model_reasoning_effort: str | None = "medium"  # ratified (DECISIONS M note)
     model_temperature: float | None = None         # TBD
     model_max_tokens: int | None = None            # TBD
