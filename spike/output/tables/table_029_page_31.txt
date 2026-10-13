@@ -1,7 +1,0 @@
-  A (nut). B (bolt). General tightening torques.Nm General tightening torques.m· kg General tightening torques.ft· Ib
-0    10 mm       6mm                             6                              0.6                               4.3
-1    12 mm       8mm                            15                              1.5                                11
-2     14mm     10 mm                            30                              3.0                                22
-3     17mm     12 mm                            55                              5.5                                40
-4    19 mm      14mm                            85                              8.5                                61
-5     22mm     16 mm                           130                             13.0                                94

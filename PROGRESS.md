@@ -7,6 +7,9 @@
 - Frontend: Next.js chat box with a model selector.
 - Docker Compose runs the backend and the frontend in two terminals.
 - Git workflow: Conventional Commits, feature branches, squash merges.
+- Repo hygiene: the spike experiments moved out of the repo to
+  `/home/sam/dev/spikes/fj40ocr`, and `/spike/` is now git-ignored.
+  `SPIKE_FINDINGS.md` stays tracked.
 - The dev coding assistant is VS Code Copilot Chat with OpenRouter models
   (the OpenRouter Maestro extension, model `deepseek/deepseek-v4-pro-0813`).
   Repo rules live in `AGENTS.md`, `.github/instructions/`, and

@@ -17,3 +17,6 @@ Makefile.local
 .github/copilot-instructions.md
 .github/instructions/
 .github/skills/
+
+# Spike experiments (moved to ../spikes)
+/spike/

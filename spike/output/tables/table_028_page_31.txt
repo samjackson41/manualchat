@@ -1,6 +1,0 @@
-  METRIC TO IMPERIAL.            METRIC TO IMPERIAL.Metric unit      METRIC TO IMPERIAL.Multiplier                     METRIC TO IMPERIAL.Imperial unit
-0              Torque                 m· kg m· kg cm· kg cm· kg         7.233 86.794 0.0723 0.8679                        ft . Ib in ·Ib ft . Ib in ·Ib
-1              Weight                                      kg g                      2.205 0.03527                                                Ib oz
-2               Speed                                     km/hr                             0.6214                                                  mph
-3            Distance                              km m m cm mm  0.6214 3.281 1.094 0.3937 0.03937                                       mi ft yd in in
-4               Misc.  It (liter) kg/mm kg/cm 2 Centigrade (0C)       0.2199 55.997 14.2234 9/5+32  gal (IMP liq.) Ib/in psi (lb/in 2 ) Fahrenheit (OF)

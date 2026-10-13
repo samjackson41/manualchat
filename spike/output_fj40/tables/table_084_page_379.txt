@@ -1,3 +1,0 @@
-   WinchWormBearingPrelordAdjusting Shim Thickness     Part No. Thickness mm (in.)
-0  WinchWormBearingPrelordAdjusting Shim Thickness  38123-60010      0.228 (0.009)
-1  WinchWormBearingPrelordAdjusting Shim Thickness  38124-60010        0.5 (0.020)

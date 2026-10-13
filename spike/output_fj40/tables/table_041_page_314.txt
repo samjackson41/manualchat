@@ -1,4 +1,0 @@
-                          0  1   2              3
-0  TERMINAL SWITCH POSITION         B1FB2L1L2L3L4
-1                       OFF  o                   
-2                        ON  o  -o               

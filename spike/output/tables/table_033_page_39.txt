@@ -1,3 +1,0 @@
-               0                        1
-0    Direction @  Free play is increased.
-1  Direction <E>  Free play is decreased.

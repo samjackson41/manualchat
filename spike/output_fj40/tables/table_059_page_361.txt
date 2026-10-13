@@ -1,3 +1,0 @@
-  Illustration     Tool No.                                    Tool Name
-0               09330-00020                   CompanionFlangeHoldingTool
-1               09504-00010  DifferentialSideBearingAdjusting Nut Wrench

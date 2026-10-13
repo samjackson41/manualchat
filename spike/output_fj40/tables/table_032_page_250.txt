@@ -1,4 +1,0 @@
-                0     1
-0    CUTAWAY VIEW   9-2
-1  POWER TAKE-OFF   9-3
-2           WINCH  9-10

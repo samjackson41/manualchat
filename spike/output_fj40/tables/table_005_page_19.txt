@@ -1,4 +1,0 @@
-                             Small Spring| Large Spring
-0  Installed Length (in.) mm   42.9 (1.689)43.5 (1.713)
-1    Installed Load (Ib.) kg     42.5 (93.5) 62.2 (137)
-2       Installed Load Limit           40 (88) 53 (117)

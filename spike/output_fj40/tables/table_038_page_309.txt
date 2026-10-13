@@ -1,6 +1,0 @@
-  TERMINAL SWITCH POSITION AM ACC  M ST  G
-0                     GLOW  o            o
-1                     LOCK                
-2                      ACC                
-3                       ON                
-4                       IS  o      O      
