@@ -29,6 +29,11 @@ request without a clear instruction. Never read or print a secret, key, token, o
 - Write docs and pull request descriptions in plain English per the
   `simple-english` skill (`.github/skills/simple-english/SKILL.md`).
 - Update `PROGRESS.md` at the end of each session.
+- Keep the graph-shape wiki page current. When a change touches the LangGraph
+  graph, an agent tool, or the graph state (`backend/agent/graph.py`,
+  `backend/tools.py`), update the Mermaid diagram and tables on the wiki `Home`
+  page (https://github.com/samjackson41/manualchat/wiki/Home) as part of that
+  change. The wiki is a separate repo (`manualchat.wiki`).
 
 ## Where targeted rules live
 

@@ -1,38 +1,32 @@
-"""Minimal LangGraph agent — the iteration point for ManualChat.
+"""LangGraph agent — the iteration point for ManualChat.
 
-Deliberately skeletal: a single `chat` node and an empty, reserved `tools`
-list. The *shape* (StateGraph + AgentState + tools list) is the deliverable
-here, not the logic — nodes/tools get added later without rework.
+A `chat -> tools -> chat` loop: the model may ask to run a tool, the `tools`
+node executes it and feeds the result back as ToolMessages, and the loop repeats
+until the model answers without a tool call. AgentState is unchanged from the
+skeleton, so later work (RAG tools, memory) slots in without rework.
 
 WHERE THE NEXT CHANGES GO (documented so the structure is obviously extensible):
 
-  1. System prompt  -> add a `system` message at the head of `messages` before
+  1. System prompt   -> add a `system` message at the head of `messages` before
      the first `chat` call (no new node needed).
 
-  2. Tool calling   -> append tool schemas to `tools` (below), bind them to the
-     model call in `llm.chat`, and add a conditional loop `chat -> tool -> chat`
-     so the model can call a tool and resume. One extra node + one conditional
-     edge; AgentState is unchanged.
+  2. RAG             -> add `search_manual` / `extract_specs` / `get_page_text`
+     tools per IMPLEMENTATION Task 4. They land in the SAME TOOL_SCHEMAS /
+     TOOL_REGISTRY (backend.tools) — no graph change.
 
-  3. RAG            -> add `search_manual` / `extract_specs` / `get_page_text`
-     tools per IMPLEMENTATION Task 4. They land in the SAME `tools` list; the
-     graph gains one tool-executor node (see #2). No rework of AgentState.
-
-  4. Memory         -> add a `summary` field + compaction node (MEMORY_DESIGN
+  3. Memory          -> add a `summary` field + compaction node (MEMORY_DESIGN
      §4-5) and a checkpointer (InMemorySaver, later RedisSaver).
 """
 
+import json
 from typing import Annotated, TypedDict
 
-from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 
 from backend import llm
-
-# Reserved — empty for now. Tools get appended here when they land (see notes
-# above). Keeping this an explicit module-level list is the extension seam.
-tools: list = []
+from backend.tools import TOOL_REGISTRY, TOOL_SCHEMAS
 
 
 class AgentState(TypedDict):
@@ -47,35 +41,98 @@ class AgentState(TypedDict):
     model: str
 
 
-_ROLE_MAP = {"human": "user", "ai": "assistant", "system": "system"}
+_ROLE_MAP = {
+    "human": "user",
+    "ai": "assistant",
+    "system": "system",
+    "tool": "tool",
+}
 
 
 def _serialize(messages: list[BaseMessage]) -> list[dict]:
-    """Convert langchain messages to OpenAI chat format for the LLM wrapper."""
+    """Convert langchain messages back to OpenAI chat format for llm.chat."""
     out: list[dict] = []
     for message in messages:
-        role = _ROLE_MAP.get(getattr(message, "type", "human"), "user")
+        mtype = getattr(message, "type", "human")
+        item = {"role": _ROLE_MAP.get(mtype, "user")}
         content = getattr(message, "content", "")
         if isinstance(content, list):
             content = "".join(
                 block.get("text", "") if isinstance(block, dict) else str(block)
                 for block in content
             )
-        out.append({"role": role, "content": content})
+        item["content"] = content
+        if mtype == "tool":
+            item["tool_call_id"] = getattr(message, "tool_call_id", None)
+        if mtype == "ai" and getattr(message, "tool_calls", None):
+            item["tool_calls"] = [
+                {
+                    "id": call["id"],
+                    "type": "function",
+                    "function": {
+                        "name": call["name"],
+                        "arguments": json.dumps(call["args"]),
+                    },
+                }
+                for call in message.tool_calls
+            ]
+        out.append(item)
     return out
 
 
 def chat_node(state: AgentState) -> dict:
-    """Call OpenRouter and append the assistant's reply to `state["messages"]`."""
-    reply = llm.chat(_serialize(state["messages"]), state["model"])
-    return {"messages": [AIMessage(content=reply)]}
+    """Call OpenRouter (with tool schemas) and append the assistant's reply."""
+    reply = llm.chat(
+        _serialize(state["messages"]), state["model"], tools=TOOL_SCHEMAS
+    )
+    tool_calls = []
+    for call in reply.get("tool_calls") or []:
+        try:
+            args = json.loads(call["function"]["arguments"] or "{}")
+        except (json.JSONDecodeError, TypeError):
+            args = {}
+        tool_calls.append(
+            {"id": call["id"], "name": call["function"]["name"], "args": args}
+        )
+    return {
+        "messages": [
+            AIMessage(content=reply.get("content") or "", tool_calls=tool_calls)
+        ]
+    }
+
+
+def tool_node(state: AgentState) -> dict:
+    """Run the pending tool calls from the last AI message, one ToolMessage each."""
+    last = state["messages"][-1]
+    tool_messages: list[ToolMessage] = []
+    for call in last.tool_calls:
+        fn = TOOL_REGISTRY.get(call["name"])
+        if fn is None:
+            output = f"Error: unknown tool '{call['name']}'"
+        else:
+            try:
+                output = fn(**call["args"])
+            except TypeError as exc:
+                output = f"Error: bad arguments for '{call['name']}': {exc}"
+        tool_messages.append(
+            ToolMessage(content=output, name=call["name"], tool_call_id=call["id"])
+        )
+    return {"messages": tool_messages}
+
+
+def _route(state: AgentState) -> str:
+    """After `chat`, go to `tools` if the model asked for one, else finish."""
+    last = state["messages"][-1]
+    return "tools" if getattr(last, "tool_calls", None) else END
 
 
 def build_graph():
     graph = StateGraph(AgentState)
     graph.add_node("chat", chat_node)
+    graph.add_node("tools", tool_node)
     graph.add_edge(START, "chat")
-    graph.add_edge("chat", END)
+    graph.add_conditional_edges("chat", _route, {"tools": "tools", END: END})
+    graph.add_edge("tools", "chat")
     return graph.compile()
 
 
