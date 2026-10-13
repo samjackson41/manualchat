@@ -31,16 +31,24 @@ def _sampling_params() -> dict:
     return {key: value for key, value in candidates.items() if value not in (None, "")}
 
 
-def chat(messages: list[dict], model: str, params: dict | None = None) -> str:
-    """Send a chat request to OpenRouter and return the assistant's text reply.
+def chat(
+    messages: list[dict],
+    model: str,
+    params: dict | None = None,
+    tools: list[dict] | None = None,
+) -> dict:
+    """Send a chat request to OpenRouter and return the assistant's message.
 
     Args:
-        messages: OpenAI-shaped `[{"role": "user"|"assistant"|"system", "content": str}]`.
+        messages: OpenAI-shaped `[{"role": "user"|"assistant"|"system"|"tool", "content": str}]`.
         model:    OpenRouter slug (e.g. "~deepseek/deepseek-flash-latest").
         params:   Optional per-call sampling overrides, merged over config defaults.
+        tools:    Optional OpenAI function-calling schemas to offer the model.
 
     Returns:
-        The assistant message content string.
+        The assistant message dict, shaped like OpenAI's `choices[0].message`:
+        `{"role": "assistant", "content": str|None, "tool_calls": list|None}`.
+        `tool_calls` is present only when the model asks to run a tool.
     """
     settings = get_settings()
     if not settings.openrouter_api_key:
@@ -50,6 +58,8 @@ def chat(messages: list[dict], model: str, params: dict | None = None) -> str:
         )
 
     body: dict = {"model": model, "messages": messages}
+    if tools:
+        body["tools"] = tools
     body.update(_sampling_params())
     if params:
         body.update({k: v for k, v in params.items() if v not in (None, "")})
@@ -67,6 +77,6 @@ def chat(messages: list[dict], model: str, params: dict | None = None) -> str:
 
     data = resp.json()
     try:
-        return data["choices"][0]["message"]["content"]
+        return data["choices"][0]["message"]
     except (KeyError, IndexError, TypeError) as exc:
         raise LLMError(f"Unexpected OpenRouter response shape: {data}") from exc
