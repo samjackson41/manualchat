@@ -35,6 +35,15 @@ request without a clear instruction. Never read or print a secret, key, token, o
   page (https://github.com/samjackson41/manualchat/wiki/Home) as part of that
   change. The wiki is a separate repo (`manualchat.wiki`).
 
+## Testing
+
+- Prefer end-to-end and feature tests over unit tests. Write a unit test only
+  when the behaviour cannot be verified live or end-to-end.
+- Keep tests small and fast. Use simple inputs and human-readable outputs.
+- Do not spend a lot of time on tests, and do not let them grow into a monolith.
+- Run the cheapest check that proves the change works; report the command and
+  its output.
+
 ## Where targeted rules live
 
 - `backend/**` → `.github/instructions/backend.instructions.md`

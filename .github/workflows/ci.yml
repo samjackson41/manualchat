@@ -26,6 +26,9 @@ jobs:
       - name: Syntax check
         run: uv run python -m compileall -q agent api config.py llm.py __init__.py
 
+      - name: Run tests
+        run: uv run pytest
+
   frontend:
     name: Frontend — type check and build
     runs-on: ubuntu-latest

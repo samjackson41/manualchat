@@ -17,3 +17,12 @@ dependencies = [
 # bind-mounted for hot reload. `uv sync` only installs the dependencies above.
 [tool.uv]
 package = false
+
+# Tests import the `backend` package, which lives one directory up.
+[tool.pytest.ini_options]
+pythonpath = [".."]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
