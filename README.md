@@ -110,19 +110,22 @@ OpenRouter model into the chat model picker. The model in use is DeepSeek V4
 Pro 0813 (`deepseek/deepseek-v4-pro-0813`). Your OpenRouter API key goes into
 the Maestro panel (VS Code SecretStorage), never into the repo.
 
-Agent rules and skills live in Copilot formats. The `.github/` agent files are
-local only and git-ignored:
+Agent rules and skills live in Copilot formats. The VS Code workspace root sits
+one level above this repo, so the agent files live in the workspace `.github/`
+folder. This repo keeps only the two files that GitHub reads from it:
 
-- `AGENTS.md` — project-wide rules, read at the start of every task, tracked
-- `.github/instructions/*.instructions.md` — targeted rules for `backend/**`,
-  `frontend/**`, and `**/*.md`, local only
-- `.github/copilot-instructions.md` — the same project rules for GitHub PR
-  review, local only
-- `.github/skills/` — the `simple-english` and `open-pr` skills, local only.
+- `AGENTS.md`: project-wide rules, read at the start of every task. Tracked here.
+- `.github/copilot-instructions.md`: the same project rules. Workspace root.
+- `.github/instructions/*.instructions.md`: targeted rules for `**/backend/**`,
+  `**/frontend/**`, and `**/*.md`. Workspace root.
+- `.github/skills/`: the `simple-english` and `open-pr` skills. Workspace root.
   `open-pr` opens a PR with the `gh` CLI.
+- `.github/workflows/ci.yml` and `.github/PULL_REQUEST_TEMPLATE.md`: tracked in
+  this repo, because GitHub reads them from the repository.
 
-`.github/workflows/ci.yml` and `.github/PULL_REQUEST_TEMPLATE.md` stay tracked,
-because GitHub needs them.
+The workspace agent files are local only. The `applyTo` globs are relative to
+the workspace root, so the workspace `.github/` folder is the right place for
+them.
 
 ## Deviations from DECISIONS.md (flagged, not silent)
 

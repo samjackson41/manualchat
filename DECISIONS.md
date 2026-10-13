@@ -124,11 +124,11 @@ is harmless either way).
 | # | Decision | Notes |
 |---|---|---|
 | W1 | The development assistant is the built-in VS Code Copilot Chat with **OpenRouter Maestro** as the language-provider extension (any OpenRouter model appears in the chat model picker). | Chat model in use: `deepseek/deepseek-v4-pro-0813` (DeepSeek V4 Pro 0813). The API key lives in VS Code SecretStorage, not in the repo. |
-| W2 | Agent customization lives in Copilot formats: `AGENTS.md` (project, tracked), `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` (targeted, `applyTo` scopes), and `.github/skills/{simple-english,open-pr}/SKILL.md`. The `.github/` agent files are local only and git-ignored. `AGENTS.md`, `.github/workflows/ci.yml`, and `.github/PULL_REQUEST_TEMPLATE.md` stay tracked. | GitHub Copilot code review cannot read `.github/copilot-instructions.md` while that file is untracked. |
+| W2 | Agent customization lives in Copilot formats. The agent files sit in the VS Code workspace `.github/` folder, one level above the repo: `copilot-instructions.md`, `instructions/*.instructions.md` (targeted `applyTo` scopes), and `skills/{simple-english,open-pr}/SKILL.md`. `AGENTS.md` stays tracked in the repo. `.github/workflows/ci.yml` and `.github/PULL_REQUEST_TEMPLATE.md` stay tracked in the repo, because GitHub reads them from the repository. The workspace agent files are local only and tracked by no repository. The `applyTo` globs are relative to the workspace root, so they read `**/backend/**` and `**/frontend/**`. | GitHub Copilot code review reads `.github/copilot-instructions.md` only from the repository root, so it does not read the workspace-level file. |
 
 Source: https://code.visualstudio.com/docs/agent-customization/custom-instructions and
 https://marketplace.visualstudio.com/items?itemName=husamettinulutas.openrouter-maestro
-Last-checked: 2026-10-12
+Last-checked: 2026-10-13
 
 ---
 

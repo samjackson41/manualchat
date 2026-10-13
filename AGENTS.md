@@ -32,11 +32,24 @@ request without a clear instruction. Never read or print a secret, key, token, o
 - Keep the graph-shape wiki page current. When a change touches the LangGraph
   graph, an agent tool, or the graph state (`backend/agent/graph.py`,
   `backend/tools.py`), update the Mermaid diagram and tables on the wiki `Home`
-  page (https://github.com/samjackson41/manualchat/wiki/Home) as part of that
-  change. The wiki is a separate repo (`manualchat.wiki`).
+  page as part of that change. The wiki is a separate repo, checked out in the
+  workspace as `manualchat.wiki/`, and the page file is `manualchat.wiki/Home.md`
+  (rendered at https://github.com/samjackson41/manualchat/wiki/Home).
+
+## Testing
+
+- Prefer end-to-end and feature tests over unit tests. Write a unit test only
+  when the behaviour cannot be verified live or end-to-end.
+- Keep tests small and fast. Use simple inputs and human-readable outputs.
+- Do not spend a lot of time on tests, and do not let them grow into a monolith.
+- Run the cheapest check that proves the change works; report the command and
+  its output.
 
 ## Where targeted rules live
 
-- `backend/**` → `.github/instructions/backend.instructions.md`
-- `frontend/**` → `.github/instructions/frontend.instructions.md`
+The instruction files live in the VS Code workspace `.github/` folder, one level
+above this repo. Their `applyTo` globs are relative to the workspace root:
+
+- `**/backend/**` → `.github/instructions/backend.instructions.md`
+- `**/frontend/**` → `.github/instructions/frontend.instructions.md`
 - `**/*.md` → `.github/instructions/docs.instructions.md`
