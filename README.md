@@ -1,9 +1,10 @@
 # ManualChat — skeleton
 
 The **bare-minimum "ask a model" loop** for ManualChat, the grounded repair-manual
-assistant (capstone). A `chat -> tools -> chat` LangGraph loop with one tool, one
-FastAPI endpoint, one Next.js chat box with a model selector — deliberately
-skeletal so RAG/memory can be added later without rework.
+assistant (capstone). A `chat -> tools -> chat` LangGraph loop with a calculator
+tool and three RAG stubs, one FastAPI endpoint, one Next.js chat box with a model
+selector, deliberately skeletal so real RAG and memory can be added later without
+rework.
 
 > **In scope this pass:** LangGraph `StateGraph` with a tool-calling loop, FastAPI `/chat` via
 > OpenRouter, Next.js chat + model dropdown, Docker (one image per terminal).
@@ -18,7 +19,7 @@ manualchat/
   backend/
     config.py        # pydantic-settings BaseSettings — env vars ONLY (no .env)
     llm.py           # thin OpenRouter wrapper (httpx) -> chat(messages, model, params, tools)
-    tools.py         # agent tools: OpenAI schemas + executors (calculator for now)
+    tools.py         # agent tools: OpenAI schemas + executors (calculator, RAG stubs)
     agent/graph.py   # StateGraph: AgentState, chat -> tools -> chat loop (iteration point)
     api/main.py      # FastAPI: GET /health, GET /models, POST /chat
     pyproject.toml   #                 uv project (package = false; deps only)
@@ -90,9 +91,9 @@ request entirely.
 ## Where the next change goes (documented in code)
 
 - **System prompt** → prepend a `system` message to `messages` (no new node).
-- **RAG** → `search_manual` / `extract_specs` / `get_page_text` land in
-  `backend/tools.py` (schema + executor, IMPLEMENTATION Task 4). The graph loop
-  is already in place.
+- **RAG** → the contracts and stub bodies for `search_manual` / `extract_specs` /
+  `get_page_text` are in `backend/tools.py`. Real retrieval replaces the stub
+  bodies (IMPLEMENTATION Task 4). The graph loop is already in place.
 - **Memory** → add `summary` field + compaction node (MEMORY_DESIGN §4-5) and a
   checkpointer.
 
