@@ -13,7 +13,7 @@
 | **LLM Gateway** | OpenRouter (`shared.llm.client`) | Provider-agnostic gateway. A single, UI-selectable model (`models.default`) drives chat, planning, summarization, and the eval judge. |
 | **Session & State Memory** | LangGraph `InMemorySaver` / `RedisSaver` | Swappable checkpointer from cohort memory patterns. Scoped per vehicle session. |
 | **API Backend** | FastAPI | Async endpoints for ingestion (`POST /manuals/upload`), chat stream (`POST /chat/stream`), and sliced document retrieval (`GET /manuals/{id}/pages/{start}-{end}`). |
-| **Frontend** | Next.js 14+ (App Router), Tailwind CSS, shadcn/ui, `react-pdf` | Dedicated garage chat interface with split-pane PDF viewer using `react-pdf` in PDF slice mode. |
+| **Frontend** | Next.js 14+ (App Router), Tailwind CSS v4, shadcn/ui, assistant-ui, `react-pdf` | Dedicated garage chat interface built on assistant-ui (thread history, markdown, streaming), with a split-pane PDF viewer using `react-pdf` in PDF slice mode. |
 | **Evaluations** | Custom LLM-as-judge script (`project/eval`) | Automated scoring on citation precision, torque/fluid accuracy, and hallucination rate against a synthetic ground-truth eval set. |
 
 ### Considered and Rejected

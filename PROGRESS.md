@@ -8,7 +8,10 @@
   and three RAG tools (`search_manual`, `extract_specs`, `get_page_text`) are in
   `backend/tools.py`. The RAG tools are stubs that return sample data. Real
   retrieval is left (IMPLEMENTATION Task 4).
-- Frontend: Next.js chat box with a model selector.
+- Frontend: Next.js chat built on assistant-ui. The styled Thread shows
+  messages, markdown, streaming, and regeneration. A LocalRuntime adapter in
+  `frontend/app/chat-runtime.tsx` calls `POST /chat`. The model selector is a
+  shadcn Select. Tailwind is v4.
 - Docker Compose runs the backend and the frontend in two terminals.
 - Git workflow: Conventional Commits, feature branches, squash merges.
 - Repo hygiene: the spike experiments moved out of the repo to

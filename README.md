@@ -2,9 +2,9 @@
 
 The **bare-minimum "ask a model" loop** for ManualChat, the grounded repair-manual
 assistant (capstone). A `chat -> tools -> chat` LangGraph loop with a calculator
-tool and three RAG stubs, one FastAPI endpoint, one Next.js chat box with a model
-selector, deliberately skeletal so real RAG and memory can be added later without
-rework.
+tool and three RAG stubs, one FastAPI endpoint, one Next.js chat built on
+assistant-ui, deliberately skeletal so real RAG and memory can be added later
+without rework.
 
 > **In scope this pass:** LangGraph `StateGraph` with a tool-calling loop, FastAPI `/chat` via
 > OpenRouter, Next.js chat + model dropdown, Docker (one image per terminal).
@@ -25,10 +25,12 @@ manualchat/
     pyproject.toml   #                 uv project (package = false; deps only)
     uv.lock          #                 generated lockfile (deps only)
     Dockerfile
-  frontend/          # Next.js 14 App Router + Tailwind (no shadcn/ui)
-    app/page.tsx     # chat box + model-selector dropdown (fetches /models)
-    app/layout.tsx
-    app/globals.css
+  frontend/          # Next.js 14 App Router + Tailwind v4 + shadcn/ui + assistant-ui
+    app/page.tsx     # assistant-ui Thread + shadcn model-selector dropdown
+    app/chat-runtime.tsx  # LocalRuntime adapter that calls POST /chat
+    app/layout.tsx   # TooltipProvider + AssistantRuntimeProvider
+    app/globals.css  # Tailwind v4 theme
+    components/      # assistant-ui elements + shadcn/ui primitives
     Dockerfile
   docker-compose.yml # services: backend, frontend (started one-per-terminal)
   README.md          # this file
