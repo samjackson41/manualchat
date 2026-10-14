@@ -4,9 +4,10 @@
 
 - Backend: FastAPI with `/health`, `/models`, and `/chat`. The chat reply goes
   through the LangGraph graph.
-- Tool calling: the graph runs a `chat -> tools -> chat` loop. One tool, a
-  `calculator` in `backend/tools.py`, proves the loop end to end. RAG tools land
-  there next (IMPLEMENTATION Task 4).
+- Tool calling: the graph runs a `chat -> tools -> chat` loop. The `calculator`
+  and three RAG tools (`search_manual`, `extract_specs`, `get_page_text`) are in
+  `backend/tools.py`. The RAG tools are stubs that return sample data. Real
+  retrieval is left (IMPLEMENTATION Task 4).
 - Frontend: Next.js chat box with a model selector.
 - Docker Compose runs the backend and the frontend in two terminals.
 - Git workflow: Conventional Commits, feature branches, squash merges.
@@ -26,8 +27,8 @@
 ## What is left
 
 - The system prompt in `backend/agent/graph.py`.
-- RAG tools (`search_manual`, `extract_specs`, `get_page_text`) per
-  `IMPLEMENTATION.md` Task 4.
+- Real retrieval behind `search_manual`, `extract_specs`, and `get_page_text`.
+  The contracts and stub bodies are in place (IMPLEMENTATION.md Task 4).
 - Memory: the summary field, the compaction node, and a checkpointer per
   `MEMORY_DESIGN.md`.
 - The scanned-manual OCR path. Deferred past MVP per DECISIONS S1.
