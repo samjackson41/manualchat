@@ -18,7 +18,7 @@ ManualChat is an intelligent assistant for complex equipment service and repair 
 * **Multi-Turn Troubleshooting History**: Follow up on earlier questions within the active session (e.g., *"What size socket does that drain bolt need?"* following an oil change inquiry) while preserving context.
 
 ### 2.2 Post-MVP Features (Planned Roadmap)
-* **Multi-Vehicle Garage Management**: Create and switch between distinct named vehicle profiles (e.g., "2008 Yamaha Rhino", "2023 Civic") from a vehicle dropdown selector.
+* **Multi-Vehicle Garage Management**: Create and switch between distinct named vehicle profiles (e.g., "2023 Civic", "2015 Subaru Outback") from a vehicle dropdown selector.
 * **Multi-Manual Scoping & Comparison**: Attach multiple manuals to a single vehicle (e.g., Factory Service Manual + Haynes Aftermarket Guide). Search across all manuals for that vehicle or scope queries to a specific manual.
 * **Multi-Manual Conflict Attribution**: When two manuals for the same vehicle specify conflicting instructions or values, the system highlights both values side-by-side with full attribution to their respective manuals and pages.
 * **Scanned & Legacy Document OCR**: Ingest scanned physical manuals with high-noise image pages through an automated OCR pipeline.
@@ -93,7 +93,7 @@ The conceptual hierarchy defines the relationship between physical assets and op
   │
   └── owns 1..N
         ▼
-   [Vehicle] (e.g. "2008 Yamaha Rhino 700 FI")
+   [Vehicle] (e.g. "2023 Civic")
         │
         └── possesses 1..N
               ▼

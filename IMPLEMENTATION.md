@@ -150,7 +150,7 @@ from pydantic import BaseModel, Field
 class Vehicle(BaseModel):
     vehicle_id: str
     user_id: str = "default_user"  # Single-user local default
-    display_name: str              # e.g., "2008 Yamaha Rhino 700 FI"
+    display_name: str              # e.g., "2023 Civic"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class Manual(BaseModel):
@@ -206,7 +206,7 @@ Each task is scoped to be executed and verified in a single session:
 
 1. **Task 1: Ingestion Pipeline & Normalization**
    - *Action*: Implement `ingest.py` integrating Docling with pinned config (`do_ocr=False`, `TableFormerMode.FAST`, threads=2, batch=1). Add OCR artifact cleaning (`SPECiFiCATIONS` $\to$ `SPECIFICATIONS`, `Ib` $\to$ `lb`).
-   - *Done when*: Running `python -m ingest /path/to/Rhino.pdf` extracts 503 pages under 1 hour with peak RSS $< 3.5$ GB, emitting normalized text and tables.
+   - *Done when*: Running `python -m ingest /path/to/manual.pdf` extracts 503 pages under 1 hour with peak RSS $< 3.5$ GB, emitting normalized text and tables.
 
 2. **Task 2: Slicing & Thumbnail Pre-generation**
    - *Action*: Implement `slicer.py` using `pypdf` to produce 5-page window PDF slices and `PyMuPDF` for 150 DPI thumbnail images saved in `data/manuals/{manual_id}/`.
@@ -214,7 +214,7 @@ Each task is scoped to be executed and verified in a single session:
 
 3. **Task 3: Qdrant Indexing & Payload Filtering**
    - *Action*: Implement chunking (512 char / 64 overlap), embedding via `multi-qa-mpnet-base-dot-v1`, and upsert into local Qdrant with `vehicle_id` and `manual_id` payload fields.
-   - *Done when*: Querying `search_manual("oil change drain bolt", vehicle_id="rhino_700")` returns chunks from pages 24 and 82 with cross-encoder scores $> 0.7$.
+   - *Done when*: Querying `search_manual("oil change drain bolt", vehicle_id="demo_vehicle")` returns chunks from pages 24 and 82 with cross-encoder scores $> 0.7$.
 
 4. **Task 4: Agent Tool Contracts & LangGraph Graph**
    - *Action*: Build `search_manual`, `extract_specs`, and `get_page_text` as Pydantic-typed tools. Assemble LangGraph supervisor state graph with ReAct loop and structured `AgentAnswer` synthesis.
