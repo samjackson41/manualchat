@@ -29,6 +29,12 @@
 
 ## What is left
 
+- The RAG pipeline, in phases: dependencies and configuration, storage and
+  `POST /manuals`, the ingest stages, chunk and index in Qdrant, then real
+  retrieval behind the tools. The ratified values are in `DECISIONS.md`
+  (D9 to D15, R3 to R10, A1 to A5, T1 to T3).
+- The Supervisor and Synthesizer graph (DECISIONS A1). The graph is a flat
+  `chat ↔ tools` loop today.
 - The system prompt in `backend/agent/graph.py`.
 - Real retrieval behind `search_manual`, `extract_specs`, and `get_page_text`.
   The contracts and stub bodies are in place (IMPLEMENTATION.md Task 4).
@@ -41,9 +47,7 @@
 ## Known problems
 
 - DeepSeek `-latest` slugs need the `~` prefix, or OpenRouter returns 400. This
-  is recorded in the `README.md` "Deviations" section.
-- `DECISIONS.md` pins the model slugs without the `~` prefix. The code and the
-  README correct that. Fix the decision log when it is next edited.
+  is recorded in the `README.md` "Deviations" section and in `DECISIONS.md`.
 
 ## Decisions
 
