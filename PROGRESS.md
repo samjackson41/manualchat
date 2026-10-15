@@ -8,7 +8,11 @@
   and three RAG tools (`search_manual`, `extract_specs`, `get_page_text`) are in
   `backend/tools.py`. The RAG tools are stubs that return sample data. Real
   retrieval is left (IMPLEMENTATION Task 4).
-- Frontend: Next.js chat box with a model selector.
+- Frontend: Next.js chat built on assistant-ui. The styled Thread shows
+  messages, markdown, streaming, and regeneration. A thread-list sidebar keeps
+  chat history in localStorage across reloads. The chat adapter in
+  `frontend/app/chat-runtime.tsx` calls `POST /chat`. The model selector is a
+  shadcn Select. Tailwind is v4.
 - Docker Compose runs the backend and the frontend in two terminals.
 - Git workflow: Conventional Commits, feature branches, squash merges.
 - Repo hygiene: the spike experiments moved out of the repo to
@@ -26,7 +30,17 @@
 
 ## What is left
 
-- The system prompt in `backend/agent/graph.py`.
+- The system prompt (grounding rules), as its own branch before the RAG work
+  (DECISIONS A3).
+- The RAG pipeline, in phases. The prototype runs against the 56-page `pl.pdf`.
+  The graph stays a flat `chat ↔ tools` loop and the answer stays markdown text
+  with `[Page N]` citations. The ratified values are in `DECISIONS.md`
+  (D9 to D13, R3 to R9, A1 to A3, T1 to T3).
+- The chunk eval: about 15 questions with known answer pages from `pl.pdf`, to
+  check recall and citation precision and pick the chunk size and overlap.
+- Future work (DECISIONS Deferred): the Supervisor and Synthesizer graph, the
+  structured `AgentAnswer`, the spec ledger, the PDF viewer with citation
+  badges, the scanned-manual OCR path, and the Docker work.
 - Real retrieval behind `search_manual`, `extract_specs`, and `get_page_text`.
   The contracts and stub bodies are in place (IMPLEMENTATION.md Task 4).
 - Memory: the summary field, the compaction node, and a checkpointer per
@@ -38,9 +52,7 @@
 ## Known problems
 
 - DeepSeek `-latest` slugs need the `~` prefix, or OpenRouter returns 400. This
-  is recorded in the `README.md` "Deviations" section.
-- `DECISIONS.md` pins the model slugs without the `~` prefix. The code and the
-  README correct that. Fix the decision log when it is next edited.
+  is recorded in the `README.md` "Deviations" section and in `DECISIONS.md`.
 
 ## Decisions
 

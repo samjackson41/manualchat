@@ -13,7 +13,7 @@
 | **LLM Gateway** | OpenRouter (`shared.llm.client`) | Provider-agnostic gateway. A single, UI-selectable model (`models.default`) drives chat, planning, summarization, and the eval judge. |
 | **Session & State Memory** | LangGraph `InMemorySaver` / `RedisSaver` | Swappable checkpointer from cohort memory patterns. Scoped per vehicle session. |
 | **API Backend** | FastAPI | Async endpoints for ingestion (`POST /manuals/upload`), chat stream (`POST /chat/stream`), and sliced document retrieval (`GET /manuals/{id}/pages/{start}-{end}`). |
-| **Frontend** | Next.js 14+ (App Router), Tailwind CSS, shadcn/ui, `react-pdf` | Dedicated garage chat interface with split-pane PDF viewer using `react-pdf` in PDF slice mode. |
+| **Frontend** | Next.js 14+ (App Router), Tailwind CSS v4, shadcn/ui, assistant-ui, `react-pdf` | Dedicated garage chat interface built on assistant-ui (thread history, markdown, streaming), with a split-pane PDF viewer using `react-pdf` in PDF slice mode. |
 | **Evaluations** | Custom LLM-as-judge script (`project/eval`) | Automated scoring on citation precision, torque/fluid accuracy, and hallucination rate against a synthetic ground-truth eval set. |
 
 ### Considered and Rejected
@@ -66,7 +66,7 @@ PDF Upload
   │
   ├─► Text & Unit Normalizer (Fixes `HiddenHorzOCR` artifacts, `Ib` -> `lb`, strip junk)
   │
-  ├─► Chunk Generator (Sliding window 512 tokens / 64 overlap, tagged with `vehicle_id`, `manual_id`, `page_number`)
+  ├─► Chunk Generator (Section-aware split, 512 tokens / 64 overlap, tables kept whole, tagged with `vehicle_id`, `manual_id`, `page_number`)
   │
   ├─► SentenceTransformer (`multi-qa-mpnet-base-dot-v1`) Embedder
   │
@@ -202,23 +202,29 @@ class AgentAnswer(BaseModel):
 
 ## 5. Build Order (Step-by-Step Milestones)
 
+The POC order is: the system prompt (its own branch), the dependencies and
+configuration, local storage and upload, ingest on `pl.pdf`, chunk and index in
+local Qdrant, the retrieval tools with markdown answers, then the eval. The
+Supervisor graph, the `AgentAnswer`, the spec ledger, and the PDF viewer come
+later (DECISIONS Deferred).
+
 Each task is scoped to be executed and verified in a single session:
 
 1. **Task 1: Ingestion Pipeline & Normalization**
-   - *Action*: Implement `ingest.py` integrating Docling with pinned config (`do_ocr=False`, `TableFormerMode.FAST`, threads=2, batch=1). Add OCR artifact cleaning (`SPECiFiCATIONS` $\to$ `SPECIFICATIONS`, `Ib` $\to$ `lb`).
-   - *Done when*: Running `python -m ingest /path/to/manual.pdf` extracts 503 pages under 1 hour with peak RSS $< 3.5$ GB, emitting normalized text and tables.
+   - *Action*: Implement `ingest.py` integrating Docling with pinned config (`do_ocr=False`, `TableFormerMode.FAST`, threads=2, batch=1). Run the text-layer probe and refuse a manual that carries no text layer (DECISIONS D13). Build the printed-to-physical page map from the page footer or the header, with the TOC table as the fallback (DECISIONS D12). Add OCR artifact cleaning (`SPECiFiCATIONS` $\to$ `SPECIFICATIONS`, `Ib` $\to$ `lb`).
+   - *Done when*: Running `python -m ingest /path/to/manual.pdf` extracts the 56-page `pl.pdf` in about 8 minutes, emitting normalized text and tables. The 503-page Rhino manual is a later, longer run.
 
 2. **Task 2: Slicing & Thumbnail Pre-generation**
    - *Action*: Implement `slicer.py` using `pypdf` to produce 5-page window PDF slices and `PyMuPDF` for 150 DPI thumbnail images saved in `data/manuals/{manual_id}/`.
    - *Done when*: A slice request returns a clean ~50 KB vector PDF slice, and thumbnails render crisp images for sample pages 1, 9, 24, 82.
 
 3. **Task 3: Qdrant Indexing & Payload Filtering**
-   - *Action*: Implement chunking (512 char / 64 overlap), embedding via `multi-qa-mpnet-base-dot-v1`, and upsert into local Qdrant with `vehicle_id` and `manual_id` payload fields.
+   - *Action*: Implement chunking (512 tokens with 64 overlap, split on section headings, each table kept whole per DECISIONS D9 to D11), embedding via `multi-qa-mpnet-base-dot-v1`, and upsert into local Qdrant with `vehicle_id` and `manual_id` payload fields.
    - *Done when*: Querying `search_manual("oil change drain bolt", vehicle_id="demo_vehicle")` returns chunks from pages 24 and 82 with cross-encoder scores $> 0.7$.
 
 4. **Task 4: Agent Tool Contracts & LangGraph Graph**
-   - *Action*: Build `search_manual`, `extract_specs`, and `get_page_text` as Pydantic-typed tools. Assemble LangGraph supervisor state graph with ReAct loop and structured `AgentAnswer` synthesis.
-   - *Done when*: Running `python -m agent "how do I change engine oil?"` returns ordered steps, torque values (30 Nm), and correct page citations ([82, 83]).
+   - *Action*: Build `search_manual`, `extract_specs`, and `get_page_text` as Pydantic-typed tools, and keep the flat `chat ↔ tools` loop. The POC answers in markdown with `[Page N]` citations. The Supervisor graph and the structured `AgentAnswer` are a later task.
+   - *Done when*: Running `python -m agent "how do I change engine oil?"` returns ordered steps, torque values, and correct page citations from the prototype manual.
 
 5. **Task 5: FastAPI Backend Services**
    - *Action*: Expose REST endpoints: `GET /manuals/{id}/pages/{start}-{end}` (serves PDF slices), `GET /manuals/{id}/thumbnails/{page}` (serves PNG images), and `POST /chat/stream` (SSE token stream).

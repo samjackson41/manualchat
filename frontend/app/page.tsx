@@ -1,120 +1,55 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
-
-type ModelOption = { id: string; label: string };
-type Message = { role: "user" | "assistant"; content: string };
+import { Thread } from "@/components/assistant-ui/elements/thread.aui";
+import { ThreadList } from "@/components/assistant-ui/elements/thread-list.aui";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useModelSelection } from "./chat-runtime";
 
 export default function Home() {
-  const [models, setModels] = useState<ModelOption[]>([]);
-  const [selected, setSelected] = useState<string>("");
-  const [query, setQuery] = useState<string>("");
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string>("");
-
-  // Load the model list once; the dropdown default mirrors the backend default.
-  useEffect(() => {
-    fetch(`${BACKEND_URL}/models`)
-      .then((res) => res.json())
-      .then((data: { default: string; options: ModelOption[] }) => {
-        setModels(data.options);
-        setSelected(data.default);
-      })
-      .catch((err) => setError(`Failed to load models: ${err.message}`));
-  }, []);
-
-  const send = useCallback(async () => {
-    const trimmed = query.trim();
-    if (!trimmed || loading) return;
-
-    setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
-    setQuery("");
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await fetch(`${BACKEND_URL}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: trimmed, model: selected }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || `Request failed (${res.status})`);
-      }
-      setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [query, loading, selected]);
+  const { models, model, setModel } = useModelSelection();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 p-6">
-      <header className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-semibold">ManualChat</h1>
-        <select
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-          className="rounded border border-gray-300 px-2 py-1 text-sm"
-          aria-label="Model selector"
-        >
-          {models.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.label}
-            </option>
-          ))}
-        </select>
-      </header>
+    <main className="flex h-dvh">
+      <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-muted/30">
+        <div className="flex items-center justify-between px-3 pt-3 pb-2">
+          <h1 className="text-lg font-semibold">ManualChat</h1>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+          <ThreadList />
+        </div>
+      </aside>
 
-      <section className="flex flex-1 flex-col gap-3 rounded border border-gray-200 p-4">
-        {messages.length === 0 && (
-          <p className="text-sm text-gray-400">
-            Ask a question about your manual. (Reply comes through the LangGraph graph.)
-          </p>
-        )}
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            className={`max-w-[85%] rounded px-3 py-2 text-sm ${
-              m.role === "user"
-                ? "self-end bg-blue-500 text-white"
-                : "self-start bg-gray-100 text-gray-900"
-            }`}
+      <section className="flex min-w-0 flex-1 flex-col">
+        <header className="flex items-center justify-end px-4 py-3">
+          <Select
+            value={model}
+            onValueChange={(value) => {
+              if (value) setModel(value);
+            }}
           >
-            {m.content}
-          </div>
-        ))}
-        {loading && <p className="text-sm text-gray-400">Thinking…</p>}
+            <SelectTrigger aria-label="Model selector" className="w-44">
+              <SelectValue placeholder="Pick a model" />
+            </SelectTrigger>
+            <SelectContent>
+              {models.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </header>
+
+        <div className="min-h-0 flex-1">
+          <Thread />
+        </div>
       </section>
-
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          send();
-        }}
-        className="flex gap-2"
-      >
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="e.g. What's the oil drain bolt torque?"
-          className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm"
-        />
-        <button
-          type="submit"
-          disabled={loading || !query.trim()}
-          className="rounded bg-blue-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          Send
-        </button>
-      </form>
     </main>
   );
 }
