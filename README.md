@@ -26,8 +26,8 @@ manualchat/
     uv.lock          #                 generated lockfile (deps only)
     Dockerfile
   frontend/          # Next.js 14 App Router + Tailwind v4 + shadcn/ui + assistant-ui
-    app/page.tsx     # assistant-ui Thread + shadcn model-selector dropdown
-    app/chat-runtime.tsx  # LocalRuntime adapter that calls POST /chat
+    app/page.tsx     # assistant-ui Thread + ThreadList sidebar + model selector
+    app/chat-runtime.tsx  # thread-list runtime + localStorage adapter -> POST /chat
     app/layout.tsx   # TooltipProvider + AssistantRuntimeProvider
     app/globals.css  # Tailwind v4 theme
     components/      # assistant-ui elements + shadcn/ui primitives
