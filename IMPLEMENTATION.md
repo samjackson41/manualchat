@@ -202,11 +202,17 @@ class AgentAnswer(BaseModel):
 
 ## 5. Build Order (Step-by-Step Milestones)
 
+The POC order is: the system prompt (its own branch), the dependencies and
+configuration, local storage and upload, ingest on `pl.pdf`, chunk and index in
+local Qdrant, the retrieval tools with markdown answers, then the eval. The
+Supervisor graph, the `AgentAnswer`, the spec ledger, and the PDF viewer come
+later (DECISIONS Deferred).
+
 Each task is scoped to be executed and verified in a single session:
 
 1. **Task 1: Ingestion Pipeline & Normalization**
    - *Action*: Implement `ingest.py` integrating Docling with pinned config (`do_ocr=False`, `TableFormerMode.FAST`, threads=2, batch=1). Run the text-layer probe and refuse a manual that carries no text layer (DECISIONS D13). Build the printed-to-physical page map from the page footer or the header, with the TOC table as the fallback (DECISIONS D12). Add OCR artifact cleaning (`SPECiFiCATIONS` $\to$ `SPECIFICATIONS`, `Ib` $\to$ `lb`).
-   - *Done when*: Running `python -m ingest /path/to/manual.pdf` extracts 503 pages in about 90 minutes with peak RSS $< 3.5$ GB, emitting normalized text and tables.
+   - *Done when*: Running `python -m ingest /path/to/manual.pdf` extracts the 56-page `pl.pdf` in about 8 minutes, emitting normalized text and tables. The 503-page Rhino manual is a later, longer run.
 
 2. **Task 2: Slicing & Thumbnail Pre-generation**
    - *Action*: Implement `slicer.py` using `pypdf` to produce 5-page window PDF slices and `PyMuPDF` for 150 DPI thumbnail images saved in `data/manuals/{manual_id}/`.
@@ -217,8 +223,8 @@ Each task is scoped to be executed and verified in a single session:
    - *Done when*: Querying `search_manual("oil change drain bolt", vehicle_id="demo_vehicle")` returns chunks from pages 24 and 82 with cross-encoder scores $> 0.7$.
 
 4. **Task 4: Agent Tool Contracts & LangGraph Graph**
-   - *Action*: Build `search_manual`, `extract_specs`, and `get_page_text` as Pydantic-typed tools. Assemble LangGraph supervisor state graph with ReAct loop and structured `AgentAnswer` synthesis.
-   - *Done when*: Running `python -m agent "how do I change engine oil?"` returns ordered steps, torque values (30 Nm), and correct page citations ([82, 83]).
+   - *Action*: Build `search_manual`, `extract_specs`, and `get_page_text` as Pydantic-typed tools, and keep the flat `chat ↔ tools` loop. The POC answers in markdown with `[Page N]` citations. The Supervisor graph and the structured `AgentAnswer` are a later task.
+   - *Done when*: Running `python -m agent "how do I change engine oil?"` returns ordered steps, torque values, and correct page citations from the prototype manual.
 
 5. **Task 5: FastAPI Backend Services**
    - *Action*: Expose REST endpoints: `GET /manuals/{id}/pages/{start}-{end}` (serves PDF slices), `GET /manuals/{id}/thumbnails/{page}` (serves PNG images), and `POST /chat/stream` (SSE token stream).

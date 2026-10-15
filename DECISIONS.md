@@ -55,19 +55,19 @@ path returns — no spike, no config churn, just a deferred note.
 | D9 | Chunking strategy: split on section headings and keep each table inside one chunk | `true` | `ingest.chunk_structure_aware` |
 | D10 | Chunk size in tokens | `512` | `ingest.chunk_tokens` |
 | D11 | Chunk overlap in tokens | `64` | `ingest.chunk_overlap_tokens` |
-| D12 | Printed page numbers come from the page footer or header, with the TOC table as the fallback | `footer` | `ingest.printed_page_source` |
-| D13 | Refuse a manual that carries no text layer | `true` | `ingest.reject_scanned` |
-| D14 | Time budget for the ingest of one 500-page born-digital manual | `90` minutes | `ingest.time_budget_minutes` |
-| D15 | Token counter for chunking | `cl100k_base`, the counter that `memory.tokenizer` already names | `ingest.tokenizer` |
+| D12 | Citations use the physical PDF page number for every manual. Manuals use different printed numbering systems, so the printed number is not recovered. The interface tells the user that the number is a PDF page number. | `false` | `ingest.use_printed_page_numbers` |
+| D13 | Token counter for chunking | `cl100k_base`, the counter that `memory.tokenizer` already names | `ingest.tokenizer` |
 
 D1–D3 apply defensively to the Rhino + Johnson manuals (the Rhino was produced through an
 Acrobat "Paper Capture" pipeline, so it may carry the ghost OCR layer — sanitize-at-source
 is harmless either way).
 
-D9 to D11 and D15 follow common practice. A chunk holds 256 to 1024 tokens, and
-neighbouring chunks share 10 to 20 percent of their text. D14 comes from the
-measured ingest rate in `SPIKE_FINDINGS.md`. The pinned docling configuration
-needs about 8 seconds for each page, so a 503-page manual needs about 67 minutes.
+D9 to D11 and D13 follow common practice. A chunk holds 256 to 1024 tokens, and
+neighbouring chunks share 10 to 20 percent of their text. The prototype runs
+against the 56-page `pl.pdf` operator's guide first, so one ingest pass stays
+short. The `512` and `64` values are a starting point. The eval reports recall
+and citation precision for other sizes, and the numbers move only when the eval
+shows a better value.
 
 Source: https://python.langchain.com/docs/how_to/recursive_text_splitter/ and
 https://docs.llamaindex.ai/en/stable/api_reference/node_parsers/sentence_splitter/
@@ -110,13 +110,17 @@ Last-checked: 2026-10-15
 | R1 | Region = **us-east-1** (closest). GCP `us-east1` for Cloud Run/GCS; Qdrant Cloud in us-east-1. |
 | R2 | Redis stays on its existing **AWS us-east-1** Essentials tier — accept the cross-cloud hop; revisit only if latency shows up in eval. |
 
+**Prototyping**: everything except OpenRouter stays local on the development
+machine (16 GB RAM). Qdrant, storage, and the models run locally. R1 and R2 hold
+for a production deployment.
+
 ---
 
 ## Manual upload idempotency
 
 | Item | Decision |
 |---|---|
-| U1 | **MVP**: assume a smart single-user — each manual is uploaded/processed **once** and must **remain in storage** (GCS) so the processed result is never re-derived. No dedup check. |
+| U1 | **MVP**: assume a smart single-user — each manual is uploaded/processed **once** and must **remain in local storage** in a `manuals/{manual_id}/` subdirectory so the processed result is never re-derived. No dedup check. |
 | U2 | **MVP+1**: add a **file-hash check** (against stored manual hashes) and surface a **warning** to the user on a suspected re-upload. |
 
 ---
@@ -129,6 +133,10 @@ Last-checked: 2026-10-15
 | L2 | **MVP scope = table-derived specs only.** A value buried in prose is answered with citation grounding, not written into the ledger. |
 | L3 | Revisit Postgres **only if** post-MVP multi-manual conflict attribution requires relational joins across manuals. |
 
+The POC keeps the ledger minimal: `extract_specs` does targeted table retrieval
+and returns values without writing a ledger. The lazy Qdrant ledger in L1 is
+future work.
+
 ---
 
 ## Retrieval (RAG pipeline)
@@ -139,14 +147,13 @@ the values that the documents disagreed about.
 
 | # | Decision | Default | Config key |
 |---|---|---|---|
-| R3 | Retrieval backend in development: a local Qdrant service in `docker-compose.yml` | local service | `qdrant.url` |
+| R3 | Retrieval backend in development: Qdrant in local mode (a path on disk or in memory), not a `docker-compose.yml` service yet | local mode | `qdrant.url` |
 | R4 | Qdrant collection name | `manualchat_chunks` | `qdrant.collection` |
 | R5 | Qdrant API key | Empty in development, because the local service needs no key. Production supplies a secret through the environment. The value never enters the repository. | `qdrant.api_key` |
 | R6 | Embedding model for the first pass | `multi-qa-mpnet-base-dot-v1` | `retrieval.embed_model` |
 | R7 | Reranker model for the second pass | `cross-encoder/ms-marco-MiniLM-L-6-v2` | `retrieval.rerank_model` |
 | R8 | Candidate count handed to the reranker | `50` | `retrieval.candidate_k` |
 | R9 | Chunk count returned to the agent | `5` | `retrieval.top_n` |
-| R10 | Smallest rerank score that opens the Manual Viewer page set | **TBD**. Record the value after the chunk eval runs. | `retrieval.viewer_min_score` |
 
 R3 keeps DECISIONS R1 for production. R1 names Qdrant Cloud in `us-east-1`. The
 local service is a development choice, so an ingest run and a query need no
@@ -163,14 +170,14 @@ Last-checked: 2026-10-15
 
 | # | Decision | Value | Config key |
 |---|---|---|---|
-| A1 | The agent graph is a Supervisor plus Synthesizer topology | IMPLEMENTATION §2.3 | — |
-| A2 | Hop cap on the tool loop | `4` | `agent.max_hops` |
-| A3 | The Synthesizer returns a structured `AgentAnswer`: a summary, a numbered procedure, the specs, the citations, and a confidence value | IMPLEMENTATION §4.1 | API contract |
-| A4 | The system prompt carries the grounding rules. Every claim names its page, and the answer states plainly when the manual holds no answer. | — | prompt text |
-| A5 | Confidence gate between a full answer and a gap acknowledgment | **TBD**. Record the value after the eval runs. | `agent.confidence_gate` |
+| A1 | The POC graph stays a flat `chat ↔ tools` loop. The Supervisor plus Synthesizer topology in IMPLEMENTATION §2.3 is future work. | — | — |
+| A2 | The agent answers in markdown text with `[Page N]` citations. The structured `AgentAnswer` in IMPLEMENTATION §4.1 is future work. | — | — |
+| A3 | The system prompt is a separate feature branch that lands before the RAG work. It carries the grounding rules: every claim names its page, and the answer states plainly when the manual holds no answer. | — | prompt text |
 
-The graph runs as a flat `chat ↔ tools` loop today. Until the Synthesizer lands,
-`/chat` returns markdown text with `[Page N]` citations.
+The graph runs as a flat `chat ↔ tools` loop today, and `/chat` returns markdown
+text with `[Page N]` citations. The Supervisor, the Synthesizer, the
+`AgentAnswer`, the hop cap, and the confidence gate are future work (see the
+Deferred section).
 
 ---
 
@@ -183,7 +190,9 @@ The graph runs as a flat `chat ↔ tools` loop today. Until the Synthesizer land
 | T3 | The default CI run stays cheap: dependency install, the syntax check, and the marked test excluded | — |
 
 Docling, torch, and sentence-transformers make a full install slow and large. T1
-and T2 keep the default check fast.
+and T2 keep the default check fast. Tests run against mocks, not the full model
+set, even though the project prefers end-to-end tests. Some behaviour needs a
+mock to stay testable without a download.
 
 ---
 
@@ -214,3 +223,11 @@ Last-checked: 2026-10-13
 - **Normalization rules catalog** — the *existence* of the stage is decided (D3); the
   exact unit/header repair rules (`lb`/`Ib`, `m· kg`, `SPECiFiCATIONS`, diagram-symbol
   junk) should be enumerated as test fixtures when the stage is built.
+- **Supervisor and Synthesizer graph, the `AgentAnswer`, the hop cap, and the
+  confidence gate** — the POC uses a flat loop with markdown answers.
+- **Spec ledger** — the POC returns table values without writing a ledger.
+- **Scanned-manual rejection probe** — not built for the POC. The prototype
+  manual `pl.pdf` is digital, so no scanned manual is expected.
+- **Manual Viewer rerank threshold** — the value that opens the viewer page set.
+- **Docker work** — the Qdrant service in `docker-compose.yml` and the baked
+  ingestion models.
