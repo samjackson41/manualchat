@@ -8,6 +8,11 @@
   and three RAG tools (`search_manual`, `extract_specs`, `get_page_text`) are in
   `backend/tools.py`. The RAG tools are stubs that return sample data. Real
   retrieval is left (IMPLEMENTATION Task 4).
+- System prompt: the graph prepends the grounding prompt before the first chat
+  call. The prompt demands a `[Page N]` citation on every claim and step,
+  answers only from the manual, states plainly when the manual holds no answer,
+  and shows both values when the manual conflicts. The text is tunable via
+  `AGENT_SYSTEM_PROMPT` (DECISIONS A3).
 - Frontend: Next.js chat built on assistant-ui. The styled Thread shows
   messages, markdown, streaming, and regeneration. A thread-list sidebar keeps
   chat history in localStorage across reloads. The chat adapter in
@@ -30,8 +35,6 @@
 
 ## What is left
 
-- The system prompt (grounding rules), as its own branch before the RAG work
-  (DECISIONS A3).
 - The RAG pipeline, in phases. The prototype runs against the 56-page `pl.pdf`.
   The graph stays a flat `chat ↔ tools` loop and the answer stays markdown text
   with `[Page N]` citations. The ratified values are in `DECISIONS.md`

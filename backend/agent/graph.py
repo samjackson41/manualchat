@@ -7,25 +7,23 @@ skeleton, so later work (RAG tools, memory) slots in without rework.
 
 WHERE THE NEXT CHANGES GO (documented so the structure is obviously extensible):
 
-  1. System prompt   -> add a `system` message at the head of `messages` before
-     the first `chat` call (no new node needed).
-
-  2. RAG             -> add `search_manual` / `extract_specs` / `get_page_text`
+  1. RAG             -> add `search_manual` / `extract_specs` / `get_page_text`
      tools per IMPLEMENTATION Task 4. They land in the SAME TOOL_SCHEMAS /
      TOOL_REGISTRY (backend.tools) — no graph change.
 
-  3. Memory          -> add a `summary` field + compaction node (MEMORY_DESIGN
+  2. Memory          -> add a `summary` field + compaction node (MEMORY_DESIGN
      §4-5) and a checkpointer (InMemorySaver, later RedisSaver).
 """
 
 import json
 from typing import Annotated, TypedDict
 
-from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
+from langchain_core.messages import AIMessage, BaseMessage, SystemMessage, ToolMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 
 from backend import llm
+from backend.config import get_settings
 from backend.tools import TOOL_REGISTRY, TOOL_SCHEMAS
 
 
@@ -80,10 +78,18 @@ def _serialize(messages: list[BaseMessage]) -> list[dict]:
     return out
 
 
+def _with_system_prompt(messages: list[BaseMessage]) -> list[BaseMessage]:
+    """Lead the messages with the grounding prompt; kept out of state."""
+    system = SystemMessage(content=get_settings().agent_system_prompt)
+    return [system, *messages]
+
+
 def chat_node(state: AgentState) -> dict:
     """Call OpenRouter (with tool schemas) and append the assistant's reply."""
     reply = llm.chat(
-        _serialize(state["messages"]), state["model"], tools=TOOL_SCHEMAS
+        _serialize(_with_system_prompt(state["messages"])),
+        state["model"],
+        tools=TOOL_SCHEMAS,
     )
     tool_calls = []
     for call in reply.get("tool_calls") or []:
