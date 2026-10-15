@@ -66,7 +66,7 @@ PDF Upload
   │
   ├─► Text & Unit Normalizer (Fixes `HiddenHorzOCR` artifacts, `Ib` -> `lb`, strip junk)
   │
-  ├─► Chunk Generator (Sliding window 512 tokens / 64 overlap, tagged with `vehicle_id`, `manual_id`, `page_number`)
+  ├─► Chunk Generator (Section-aware split, 512 tokens / 64 overlap, tables kept whole, tagged with `vehicle_id`, `manual_id`, `page_number`)
   │
   ├─► SentenceTransformer (`multi-qa-mpnet-base-dot-v1`) Embedder
   │
@@ -205,15 +205,15 @@ class AgentAnswer(BaseModel):
 Each task is scoped to be executed and verified in a single session:
 
 1. **Task 1: Ingestion Pipeline & Normalization**
-   - *Action*: Implement `ingest.py` integrating Docling with pinned config (`do_ocr=False`, `TableFormerMode.FAST`, threads=2, batch=1). Add OCR artifact cleaning (`SPECiFiCATIONS` $\to$ `SPECIFICATIONS`, `Ib` $\to$ `lb`).
-   - *Done when*: Running `python -m ingest /path/to/manual.pdf` extracts 503 pages under 1 hour with peak RSS $< 3.5$ GB, emitting normalized text and tables.
+   - *Action*: Implement `ingest.py` integrating Docling with pinned config (`do_ocr=False`, `TableFormerMode.FAST`, threads=2, batch=1). Run the text-layer probe and refuse a manual that carries no text layer (DECISIONS D13). Build the printed-to-physical page map from the page footer or the header, with the TOC table as the fallback (DECISIONS D12). Add OCR artifact cleaning (`SPECiFiCATIONS` $\to$ `SPECIFICATIONS`, `Ib` $\to$ `lb`).
+   - *Done when*: Running `python -m ingest /path/to/manual.pdf` extracts 503 pages in about 90 minutes with peak RSS $< 3.5$ GB, emitting normalized text and tables.
 
 2. **Task 2: Slicing & Thumbnail Pre-generation**
    - *Action*: Implement `slicer.py` using `pypdf` to produce 5-page window PDF slices and `PyMuPDF` for 150 DPI thumbnail images saved in `data/manuals/{manual_id}/`.
    - *Done when*: A slice request returns a clean ~50 KB vector PDF slice, and thumbnails render crisp images for sample pages 1, 9, 24, 82.
 
 3. **Task 3: Qdrant Indexing & Payload Filtering**
-   - *Action*: Implement chunking (512 char / 64 overlap), embedding via `multi-qa-mpnet-base-dot-v1`, and upsert into local Qdrant with `vehicle_id` and `manual_id` payload fields.
+   - *Action*: Implement chunking (512 tokens with 64 overlap, split on section headings, each table kept whole per DECISIONS D9 to D11), embedding via `multi-qa-mpnet-base-dot-v1`, and upsert into local Qdrant with `vehicle_id` and `manual_id` payload fields.
    - *Done when*: Querying `search_manual("oil change drain bolt", vehicle_id="demo_vehicle")` returns chunks from pages 24 and 82 with cross-encoder scores $> 0.7$.
 
 4. **Task 4: Agent Tool Contracts & LangGraph Graph**
