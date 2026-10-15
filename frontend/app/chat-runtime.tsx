@@ -3,12 +3,19 @@
 import {
   AssistantRuntimeProvider,
   useLocalRuntime,
+  useRemoteThreadListRuntime,
   type ChatModelAdapter,
   type TextMessagePart,
   type ThreadUserMessage,
 } from "@assistant-ui/react";
 import {
+  createLocalStorageAdapter,
+  createSimpleTitleAdapter,
+  type AsyncStorageLike,
+} from "@assistant-ui/core/react";
+import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -40,6 +47,27 @@ export function useModelSelection(): ModelSelection {
 
 type ChatResponse = { reply: string };
 
+// The browser localStorage behind the async interface the adapter expects.
+const storage: AsyncStorageLike = {
+  getItem: (key) => Promise.resolve(localStorage.getItem(key)),
+  setItem: (key, value) => {
+    localStorage.setItem(key, value);
+    return Promise.resolve();
+  },
+  removeItem: (key) => {
+    localStorage.removeItem(key);
+    return Promise.resolve();
+  },
+};
+
+// One adapter instance for the whole app. It persists thread metadata and
+// per-thread messages to localStorage under the `manualchat:` prefix.
+const threadListAdapter = createLocalStorageAdapter({
+  storage,
+  prefix: "manualchat:",
+  titleGenerator: createSimpleTitleAdapter(),
+});
+
 export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const [models, setModels] = useState<ModelOption[]>([]);
   const [model, setModel] = useState<string>("");
@@ -59,7 +87,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  const adapter = useMemo<ChatModelAdapter>(
+  const chatModelAdapter = useMemo<ChatModelAdapter>(
     () => ({
       async run({ messages, abortSignal }) {
         // The backend /chat takes a single query. Send the latest user turn;
@@ -100,7 +128,15 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const runtime = useLocalRuntime(adapter);
+  const runtimeHook = useCallback(
+    () => useLocalRuntime(chatModelAdapter),
+    [chatModelAdapter],
+  );
+
+  const runtime = useRemoteThreadListRuntime({
+    runtimeHook,
+    adapter: threadListAdapter,
+  });
 
   const selection = useMemo<ModelSelection>(
     () => ({ models, model, setModel }),
