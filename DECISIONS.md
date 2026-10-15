@@ -52,10 +52,26 @@ path returns — no spike, no config churn, just a deferred note.
 | D6 | Compaction token threshold, as a fraction of context window | `0.60` | `memory.compact_threshold_fraction` |
 | D7 | Rolling-buffer `keep_last` message count | `8` | `memory.keep_last_messages` |
 | D8 | Token counter for compaction | `cl100k_base` (tiktoken proxy) | `memory.tokenizer` |
+| D9 | Chunking strategy: split on section headings and keep each table inside one chunk | `true` | `ingest.chunk_structure_aware` |
+| D10 | Chunk size in tokens | `512` | `ingest.chunk_tokens` |
+| D11 | Chunk overlap in tokens | `64` | `ingest.chunk_overlap_tokens` |
+| D12 | Printed page numbers come from the page footer or header, with the TOC table as the fallback | `footer` | `ingest.printed_page_source` |
+| D13 | Refuse a manual that carries no text layer | `true` | `ingest.reject_scanned` |
+| D14 | Time budget for the ingest of one 500-page born-digital manual | `90` minutes | `ingest.time_budget_minutes` |
+| D15 | Token counter for chunking | `cl100k_base`, the counter that `memory.tokenizer` already names | `ingest.tokenizer` |
 
 D1–D3 apply defensively to the Rhino + Johnson manuals (the Rhino was produced through an
 Acrobat "Paper Capture" pipeline, so it may carry the ghost OCR layer — sanitize-at-source
 is harmless either way).
+
+D9 to D11 and D15 follow common practice. A chunk holds 256 to 1024 tokens, and
+neighbouring chunks share 10 to 20 percent of their text. D14 comes from the
+measured ingest rate in `SPIKE_FINDINGS.md`. The pinned docling configuration
+needs about 8 seconds for each page, so a 503-page manual needs about 67 minutes.
+
+Source: https://python.langchain.com/docs/how_to/recursive_text_splitter/ and
+https://docs.llamaindex.ai/en/stable/api_reference/node_parsers/sentence_splitter/
+Last-checked: 2026-10-15
 
 ---
 
@@ -74,12 +90,16 @@ is harmless either way).
 > **Later improvement**: expand `models.options` with more models — no schema/flow change,
 > it's just a longer list feeding the same dropdown.
 >
-> OpenRouter slugs (pinned in config, not code):
-> - DeepSeek Pro → `deepseek/deepseek-pro-latest`
-> - DeepSeek Flash → `deepseek/deepseek-flash-latest`
+> OpenRouter slugs (pinned in config, not code). OpenRouter serves the DeepSeek
+> `-latest` aliases as prerelease, so each slug carries a `~` prefix:
+> - DeepSeek Pro → `~deepseek/deepseek-pro-latest`
+> - DeepSeek Flash → `~deepseek/deepseek-flash-latest`
 >
 > Reasoning: both models run with **medium** reasoning effort for now
 > (`models.reasoning_effort = "medium"`).
+
+Source: https://openrouter.ai/docs/quickstart
+Last-checked: 2026-10-15
 
 ---
 
@@ -108,6 +128,62 @@ is harmless either way).
 | L1 | The spec ledger lives in **Qdrant** and is **populated lazily** — only when the agent retrieves a table that answers a spec question. Values are parsed **verbatim from the source table** (never from model prose output) and upserted keyed by `(vehicle_id, manual_id, subject)`. No full-manual preprocessing at ingest. |
 | L2 | **MVP scope = table-derived specs only.** A value buried in prose is answered with citation grounding, not written into the ledger. |
 | L3 | Revisit Postgres **only if** post-MVP multi-manual conflict attribution requires relational joins across manuals. |
+
+---
+
+## Retrieval (RAG pipeline)
+
+The ingestion stages and the retrieval models. IMPLEMENTATION §2.2 and Tasks 1 to
+4 hold the design. These entries fix the values that the design left open, and
+the values that the documents disagreed about.
+
+| # | Decision | Default | Config key |
+|---|---|---|---|
+| R3 | Retrieval backend in development: a local Qdrant service in `docker-compose.yml` | local service | `qdrant.url` |
+| R4 | Qdrant collection name | `manualchat_chunks` | `qdrant.collection` |
+| R5 | Qdrant API key | Empty in development, because the local service needs no key. Production supplies a secret through the environment. The value never enters the repository. | `qdrant.api_key` |
+| R6 | Embedding model for the first pass | `multi-qa-mpnet-base-dot-v1` | `retrieval.embed_model` |
+| R7 | Reranker model for the second pass | `cross-encoder/ms-marco-MiniLM-L-6-v2` | `retrieval.rerank_model` |
+| R8 | Candidate count handed to the reranker | `50` | `retrieval.candidate_k` |
+| R9 | Chunk count returned to the agent | `5` | `retrieval.top_n` |
+| R10 | Smallest rerank score that opens the Manual Viewer page set | **TBD**. Record the value after the chunk eval runs. | `retrieval.viewer_min_score` |
+
+R3 keeps DECISIONS R1 for production. R1 names Qdrant Cloud in `us-east-1`. The
+local service is a development choice, so an ingest run and a query need no
+network and no credentials.
+
+Source: https://qdrant.tech/documentation/ and
+https://huggingface.co/sentence-transformers/multi-qa-mpnet-base-dot-v1 and
+https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2
+Last-checked: 2026-10-15
+
+---
+
+## Agent graph and answer contract
+
+| # | Decision | Value | Config key |
+|---|---|---|---|
+| A1 | The agent graph is a Supervisor plus Synthesizer topology | IMPLEMENTATION §2.3 | — |
+| A2 | Hop cap on the tool loop | `4` | `agent.max_hops` |
+| A3 | The Synthesizer returns a structured `AgentAnswer`: a summary, a numbered procedure, the specs, the citations, and a confidence value | IMPLEMENTATION §4.1 | API contract |
+| A4 | The system prompt carries the grounding rules. Every claim names its page, and the answer states plainly when the manual holds no answer. | — | prompt text |
+| A5 | Confidence gate between a full answer and a gap acknowledgment | **TBD**. Record the value after the eval runs. | `agent.confidence_gate` |
+
+The graph runs as a flat `chat ↔ tools` loop today. Until the Synthesizer lands,
+`/chat` returns markdown text with `[Page N]` citations.
+
+---
+
+## Testing and continuous integration
+
+| # | Decision | Value |
+|---|---|---|
+| T1 | Unit tests inject a fake embedder, so no test downloads a model | — |
+| T2 | The end-to-end retrieval test carries a pytest marker and stays out of the default run | `@pytest.mark.heavy` |
+| T3 | The default CI run stays cheap: dependency install, the syntax check, and the marked test excluded | — |
+
+Docling, torch, and sentence-transformers make a full install slow and large. T1
+and T2 keep the default check fast.
 
 ---
 
