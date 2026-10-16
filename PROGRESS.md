@@ -4,6 +4,13 @@
 
 - Backend: FastAPI with `/health`, `/models`, and `/chat`. The chat reply goes
   through the LangGraph graph.
+- Manual storage: `POST /manuals` stores an uploaded PDF under
+  `manuals/{manual_id}/` (a server-generated UUID dir with `source.pdf` and a
+  `manual.json` record), and `GET /manuals` + `GET /manuals/{id}` read it back
+  (DECISIONS U1). The directory is the `manuals_dir` config value (env
+  `MANUALS_DIR`), bind-mounted into the Docker backend as `/data/manuals`.
+  This is persist-and-register only; the Docling ingest pipeline (the next
+  milestone) fills the same directory.
 - Tool calling: the graph runs a `chat -> tools -> chat` loop. The `calculator`
   and three RAG tools (`search_manual`, `extract_specs`, `get_page_text`) are in
   `backend/tools.py`. The RAG tools are stubs that return sample data. Real

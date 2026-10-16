@@ -9,9 +9,12 @@ __pycache__/
 .env
 .pytest_cache/
 
-# Large PDF binaries under manuals/
+# Manuals are dev uploads (DECISIONS U1): the flat working-set PDFs and each
+# manual's generated `{manual_id}/` storage directory are runtime data, not
+# source. Keep them out of git.
 manuals/*.pdf
 manuals/**/*.pdf
+manuals/*/
 
 Makefile.local
 
