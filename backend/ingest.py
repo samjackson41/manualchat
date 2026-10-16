@@ -15,7 +15,9 @@ normalized text and tables that later stages chunk and index. Stages, in order:
 5. Persist: per-page text, table Markdown, and a summary under
    ``manuals/{manual_id}/``, then update the manual record.
 
-Run it with ``python -m backend.ingest <manual_id>``.
+Run it with ``python -m backend.ingest <manual_id>``. On upload, the API calls
+``ingest_in_background`` instead so the pipeline runs in a worker thread after
+the response.
 """
 
 from __future__ import annotations
@@ -275,6 +277,20 @@ def ingest_manual(manual_id: str, converter=None) -> IngestResult:
     )
     storage.update_manual(manual_id, page_count=probe.page_count, status="ready")
     return result
+
+
+def ingest_in_background(manual_id: str) -> None:
+    """Run ingest for a worker thread and record a failure on the manual.
+
+    The upload endpoint schedules this after the response. On success,
+    ``ingest_manual`` writes ``status="ready"``. On any failure this writes
+    ``status="error"`` and re-raises so the server logs the cause.
+    """
+    try:
+        ingest_manual(manual_id)
+    except Exception:
+        storage.update_manual(manual_id, status="error")
+        raise
 
 
 def _main(argv: list[str]) -> int:

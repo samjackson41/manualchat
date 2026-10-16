@@ -33,7 +33,7 @@ class Manual(BaseModel):
     display_name: str
     source_filename: str
     kind: Literal["oem", "aftermarket", "supplement", "other"] = "oem"
-    status: Literal["processing", "ready", "error"] = "ready"
+    status: Literal["processing", "ready", "error"] = "processing"
     page_count: int = 0
     chunk_count: int = 0
     created_at: datetime = Field(default_factory=_utcnow)

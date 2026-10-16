@@ -9,13 +9,15 @@
   `manual.json` record), and `GET /manuals` + `GET /manuals/{id}` read it back
   (DECISIONS U1). The directory is the `manuals_dir` config value (env
   `MANUALS_DIR`), bind-mounted into the Docker backend as `/data/manuals`.
-- Ingest: `python -m backend.ingest <manual_id>` runs the Docling pipeline
-  (IMPLEMENTATION Task 1). It probes the text layer and refuses a manual with
-  no text (DECISIONS D1), strips the hidden OCR font (D2), converts with
-  `do_ocr=False` and fast tables, normalizes unit and header noise (D3), and
-  writes `page_text/`, `tables.json`, and `ingest.json` under the manual's
-  directory. The pipeline still needs the real `pl.pdf` run to confirm the
-  Docling conversion end to end.
+- Ingest: uploading a manual sets `status` to `processing` and runs the Docling
+  pipeline in the background (IMPLEMENTATION Task 1). The pipeline probes the
+  text layer and refuses a manual with no text (DECISIONS D1), strips the
+  hidden OCR font (D2), converts with `do_ocr=False` and fast tables,
+  normalizes unit and header noise (D3), then writes `page_text/`,
+  `tables.json`, and `ingest.json` under the manual's directory and sets
+  `status` to `ready` (or `error`). The same pipeline runs by hand with
+  `python -m backend.ingest <manual_id>`. The real run on `pl.pdf` produced 56
+  pages and 9 tables.
 - Tool calling: the graph runs a `chat -> tools -> chat` loop. The `calculator`
   and three RAG tools (`search_manual`, `extract_specs`, `get_page_text`) are in
   `backend/tools.py`. The RAG tools are stubs that return sample data. Real

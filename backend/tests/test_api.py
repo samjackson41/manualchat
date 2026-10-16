@@ -8,6 +8,7 @@ the tests are deterministic and need no API key or network.
 import pytest
 from fastapi.testclient import TestClient
 
+from backend import ingest
 from backend import llm
 from backend.api.main import app
 from backend.config import get_settings
@@ -148,7 +149,15 @@ def _pdf(name="rhino.pdf", body=b"%PDF-1.4 fake manual"):
     return {"file": (name, body, "application/pdf")}
 
 
-def test_upload_list_and_get_manual(manuals_dir):
+@pytest.fixture
+def no_ingest(monkeypatch):
+    """Stub the background ingest so an upload starts without running Docling."""
+    scheduled = []
+    monkeypatch.setattr(ingest, "ingest_in_background", lambda mid: scheduled.append(mid))
+    return scheduled
+
+
+def test_upload_list_and_get_manual(manuals_dir, no_ingest):
     client = TestClient(app)
     resp = client.post(
         "/manuals",
@@ -161,7 +170,10 @@ def test_upload_list_and_get_manual(manuals_dir):
     assert manual["display_name"] == "Rhino 700"
     assert manual["source_filename"] == "rhino.pdf"
     assert manual["kind"] == "oem"
-    assert manual["status"] == "ready"
+    assert manual["status"] == "processing"
+
+    # Upload schedules the ingest pipeline for the new manual.
+    assert no_ingest == [manual["manual_id"]]
 
     # The PDF bytes and the record both landed in a UUID subdirectory.
     manual_dir = manuals_dir / manual["manual_id"]
@@ -205,7 +217,7 @@ def test_upload_rejects_unknown_kind(manuals_dir):
     assert "kind must be one of" in resp.json()["detail"]
 
 
-def test_upload_defaults_kind_to_oem(manuals_dir):
+def test_upload_defaults_kind_to_oem(manuals_dir, no_ingest):
     client = TestClient(app)
     resp = client.post(
         "/manuals",

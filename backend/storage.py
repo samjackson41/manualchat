@@ -62,7 +62,7 @@ def store_manual(
         display_name=display_name,
         source_filename=source_filename,
         kind=kind,
-        status="ready",
+        status="processing",
     )
     (manual_dir / "manual.json").write_text(
         json.dumps(manual.model_dump(mode="json"), indent=2)

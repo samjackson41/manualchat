@@ -176,3 +176,16 @@ def test_ingest_manual_refuses_a_manual_with_no_text_layer():
         ingest.ingest_manual(manual_id, converter=_FakeConverter(_FakeDocument([], [])))
 
     assert storage.get_manual(manual_id).status == "error"
+
+
+def test_ingest_in_background_marks_error_and_reraises(monkeypatch):
+    manual_id = _store_manual(["Remove the drain bolt and drain the oil fully."])
+
+    def boom(_manual_id: str):
+        raise RuntimeError("converter crashed")
+
+    monkeypatch.setattr(ingest, "ingest_manual", boom)
+    with pytest.raises(RuntimeError, match="converter crashed"):
+        ingest.ingest_in_background(manual_id)
+
+    assert storage.get_manual(manual_id).status == "error"

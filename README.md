@@ -108,10 +108,13 @@ request entirely.
 - **RAG** → the contracts and stub bodies for `search_manual` / `extract_specs` /
   `get_page_text` are in `backend/tools.py`. Real retrieval replaces the stub
   bodies (IMPLEMENTATION Task 4). The graph loop is already in place.
-- **Ingest** → run `python -m backend.ingest <manual_id>` to fill a stored
-  manual's directory with `page_text/`, `tables.json`, and `ingest.json` (the
-  Docling pipeline, IMPLEMENTATION Task 1). The probe refuses a manual with no
-  text layer. The next steps are chunking and indexing (Tasks 3-4).
+- **Ingest** → `POST /manuals` stores the PDF, sets `status` to `processing`,
+  and runs the Docling pipeline in the background (IMPLEMENTATION Task 1). It
+  fills the manual's directory with `page_text/`, `tables.json`, and
+  `ingest.json`, then sets `status` to `ready` or `error`. Clients poll
+  `GET /manuals/{id}` for the outcome. The pipeline is also runnable by hand
+  with `python -m backend.ingest <manual_id>`. The next steps are chunking and
+  indexing (Tasks 3-4).
 - **Memory** → add `summary` field + compaction node (MEMORY_DESIGN §4-5) and a
   checkpointer.
 
