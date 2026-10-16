@@ -89,6 +89,15 @@ in the repo. If it's missing, `POST /chat` fails fast with a clear error while
 | `MODEL_MAX_TOKENS` | _(unset)_ | **TBD** — omit to use provider default |
 | `AGENT_SYSTEM_PROMPT` | the grounding prompt text | DECISIONS A3 — prepended before the first chat call |
 | `MANUALS_DIR` | `manuals` | DECISIONS U1 — where each uploaded manual lands as `{manual_id}/`; in Docker this is `/data/manuals` |
+| `INGEST_OCR_MIN_CHARS_PER_PAGE` | `50` | DECISIONS D1 — a manual below this average needs OCR and is refused |
+| `INGEST_STRIP_HIDDEN_OCR_LAYER` | `true` | DECISIONS D2 — remove the ghost OCR font before Docling |
+| `INGEST_NORMALIZATION_ENABLED` | `true` | DECISIONS D3 — repair unit and header noise after Docling |
+| `INGEST_USE_PRINTED_PAGE_NUMBERS` | `false` | DECISIONS D12 — citations use the PDF page number |
+| `INGEST_DO_OCR` | `false` | DECISIONS S2 — OCR stays off for digital manuals |
+| `INGEST_DO_TABLE_STRUCTURE` | `true` | IMPLEMENTATION Task 1 — turn on table extraction |
+| `INGEST_TABLE_MODE` | `FAST` | IMPLEMENTATION Task 1 — the fast table model |
+| `INGEST_THREADS` | `2` | IMPLEMENTATION Task 1 — keeps peak memory low |
+| `INGEST_BATCH_SIZE` | `1` | IMPLEMENTATION Task 1 — one page per batch |
 
 Generation params are **under research** and surfaced as `MODEL_*` env vars so
 they can be tuned without code edits. Unset values are omitted from the OpenRouter
@@ -99,10 +108,13 @@ request entirely.
 - **RAG** → the contracts and stub bodies for `search_manual` / `extract_specs` /
   `get_page_text` are in `backend/tools.py`. Real retrieval replaces the stub
   bodies (IMPLEMENTATION Task 4). The graph loop is already in place.
-- **Ingest** → `POST /manuals` stores each uploaded PDF under
-  `manuals/{manual_id}/` (DECISIONS U1), but does not process it yet. The
-  Docling pipeline (IMPLEMENTATION Task 1) is the next milestone and fills the
-  same directory with the normalized, chunked, indexed result.
+- **Ingest** → `POST /manuals` stores the PDF, sets `status` to `processing`,
+  and runs the Docling pipeline in the background (IMPLEMENTATION Task 1). It
+  fills the manual's directory with `page_text/`, `tables.json`, and
+  `ingest.json`, then sets `status` to `ready` or `error`. Clients poll
+  `GET /manuals/{id}` for the outcome. The pipeline is also runnable by hand
+  with `python -m backend.ingest <manual_id>`. The next steps are chunking and
+  indexing (Tasks 3-4).
 - **Memory** → add `summary` field + compaction node (MEMORY_DESIGN §4-5) and a
   checkpointer.
 

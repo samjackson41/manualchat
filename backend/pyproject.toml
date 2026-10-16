@@ -12,6 +12,8 @@ dependencies = [
     "pydantic>=2.8.0",
     "pydantic-settings>=2.4.0",
     "python-multipart>=0.0.32",
+    "docling>=2.52.0",
+    "pymupdf>=1.28.2",
 ]
 
 # This project is NOT itself installed as a package — the `backend/` source is

@@ -23,8 +23,9 @@ def _utcnow() -> datetime:
 class Manual(BaseModel):
     """A registered, locally stored manual (DECISIONS U1).
 
-    `page_count` and `chunk_count` are ingest outputs and are added by that
-    later milestone; storage only records what the upload provides.
+    `page_count` and `chunk_count` are ingest outputs (IMPLEMENTATION §4.1).
+    Storage records only what the upload provides; the ingest pipeline fills
+    them in later.
     """
 
     manual_id: str
@@ -32,8 +33,39 @@ class Manual(BaseModel):
     display_name: str
     source_filename: str
     kind: Literal["oem", "aftermarket", "supplement", "other"] = "oem"
-    status: Literal["processing", "ready", "error"] = "ready"
+    status: Literal["processing", "ready", "error"] = "processing"
+    page_count: int = 0
+    chunk_count: int = 0
     created_at: datetime = Field(default_factory=_utcnow)
+
+
+class TextLayerProbe(BaseModel):
+    """The text-layer check that gates OCR (DECISIONS D1, S4)."""
+
+    page_count: int
+    total_chars: int
+    avg_chars_per_page: float
+    threshold: float
+    needs_ocr: bool
+
+
+class IngestTable(BaseModel):
+    """One table exported to Markdown during ingest (IMPLEMENTATION Task 1)."""
+
+    page_number: int
+    caption: Optional[str] = None
+    markdown: str
+
+
+class IngestResult(BaseModel):
+    """The on-disk summary written by the ingest pipeline."""
+
+    manual_id: str
+    page_count: int
+    table_count: int
+    probe: TextLayerProbe
+    normalized: bool
+    hidden_ocr_detected: bool
 
 
 class ChunkPayload(BaseModel):

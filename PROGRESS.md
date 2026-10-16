@@ -9,8 +9,15 @@
   `manual.json` record), and `GET /manuals` + `GET /manuals/{id}` read it back
   (DECISIONS U1). The directory is the `manuals_dir` config value (env
   `MANUALS_DIR`), bind-mounted into the Docker backend as `/data/manuals`.
-  This is persist-and-register only; the Docling ingest pipeline (the next
-  milestone) fills the same directory.
+- Ingest: uploading a manual sets `status` to `processing` and runs the Docling
+  pipeline in the background (IMPLEMENTATION Task 1). The pipeline probes the
+  text layer and refuses a manual with no text (DECISIONS D1), strips the
+  hidden OCR font (D2), converts with `do_ocr=False` and fast tables,
+  normalizes unit and header noise (D3), then writes `page_text/`,
+  `tables.json`, and `ingest.json` under the manual's directory and sets
+  `status` to `ready` (or `error`). The same pipeline runs by hand with
+  `python -m backend.ingest <manual_id>`. The real run on `pl.pdf` produced 56
+  pages and 9 tables.
 - Tool calling: the graph runs a `chat -> tools -> chat` loop. The `calculator`
   and three RAG tools (`search_manual`, `extract_specs`, `get_page_text`) are in
   `backend/tools.py`. The RAG tools are stubs that return sample data. Real
@@ -42,10 +49,11 @@
 
 ## What is left
 
-- The RAG pipeline, in phases. The prototype runs against the 56-page `pl.pdf`.
-  The graph stays a flat `chat ↔ tools` loop and the answer stays markdown text
-  with `[Page N]` citations. The ratified values are in `DECISIONS.md`
-  (D9 to D13, R3 to R9, A1 to A3, T1 to T3).
+- The RAG pipeline, in phases. The ingest stage (Task 1) is done; chunking and
+  indexing (Task 3) and real retrieval (Task 4) are next. The prototype runs
+  against the 56-page `pl.pdf`. The graph stays a flat `chat ↔ tools` loop and
+  the answer stays markdown text with `[Page N]` citations. The ratified values
+  are in `DECISIONS.md` (D9 to D13, R3 to R9, A1 to A3, T1 to T3).
 - The chunk eval: about 15 questions with known answer pages from `pl.pdf`, to
   check recall and citation precision and pick the chunk size and overlap.
 - Future work (DECISIONS Deferred): the Supervisor and Synthesizer graph, the

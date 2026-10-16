@@ -80,6 +80,28 @@ class Settings(BaseSettings):
     # with the source PDF and its JSON record inside it.
     manuals_dir: str = "manuals"
 
+    # --- Ingestion pipeline (DECISIONS D1-D3, D12; IMPLEMENTATION Task 1) ---
+    # OCR is off for MVP because every manual is born-digital (DECISIONS S2).
+    ingest_do_ocr: bool = False
+    # The text-layer probe: a manual needs OCR when its average text per page
+    # falls below this many characters (DECISIONS D1).
+    ingest_ocr_min_chars_per_page: float = 50.0
+    # Strip an invisible OCR font layer (e.g. `HiddenHorzOCR`) before Docling
+    # reads the PDF (DECISIONS D2).
+    ingest_strip_hidden_ocr_layer: bool = True
+    # Run the unit/header normalization stage explicitly after Docling
+    # (DECISIONS D3).
+    ingest_normalization_enabled: bool = True
+    # Citations carry the physical PDF page number; printed page numbers are
+    # not recovered (DECISIONS D12).
+    ingest_use_printed_page_numbers: bool = False
+    # Docling runtime flags. `FAST` table mode and the low thread/batch values
+    # keep peak memory below the spike's documented crash threshold.
+    ingest_do_table_structure: bool = True
+    ingest_table_mode: str = "FAST"
+    ingest_threads: int = 2
+    ingest_batch_size: int = 1
+
     @field_validator("model_options", mode="before")
     @classmethod
     def _split_model_options(cls, value):
