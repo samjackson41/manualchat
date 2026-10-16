@@ -208,7 +208,7 @@ def _tables(document, normalize: bool) -> list[IngestTable]:
         if not item.prov:
             continue
         page = item.prov[0].page_no
-        markdown = item.export_to_markdown()
+        markdown = item.export_to_markdown(document)
         caption = item.caption_text(document) or None
         if normalize:
             markdown = normalize_text(markdown)

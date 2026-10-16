@@ -64,7 +64,7 @@ class _FakeTable:
         self._caption = caption
         self.prov = [_FakeProv(page_no)]
 
-    def export_to_markdown(self) -> str:
+    def export_to_markdown(self, doc=None) -> str:
         return self._markdown
 
     def caption_text(self, doc) -> str:
