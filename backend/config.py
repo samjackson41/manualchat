@@ -8,6 +8,7 @@ env vars case-insensitively, so:
     model_temperature       <- MODEL_TEMPERATURE
     model_max_tokens        <- MODEL_MAX_TOKENS
     agent_system_prompt     <- AGENT_SYSTEM_PROMPT
+    manuals_dir             <- MANUALS_DIR
     model_default           <- MODEL_DEFAULT
     model_options           <- MODEL_OPTIONS   (comma-separated)
     openrouter_api_key      <- OPENROUTER_API_KEY
@@ -73,6 +74,11 @@ class Settings(BaseSettings):
         "Use the retrieval tools (search_manual, extract_specs, get_page_text) "
         "when the question needs facts or steps from the manual."
     )
+
+    # --- Local manual storage (DECISIONS U1) ---
+    # Directory that holds one `{manual_id}/` subdirectory per uploaded manual,
+    # with the source PDF and its JSON record inside it.
+    manuals_dir: str = "manuals"
 
     @field_validator("model_options", mode="before")
     @classmethod
