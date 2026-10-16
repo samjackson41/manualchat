@@ -10,9 +10,30 @@ These are the *output* contracts of the tools. The *input* contracts (the
 OpenAI function-calling schemas the model sees) live in `tools.py`.
 """
 
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class Manual(BaseModel):
+    """A registered, locally stored manual (DECISIONS U1).
+
+    `page_count` and `chunk_count` are ingest outputs and are added by that
+    later milestone; storage only records what the upload provides.
+    """
+
+    manual_id: str
+    vehicle_id: str
+    display_name: str
+    source_filename: str
+    kind: Literal["oem", "aftermarket", "supplement", "other"] = "oem"
+    status: Literal["processing", "ready", "error"] = "ready"
+    created_at: datetime = Field(default_factory=_utcnow)
 
 
 class ChunkPayload(BaseModel):

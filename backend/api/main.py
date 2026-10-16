@@ -5,7 +5,9 @@ calling `llm.chat` directly — this is what proves the reply went through the
 LangGraph graph (the "done when" criterion).
 """
 
-from fastapi import FastAPI, HTTPException
+from typing import get_args
+
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
@@ -13,6 +15,8 @@ from pydantic import BaseModel
 from backend.agent.graph import graph
 from backend.config import get_settings, model_label
 from backend.llm import LLMError
+from backend import storage
+from backend.schemas import Manual
 
 app = FastAPI(title="ManualChat API", version="0.1.0")
 
@@ -61,3 +65,52 @@ def chat(req: ChatRequest) -> dict:
 
     reply = result["messages"][-1].content
     return {"reply": reply, "model": model}
+
+
+# The kinds allowed for an uploaded manual, taken from the `Manual` schema's
+# `Literal` so the two cannot drift apart.
+_MANUAL_KINDS: set[str] = set(get_args(Manual.model_fields["kind"].annotation))
+
+
+@app.post("/manuals")
+async def create_manual(
+    file: UploadFile = File(...),
+    vehicle_id: str = Form(...),
+    display_name: str = Form(...),
+    kind: str = Form("oem"),
+) -> Manual:
+    """Store an uploaded manual PDF under `manuals_dir/{manual_id}/`."""
+    if not vehicle_id.strip():
+        raise HTTPException(status_code=400, detail="vehicle_id is required")
+    if not display_name.strip():
+        raise HTTPException(status_code=400, detail="display_name is required")
+    if kind not in _MANUAL_KINDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"kind must be one of {sorted(_MANUAL_KINDS)}",
+        )
+
+    content = await file.read()
+    if not content.startswith(b"%PDF"):
+        raise HTTPException(status_code=400, detail="file is not a PDF")
+
+    return storage.store_manual(
+        source_pdf=content,
+        vehicle_id=vehicle_id.strip(),
+        display_name=display_name.strip(),
+        kind=kind,
+        source_filename=file.filename or "manual.pdf",
+    )
+
+
+@app.get("/manuals")
+def list_manuals() -> list[Manual]:
+    return storage.list_manuals()
+
+
+@app.get("/manuals/{manual_id}")
+def get_manual(manual_id: str) -> Manual:
+    manual = storage.get_manual(manual_id)
+    if manual is None:
+        raise HTTPException(status_code=404, detail="manual not found")
+    return manual

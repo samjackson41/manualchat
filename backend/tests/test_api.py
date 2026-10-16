@@ -132,3 +132,85 @@ def test_chat_without_api_key_returns_400(monkeypatch):
     resp = client.post("/chat", json={"query": "hi"})
     assert resp.status_code == 400
     assert "OPENROUTER_API_KEY" in resp.json()["detail"]
+
+
+# --- Manual storage (DECISIONS U1) ---
+
+
+@pytest.fixture
+def manuals_dir(tmp_path, monkeypatch):
+    """Point storage at a throwaway directory (MANUALS_DIR, cleared per test)."""
+    monkeypatch.setenv("MANUALS_DIR", str(tmp_path / "manuals"))
+    return tmp_path / "manuals"
+
+
+def _pdf(name="rhino.pdf", body=b"%PDF-1.4 fake manual"):
+    return {"file": (name, body, "application/pdf")}
+
+
+def test_upload_list_and_get_manual(manuals_dir):
+    client = TestClient(app)
+    resp = client.post(
+        "/manuals",
+        files=_pdf(),
+        data={"vehicle_id": "v1", "display_name": "Rhino 700", "kind": "oem"},
+    )
+    assert resp.status_code == 200
+    manual = resp.json()
+    assert manual["vehicle_id"] == "v1"
+    assert manual["display_name"] == "Rhino 700"
+    assert manual["source_filename"] == "rhino.pdf"
+    assert manual["kind"] == "oem"
+    assert manual["status"] == "ready"
+
+    # The PDF bytes and the record both landed in a UUID subdirectory.
+    manual_dir = manuals_dir / manual["manual_id"]
+    assert (manual_dir / "source.pdf").read_bytes() == b"%PDF-1.4 fake manual"
+    assert (manual_dir / "manual.json").is_file()
+
+    listing = client.get("/manuals")
+    assert listing.status_code == 200
+    assert [m["manual_id"] for m in listing.json()] == [manual["manual_id"]]
+
+    fetched = client.get(f"/manuals/{manual['manual_id']}")
+    assert fetched.status_code == 200
+    assert fetched.json() == manual
+
+
+def test_get_unknown_manual_returns_404(manuals_dir):
+    client = TestClient(app)
+    resp = client.get("/manuals/does-not-exist")
+    assert resp.status_code == 404
+
+
+def test_upload_rejects_non_pdf(manuals_dir):
+    client = TestClient(app)
+    resp = client.post(
+        "/manuals",
+        files={"file": ("notes.txt", b"not a pdf", "text/plain")},
+        data={"vehicle_id": "v1", "display_name": "Notes", "kind": "oem"},
+    )
+    assert resp.status_code == 400
+    assert "not a PDF" in resp.json()["detail"]
+
+
+def test_upload_rejects_unknown_kind(manuals_dir):
+    client = TestClient(app)
+    resp = client.post(
+        "/manuals",
+        files=_pdf(),
+        data={"vehicle_id": "v1", "display_name": "Rhino 700", "kind": "pamphlet"},
+    )
+    assert resp.status_code == 400
+    assert "kind must be one of" in resp.json()["detail"]
+
+
+def test_upload_defaults_kind_to_oem(manuals_dir):
+    client = TestClient(app)
+    resp = client.post(
+        "/manuals",
+        files=_pdf(),
+        data={"vehicle_id": "v1", "display_name": "Rhino 700"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["kind"] == "oem"

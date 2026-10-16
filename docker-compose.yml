@@ -10,6 +10,8 @@ services:
     environment:
       # Passed through from the host shell. Never hardcoded or committed.
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      # Manuals persist on the host (DECISIONS U1); see the bind mount below.
+      - MANUALS_DIR=/data/manuals
     ports:
       - "8000:8000"
     volumes:
@@ -18,6 +20,8 @@ services:
       # /app/.venv sits OUTSIDE this mount and survives; uvicorn --reload watches
       # the mounted source for hot reload.
       - ./backend:/app/backend
+      # Uploaded manuals live in the host's `manuals/` dir and survive rebuilds.
+      - ./manuals:/data/manuals
 
   frontend:
     build:

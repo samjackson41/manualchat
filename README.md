@@ -21,7 +21,9 @@ manualchat/
     llm.py           # thin OpenRouter wrapper (httpx) -> chat(messages, model, params, tools)
     tools.py         # agent tools: OpenAI schemas + executors (calculator, RAG stubs)
     agent/graph.py   # StateGraph: AgentState, chat -> tools -> chat loop (iteration point)
-    api/main.py      # FastAPI: GET /health, GET /models, POST /chat
+    api/main.py      # FastAPI: /health, /models, /chat, and /manuals upload + read
+    storage.py       # local manual storage: manuals/{manual_id}/ (DECISIONS U1)
+    schemas.py       # shared Pydantic contracts (Manual, chunk/spec/search models)
     pyproject.toml   #                 uv project (package = false; deps only)
     uv.lock          #                 generated lockfile (deps only)
     Dockerfile
@@ -86,6 +88,7 @@ in the repo. If it's missing, `POST /chat` fails fast with a clear error while
 | `MODEL_TEMPERATURE` | _(unset)_ | **TBD** — omit to use provider default |
 | `MODEL_MAX_TOKENS` | _(unset)_ | **TBD** — omit to use provider default |
 | `AGENT_SYSTEM_PROMPT` | the grounding prompt text | DECISIONS A3 — prepended before the first chat call |
+| `MANUALS_DIR` | `manuals` | DECISIONS U1 — where each uploaded manual lands as `{manual_id}/`; in Docker this is `/data/manuals` |
 
 Generation params are **under research** and surfaced as `MODEL_*` env vars so
 they can be tuned without code edits. Unset values are omitted from the OpenRouter
@@ -96,6 +99,10 @@ request entirely.
 - **RAG** → the contracts and stub bodies for `search_manual` / `extract_specs` /
   `get_page_text` are in `backend/tools.py`. Real retrieval replaces the stub
   bodies (IMPLEMENTATION Task 4). The graph loop is already in place.
+- **Ingest** → `POST /manuals` stores each uploaded PDF under
+  `manuals/{manual_id}/` (DECISIONS U1), but does not process it yet. The
+  Docling pipeline (IMPLEMENTATION Task 1) is the next milestone and fills the
+  same directory with the normalized, chunked, indexed result.
 - **Memory** → add `summary` field + compaction node (MEMORY_DESIGN §4-5) and a
   checkpointer.
 
