@@ -172,7 +172,7 @@ Last-checked: 2026-10-15
 |---|---|---|---|
 | A1 | The POC graph stays a flat `chat ↔ tools` loop. The Supervisor plus Synthesizer topology in IMPLEMENTATION §2.3 is future work. | — | — |
 | A2 | The agent answers in markdown text with `[Page N]` citations. The structured `AgentAnswer` in IMPLEMENTATION §4.1 is future work. | — | — |
-| A3 | The system prompt is a separate feature branch that lands before the RAG work. It carries the grounding rules: every claim names its page, and the answer states plainly when the manual holds no answer. | — | prompt text |
+| A3 | The system prompt carries the grounding rules: every claim and step names its page, the answer states plainly when the manual holds no answer, and conflicting values show both pages. The prompt text lives in config (field `agent_system_prompt`, env `AGENT_SYSTEM_PROMPT`) so it is tunable, and the graph prepends it before the first chat call. | — | `agent.system_prompt` |
 
 The graph runs as a flat `chat ↔ tools` loop today, and `/chat` returns markdown
 text with `[Page N]` citations. The Supervisor, the Synthesizer, the

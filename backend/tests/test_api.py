@@ -66,8 +66,28 @@ def test_chat_plain_reply(monkeypatch):
         "model": "~deepseek/deepseek-flash-latest",
     }
 
-    # The graph fed the user's query to the model as the first message.
-    assert calls[0]["messages"][0] == {"role": "user", "content": "hi"}
+    # The graph leads with the system prompt, then the user's query.
+    assert calls[0]["messages"][0]["role"] == "system"
+    assert calls[0]["messages"][1] == {"role": "user", "content": "hi"}
+
+
+def test_chat_system_prompt_is_first(monkeypatch):
+    """The grounding prompt is the first message the model receives."""
+    fake, calls = _fake_llm(
+        [{"role": "assistant", "content": "ok", "tool_calls": None}]
+    )
+    monkeypatch.setattr(llm, "chat", fake)
+
+    client = TestClient(app)
+    resp = client.post("/chat", json={"query": "what is the oil capacity?"})
+    assert resp.status_code == 200
+
+    messages = calls[0]["messages"]
+    assert messages[0] == {
+        "role": "system",
+        "content": get_settings().agent_system_prompt,
+    }
+    assert messages[1] == {"role": "user", "content": "what is the oil capacity?"}
 
 
 def test_chat_tool_loop(monkeypatch):

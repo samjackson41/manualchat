@@ -85,6 +85,7 @@ in the repo. If it's missing, `POST /chat` fails fast with a clear error while
 | `MODEL_REASONING_EFFORT` | `medium` | ratified (DECISIONS M note) |
 | `MODEL_TEMPERATURE` | _(unset)_ | **TBD** — omit to use provider default |
 | `MODEL_MAX_TOKENS` | _(unset)_ | **TBD** — omit to use provider default |
+| `AGENT_SYSTEM_PROMPT` | the grounding prompt text | DECISIONS A3 — prepended before the first chat call |
 
 Generation params are **under research** and surfaced as `MODEL_*` env vars so
 they can be tuned without code edits. Unset values are omitted from the OpenRouter
@@ -92,7 +93,6 @@ request entirely.
 
 ## Where the next change goes (documented in code)
 
-- **System prompt** → prepend a `system` message to `messages` (no new node).
 - **RAG** → the contracts and stub bodies for `search_manual` / `extract_specs` /
   `get_page_text` are in `backend/tools.py`. Real retrieval replaces the stub
   bodies (IMPLEMENTATION Task 4). The graph loop is already in place.
