@@ -33,10 +33,13 @@ class AgentState(TypedDict):
     `messages` is the conversation (an Annotated list so LangGraph merges
     node outputs with `add_messages`). `model` is a per-request override of the
     config default — DECISIONS M3 (session-scoped runtime override).
+    `vehicle_id` scopes the conversation to one vehicle (SPECIFICATION §6);
+    retrieval reads it once real Qdrant search lands (Task 4).
     """
 
     messages: Annotated[list[BaseMessage], add_messages]
     model: str
+    vehicle_id: str | None
 
 
 _ROLE_MAP = {

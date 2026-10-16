@@ -16,7 +16,7 @@ from backend.agent.graph import graph
 from backend.config import get_settings, model_label
 from backend.llm import LLMError
 from backend import storage
-from backend.schemas import Manual
+from backend.schemas import Manual, Vehicle
 
 app = FastAPI(title="ManualChat API", version="0.1.0")
 
@@ -33,6 +33,15 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     query: str
     model: str | None = None  # optional per-request override (DECISIONS M3)
+    vehicle_id: str | None = None  # scopes the conversation (SPECIFICATION §6)
+
+
+class VehicleCreate(BaseModel):
+    display_name: str
+
+
+class VehicleUpdate(BaseModel):
+    display_name: str
 
 
 @app.get("/health")
@@ -57,6 +66,7 @@ def chat(req: ChatRequest) -> dict:
     initial_state: dict = {
         "messages": [HumanMessage(content=req.query)],
         "model": model,
+        "vehicle_id": req.vehicle_id,
     }
     try:
         result = graph.invoke(initial_state)
@@ -114,3 +124,37 @@ def get_manual(manual_id: str) -> Manual:
     if manual is None:
         raise HTTPException(status_code=404, detail="manual not found")
     return manual
+
+
+# --- Vehicle profiles (SPECIFICATION §5) ---
+
+
+@app.get("/vehicles")
+def list_vehicles() -> list[Vehicle]:
+    return storage.list_vehicles()
+
+
+@app.post("/vehicles")
+def create_vehicle(req: VehicleCreate) -> Vehicle:
+    display_name = req.display_name.strip()
+    if not display_name:
+        raise HTTPException(status_code=400, detail="display_name is required")
+    return storage.store_vehicle(display_name)
+
+
+@app.patch("/vehicles/{vehicle_id}")
+def rename_vehicle(vehicle_id: str, req: VehicleUpdate) -> Vehicle:
+    display_name = req.display_name.strip()
+    if not display_name:
+        raise HTTPException(status_code=400, detail="display_name is required")
+    vehicle = storage.rename_vehicle(vehicle_id, display_name)
+    if vehicle is None:
+        raise HTTPException(status_code=404, detail="vehicle not found")
+    return vehicle
+
+
+@app.delete("/vehicles/{vehicle_id}")
+def delete_vehicle(vehicle_id: str) -> dict:
+    if not storage.delete_vehicle(vehicle_id):
+        raise HTTPException(status_code=404, detail="vehicle not found")
+    return {"deleted": vehicle_id}

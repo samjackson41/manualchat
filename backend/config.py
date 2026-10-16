@@ -9,6 +9,7 @@ env vars case-insensitively, so:
     model_max_tokens        <- MODEL_MAX_TOKENS
     agent_system_prompt     <- AGENT_SYSTEM_PROMPT
     manuals_dir             <- MANUALS_DIR
+    vehicles_dir            <- VEHICLES_DIR
     model_default           <- MODEL_DEFAULT
     model_options           <- MODEL_OPTIONS   (comma-separated)
     openrouter_api_key      <- OPENROUTER_API_KEY
@@ -79,6 +80,11 @@ class Settings(BaseSettings):
     # Directory that holds one `{manual_id}/` subdirectory per uploaded manual,
     # with the source PDF and its JSON record inside it.
     manuals_dir: str = "manuals"
+
+    # --- Local vehicle storage ---
+    # Directory that holds one `{vehicle_id}/` subdirectory per vehicle profile,
+    # with its JSON record inside it.
+    vehicles_dir: str = "vehicles"
 
     @field_validator("model_options", mode="before")
     @classmethod
