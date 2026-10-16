@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ChatRuntimeProvider } from "./chat-runtime";
+import { VehicleProvider } from "./vehicle-runtime";
 
 export const metadata: Metadata = {
   title: "ManualChat",
@@ -17,7 +18,9 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <TooltipProvider>
-          <ChatRuntimeProvider>{children}</ChatRuntimeProvider>
+          <VehicleProvider>
+            <ChatRuntimeProvider>{children}</ChatRuntimeProvider>
+          </VehicleProvider>
         </TooltipProvider>
       </body>
     </html>

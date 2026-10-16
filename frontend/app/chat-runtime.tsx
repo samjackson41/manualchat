@@ -23,11 +23,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
-
-export type ModelOption = { id: string; label: string };
+import { chat, getModels, type ModelOption } from "@/lib/api";
+import { useVehicles } from "./vehicle-runtime";
 
 type ModelSelection = {
   models: ModelOption[];
@@ -44,8 +41,6 @@ export function useModelSelection(): ModelSelection {
   }
   return ctx;
 }
-
-type ChatResponse = { reply: string };
 
 // The browser localStorage behind the async interface the adapter expects.
 const storage: AsyncStorageLike = {
@@ -71,14 +66,16 @@ const threadListAdapter = createLocalStorageAdapter({
 export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const [models, setModels] = useState<ModelOption[]>([]);
   const [model, setModel] = useState<string>("");
-  // The adapter is created once, so it reads the live model through this ref.
+  // The adapter is created once, so it reads live values through refs.
   const modelRef = useRef(model);
   modelRef.current = model;
+  const { activeVehicleId } = useVehicles();
+  const vehicleRef = useRef(activeVehicleId);
+  vehicleRef.current = activeVehicleId;
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/models`)
-      .then((res) => res.json())
-      .then((data: { default: string; options: ModelOption[] }) => {
+    getModels()
+      .then((data) => {
         setModels(data.options);
         setModel(data.default);
       })
@@ -104,25 +101,16 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
               .join("\n")
           : "";
 
-        const res = await fetch(`${BACKEND_URL}/chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const res = await chat(
+          {
             query,
             model: modelRef.current || undefined,
-          }),
-          signal: abortSignal,
-        });
+            vehicleId: vehicleRef.current || undefined,
+          },
+          abortSignal,
+        );
 
-        if (!res.ok) {
-          const data = await res.json().catch(() => null);
-          const detail =
-            data && typeof data.detail === "string" ? data.detail : null;
-          throw new Error(detail ?? `Request failed (${res.status})`);
-        }
-
-        const data: ChatResponse = await res.json();
-        return { content: [{ type: "text" as const, text: data.reply }] };
+        return { content: [{ type: "text" as const, text: res.reply }] };
       },
     }),
     [],
