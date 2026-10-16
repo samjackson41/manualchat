@@ -7,11 +7,12 @@
 
 SHELL := /bin/bash
 BACKEND_URL ?= http://localhost:8000
+FRONTEND_URL ?= http://localhost:3000
 MODEL ?= ~deepseek/deepseek-flash-latest
 
 .DEFAULT_GOAL := help
 
-.PHONY: help build backend frontend down ps health models chat \
+.PHONY: help build backend frontend down ps status health models chat \
         logs-backend logs-frontend backend-shell clean
 
 help: ## List all documented targets (shared + local)
@@ -31,6 +32,40 @@ down: ## Stop and remove running containers
 
 ps: ## Show running compose services
 	docker compose ps
+
+# Source is bind-mounted and hot-reloaded, so a running service always serves the
+# files on disk. "Up to date" therefore checks the two things that can drift:
+# baked dependencies (the image) and the git working tree.
+status: ## Check services run and are up to date
+	@set -u; \
+	echo; echo "Services"; \
+	curl -fsS -m 3 -o /dev/null 2>/dev/null "$(BACKEND_URL)/health" && echo "  backend           running  ($(BACKEND_URL)/health)" || echo "  backend           NOT running"; \
+	curl -fsS -m 3 -o /dev/null 2>/dev/null "$(FRONTEND_URL)/" && echo "  frontend          running  ($(FRONTEND_URL)/)" || echo "  frontend          NOT running"; \
+	echo; echo "Docker images (stale = a dependency manifest changed after the build)"; \
+	check_img() { \
+		local label="$$1" image="$$2"; shift 2; \
+		local created im nm t f; \
+		created="$$(docker image inspect --format '{{.Created}}' "$$image" 2>/dev/null)"; \
+		if [ -z "$$created" ]; then echo "  $$label  not built"; return; fi; \
+		im="$$(date -u -d "$$created" +%s)"; nm=0; \
+		for f in "$$@"; do t="$$(stat -c %Y "$$f" 2>/dev/null || echo 0)"; [ "$$t" -gt "$$nm" ] && nm=$$t; done; \
+		if [ "$$nm" -gt "$$im" ]; then echo "  $$label  STALE (run: make build)"; else echo "  $$label  up to date"; fi; \
+	}; \
+	check_img "backend image" manualchat-backend backend/uv.lock backend/pyproject.toml backend/Dockerfile; \
+	check_img "frontend image" manualchat-frontend frontend/package.json frontend/package-lock.json frontend/Dockerfile; \
+	echo; echo "Git"; \
+	echo "  branch            $$(git rev-parse --abbrev-ref HEAD)"; \
+	upstream="$$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)"; \
+	if [ -n "$$upstream" ]; then \
+		ahead="$$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)"; \
+		behind="$$(git rev-list --count HEAD..@{u} 2>/dev/null || echo 0)"; \
+		echo "  vs upstream       $$upstream (ahead $$ahead, behind $$behind; last-known, run 'git fetch' to refresh)"; \
+	else \
+		echo "  upstream          none (branch not pushed)"; \
+	fi; \
+	changes="$$(git status --porcelain | wc -l | tr -d ' ')"; \
+	if [ "$$changes" = "0" ]; then echo "  changes           working tree clean"; else echo "  changes           $$changes uncommitted (run: git status)"; fi; \
+	echo
 
 health: ## GET /health on the backend
 	curl -s $(BACKEND_URL)/health; echo
