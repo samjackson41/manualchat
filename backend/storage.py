@@ -70,6 +70,27 @@ def store_manual(
     return manual
 
 
+def manual_dir(manual_id: str) -> Path:
+    """Absolute path to one manual's directory, parent of its ``source.pdf``."""
+    return manuals_root() / manual_id
+
+
+def update_manual(manual_id: str, **updates) -> Manual | None:
+    """Patch a manual's record fields and persist it, or return None when unknown.
+
+    The ingest pipeline uses this to fill in ``page_count`` and ``status`` after
+    a successful run without replacing the ``Manual`` identity.
+    """
+    manual = get_manual(manual_id)
+    if manual is None:
+        return None
+    updated = manual.model_copy(update=updates)
+    (manual_dir(manual_id) / "manual.json").write_text(
+        json.dumps(updated.model_dump(mode="json"), indent=2)
+    )
+    return updated
+
+
 def list_manuals() -> list[Manual]:
     """Return every stored manual, newest first."""
     root = manuals_root()
