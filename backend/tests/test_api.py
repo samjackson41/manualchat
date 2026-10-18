@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from backend import ingest
 from backend import llm
+from backend import retrieval
 from backend.api.main import app
 from backend.config import get_settings
 
@@ -219,6 +220,67 @@ def test_upload_description_is_optional(manuals_dir, no_ingest):
     )
     assert resp.status_code == 200
     assert resp.json()["description"] is None
+
+
+# --- Manual management: enable, disable, delete (DECISIONS M1/M2) ---
+
+
+def test_update_manual_toggles_enabled(manuals_dir, no_ingest):
+    client = TestClient(app)
+    manual = client.post(
+        "/manuals",
+        files=_pdf(),
+        data={"vehicle_id": "v1", "display_name": "Rhino 700"},
+    ).json()
+    assert manual["enabled"] is True
+
+    resp = client.patch(f"/manuals/{manual['manual_id']}", json={"enabled": False})
+    assert resp.status_code == 200
+    assert resp.json()["enabled"] is False
+
+    # The toggle is persisted, not just returned.
+    fetched = client.get(f"/manuals/{manual['manual_id']}")
+    assert fetched.json()["enabled"] is False
+
+    # And back on again.
+    resp = client.patch(f"/manuals/{manual['manual_id']}", json={"enabled": True})
+    assert resp.status_code == 200
+    assert resp.json()["enabled"] is True
+
+
+def test_update_unknown_manual_returns_404(manuals_dir):
+    client = TestClient(app)
+    resp = client.patch("/manuals/does-not-exist", json={"enabled": False})
+    assert resp.status_code == 404
+
+
+def test_delete_manual(manuals_dir, no_ingest, monkeypatch):
+    purged = []
+    monkeypatch.setattr(
+        retrieval, "delete_manual_index", lambda manual_id: purged.append(manual_id)
+    )
+
+    client = TestClient(app)
+    manual = client.post(
+        "/manuals",
+        files=_pdf(),
+        data={"vehicle_id": "v1", "display_name": "Rhino 700"},
+    ).json()
+    manual_dir = manuals_dir / manual["manual_id"]
+    assert manual_dir.is_dir()
+
+    resp = client.delete(f"/manuals/{manual['manual_id']}")
+    assert resp.status_code == 200
+    assert resp.json() == {"deleted": manual["manual_id"]}
+    assert not manual_dir.exists()
+    assert purged == [manual["manual_id"]]
+    assert client.get("/manuals").json() == []
+
+
+def test_delete_unknown_manual_returns_404(manuals_dir):
+    client = TestClient(app)
+    resp = client.delete("/manuals/does-not-exist")
+    assert resp.status_code == 404
 
 
 # --- Vehicle profiles (SPECIFICATION §5) ---

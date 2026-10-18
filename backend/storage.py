@@ -127,6 +127,20 @@ def get_manual(manual_id: str) -> Manual | None:
         return None
 
 
+def delete_manual(manual_id: str) -> bool:
+    """Remove a manual and its directory, or return False when unknown.
+
+    This is permanent: the source PDF and the processed result (page text,
+    tables, ingest summary) go with it. Indexed chunks are purged by the API
+    layer before this runs (retrieval imports storage, so storage cannot
+    import retrieval).
+    """
+    if get_manual(manual_id) is None:
+        return False
+    shutil.rmtree(manuals_root() / manual_id)
+    return True
+
+
 # --- Vehicle profiles (SPECIFICATION §5) ----------------------------------
 
 

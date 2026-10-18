@@ -131,6 +131,16 @@ for a production deployment.
 
 ---
 
+## Manual enable, disable, and delete
+
+| Item | Decision |
+|---|---|
+| M1 | A manual can be **disabled**. The record, files, and index stay in place; the retrieval search excludes the manual's chunks. A disabled manual can be re-enabled at any time. API: `PATCH /manuals/{manual_id}` with `{"enabled": true/false}`. |
+| M2 | Delete is **permanent**. `DELETE /manuals/{manual_id}` purges the manual's chunks from Qdrant, then removes the record and its directory (PDF, page text, tables). There is no undo, so the UI asks for confirmation. The purge runs first: if the purge fails, the record stays in place and the deletion can be retried. |
+| M3 | Manuals cannot be renamed. A manual keeps the display name it was uploaded with. |
+
+---
+
 ## Spec ledger storage
 
 | Item | Decision |

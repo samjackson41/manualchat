@@ -98,7 +98,7 @@ export function ManualUpload() {
         file,
         vehicleId,
         displayName: trimmed,
-        description: description.trim(),
+        description: description.trim() || undefined,
       });
       setManuals((previous) => [
         manual,

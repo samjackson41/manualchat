@@ -41,6 +41,9 @@ class Manual(BaseModel):
     `page_count` and `chunk_count` are ingest outputs (IMPLEMENTATION §4.1).
     Storage records only what the upload provides; the ingest pipeline fills
     them in later.
+
+    `enabled` gates retrieval only (DECISIONS M1): a disabled manual stays
+    stored and listed, but its chunks never come back from search.
     """
 
     manual_id: str
@@ -49,6 +52,7 @@ class Manual(BaseModel):
     source_filename: str
     description: Optional[str] = None
     status: Literal["processing", "ready", "error"] = "processing"
+    enabled: bool = True
     page_count: int = 0
     chunk_count: int = 0
     created_at: datetime = Field(default_factory=_utcnow)
@@ -89,8 +93,8 @@ class ChunkPayload(BaseModel):
     text: str
     vehicle_id: str
     manual_id: str
-    page_number: int  # printed page number (not the PDF's 0-indexed physical page)
-    physical_page: Optional[int] = None
+    page_number: int  # physical PDF page (1-indexed); printed numbers stay unrecovered (DECISIONS D12)
+    physical_page: Optional[int] = None  # legacy; unused now that D12 fixed physical pages
     section_name: Optional[str] = None
     is_table: bool = False
     score: float = 0.0

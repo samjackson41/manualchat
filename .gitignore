@@ -20,6 +20,10 @@ manuals/*/
 # are. Keep them out of git.
 vehicles/*/
 
+# The local Qdrant store is runtime data (DECISIONS R3), like manuals and
+# vehicles. Keep it out of git.
+qdrant/
+
 Makefile.local
 
 # Spike experiments (moved to ../spikes)

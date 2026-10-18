@@ -18,9 +18,11 @@ export type Manual = {
   vehicle_id: string;
   display_name: string;
   source_filename: string;
-  description: string | null;
+  description?: string | null;
   status: "processing" | "ready" | "error";
   page_count: number;
+  chunk_count: number;
+  enabled: boolean;
   created_at: string;
 };
 
@@ -84,17 +86,37 @@ export async function listManuals(): Promise<Manual[]> {
   return res.json();
 }
 
+export async function setManualEnabled(
+  manual_id: string,
+  enabled: boolean,
+): Promise<Manual> {
+  const res = await fetch(`${BACKEND_URL}/manuals/${manual_id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+  if (!res.ok) throw new Error(await errorDetail(res));
+  return res.json();
+}
+
+export async function deleteManual(manual_id: string): Promise<void> {
+  const res = await fetch(`${BACKEND_URL}/manuals/${manual_id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(await errorDetail(res));
+}
+
 export async function uploadManual(input: {
   file: File;
   vehicleId: string;
   displayName: string;
-  description: string;
+  description?: string;
 }): Promise<Manual> {
   const form = new FormData();
   form.append("file", input.file);
   form.append("vehicle_id", input.vehicleId);
   form.append("display_name", input.displayName);
-  form.append("description", input.description);
+  if (input.description) form.append("description", input.description);
   const res = await fetch(`${BACKEND_URL}/manuals`, {
     method: "POST",
     body: form,

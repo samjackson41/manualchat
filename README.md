@@ -21,8 +21,8 @@ manualchat/
     llm.py           # thin OpenRouter wrapper (httpx) -> chat(messages, model, params, tools)
     tools.py         # agent tools: OpenAI schemas + executors (calculator, RAG stubs)
     agent/graph.py   # StateGraph: AgentState, chat -> tools -> chat loop (iteration point)
-    api/main.py      # FastAPI: /health, /models, /chat, /manuals upload + read,
-                     # /vehicles create/rename/delete
+    api/main.py      # FastAPI: /health, /models, /chat, /manuals upload + read +
+                     # enable/disable/delete, /vehicles create/rename/delete
     storage.py       # local manual + vehicle storage (DECISIONS U1, SPEC §5)
     schemas.py       # shared Pydantic contracts (Vehicle, Manual, RAG models)
     pyproject.toml   #                 uv project (package = false; deps only)
@@ -106,6 +106,18 @@ in the repo. If it's missing, `POST /chat` fails fast with a clear error while
 | `INGEST_TABLE_MODE` | `FAST` | IMPLEMENTATION Task 1 — the fast table model |
 | `INGEST_THREADS` | `2` | IMPLEMENTATION Task 1 — keeps peak memory low |
 | `INGEST_BATCH_SIZE` | `1` | IMPLEMENTATION Task 1 — one page per batch |
+| `INGEST_CHUNK_STRUCTURE_AWARE` | `true` | DECISIONS D9 — split prose on section headings, keep each table as one chunk |
+| `INGEST_CHUNK_TOKENS` | `512` | DECISIONS D10 — target size of a prose chunk, in tokens |
+| `INGEST_CHUNK_OVERLAP_TOKENS` | `64` | DECISIONS D11 — overlap between neighbouring prose chunks, in tokens |
+| `INGEST_TOKENIZER` | `cl100k_base` | DECISIONS D13 — the tiktoken encoding that counts chunk tokens |
+| `QDRANT_URL` | _(empty)_ | DECISIONS R3 — empty means local mode: the store lives on disk under `QDRANT_PATH`, no server or credentials; an `http(s)` URL switches to a remote server |
+| `QDRANT_PATH` | `qdrant` | DECISIONS R3 — the on-disk directory for the local-mode store (git-ignored) |
+| `QDRANT_COLLECTION` | `manualchat_chunks` | DECISIONS R4 — the one collection that holds every manual's chunks |
+| `QDRANT_API_KEY` | _(empty in dev)_ | DECISIONS R5 — only set when a remote Qdrant server needs it |
+| `RETRIEVAL_EMBED_MODEL` | `multi-qa-mpnet-base-dot-v1` | DECISIONS R6 — the sentence-transformers model that embeds chunks and queries |
+| `RETRIEVAL_RERANK_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | DECISIONS R7 — the cross-encoder that reranks the candidate chunks |
+| `RETRIEVAL_CANDIDATE_K` | `50` | DECISIONS R8 — how many first-pass candidates the reranker gets |
+| `RETRIEVAL_TOP_N` | `5` | DECISIONS R9 — how many chunks come back to the agent |
 
 Generation params are **under research** and surfaced as `MODEL_*` env vars so
 they can be tuned without code edits. Unset values are omitted from the OpenRouter
@@ -121,8 +133,12 @@ request entirely.
   fills the manual's directory with `page_text/`, `tables.json`, and
   `ingest.json`, then sets `status` to `ready` or `error`. Clients poll
   `GET /manuals/{id}` for the outcome. The pipeline is also runnable by hand
-  with `python -m backend.ingest <manual_id>`. The next steps are chunking and
-  indexing (Tasks 3-4).
+  with `python -m backend.ingest <manual_id>`.
+- **Manual management** → `PATCH /manuals/{id}` enables or disables a manual.
+  A disabled manual keeps its stored files and its index, but search skips its
+  chunks. `DELETE /manuals/{id}` purges the manual's chunks from the index,
+  then removes the record and its directory. Deletion is permanent, so the
+  vehicle dialog in the frontend asks for confirmation before it deletes.
 - **Memory** → add `summary` field + compaction node (MEMORY_DESIGN §4-5) and a
   checkpointer.
 

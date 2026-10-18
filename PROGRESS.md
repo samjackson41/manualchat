@@ -18,16 +18,36 @@
   `status` to `ready` (or `error`). The same pipeline runs by hand with
   `python -m backend.ingest <manual_id>`. The real run on `pl.pdf` produced 56
   pages and 9 tables.
+- Retrieval: `backend/retrieval.py` chunks an ingested manual and indexes it
+  into a local Qdrant collection (IMPLEMENTATION Task 3). Chunking splits prose
+  on section headings and keeps each table as one chunk. Prose chunks target
+  512 tokens with 64 tokens of overlap, counted with `cl100k_base` (DECISIONS
+  D9-D11, D13). The chunks embed with `multi-qa-mpnet-base-dot-v1` and store in
+  an embedded local Qdrant, which needs no server or credentials (R3-R6).
+  Search reranks with `cross-encoder/ms-marco-MiniLM-L-6-v2` and returns a
+  score from 0 to 1 (R7-R9). `python -m backend.retrieval <manual_id>` indexes
+  a manual; adding a query searches it and prints the ranked chunks. Indexing
+  the 56-page `pl.pdf` produced 121 chunks.
 - Vehicle profiles: `GET/POST /vehicles` and `PATCH/DELETE /vehicles/{id}`
   create, rename, and delete vehicles under `vehicles/{vehicle_id}/` (a
   server-generated UUID), mirroring manual storage (SPECIFICATION §5). The
   directory is the `vehicles_dir` config value (env `VEHICLES_DIR`), mounted
   as `/data/vehicles`. `POST /chat` takes an optional `vehicle_id` that scopes
   the conversation to one vehicle (SPECIFICATION §6).
+- Manual management: `PATCH /manuals/{id}` enables or disables a manual, and
+  `DELETE /manuals/{id}` removes it. A disabled manual keeps its stored files
+  and index, but the search skips its chunks (DECISIONS M1). Deletion purges
+  the manual's chunks from Qdrant first, then removes the record and its
+  directory; it is permanent (DECISIONS M2). The vehicle dialog in the
+  frontend shows the vehicle's details, lists its manuals with their optional
+  description, status,
+  page and chunk counts, and offers enable/disable switches plus a two-step
+  delete for each manual. Chunk point ids are derived from the manual id, so
+  point ids stay unique across manuals indexed into one collection.
 - Tool calling: the graph runs a `chat -> tools -> chat` loop. The `calculator`
   and three RAG tools (`search_manual`, `extract_specs`, `get_page_text`) are in
-  `backend/tools.py`. The RAG tools are stubs that return sample data. Real
-  retrieval is left (IMPLEMENTATION Task 4).
+  `backend/tools.py`. The RAG tools are stubs that return sample data. Wiring
+  them to the retrieval backend is left (IMPLEMENTATION Task 4).
 - System prompt: the graph prepends the grounding prompt before the first chat
   call. The prompt demands a `[Page N]` citation on every claim and step,
   answers only from the manual, states plainly when the manual holds no answer,
@@ -69,18 +89,20 @@
 
 ## What is left
 
-- The RAG pipeline, in phases. The ingest stage (Task 1) is done; chunking and
-  indexing (Task 3) and real retrieval (Task 4) are next. The prototype runs
-  against the 56-page `pl.pdf`. The graph stays a flat `chat ↔ tools` loop and
-  the answer stays markdown text with `[Page N]` citations. The ratified values
-  are in `DECISIONS.md` (D9 to D13, R3 to R9, A1 to A3, T1 to T3).
+- The RAG pipeline, in phases. The ingest stage (Task 1) and chunking and
+  indexing (Task 3) are done. Real retrieval behind the tools (Task 4) and the
+  chunk eval are next. The prototype runs against the 56-page `pl.pdf`. The
+  graph stays a flat `chat ↔ tools` loop and the answer stays markdown text with
+  `[Page N]` citations. The ratified values are in `DECISIONS.md` (D9 to D13,
+  R3 to R9, A1 to A3, T1 to T3).
 - The chunk eval: about 15 questions with known answer pages from `pl.pdf`, to
-  check recall and citation precision and pick the chunk size and overlap.
+  check recall and citation precision and confirm the chunk size and overlap.
 - Future work (DECISIONS Deferred): the Supervisor and Synthesizer graph, the
   structured `AgentAnswer`, the spec ledger, the PDF viewer with citation
   badges, the scanned-manual OCR path, and the Docker work.
 - Real retrieval behind `search_manual`, `extract_specs`, and `get_page_text`.
-  The contracts and stub bodies are in place (IMPLEMENTATION.md Task 4).
+  The `backend/retrieval.py` backend is in place (Task 3); the tool stubs still
+  return sample data, and Task 4 wires them to it.
 - Memory: the summary field, the compaction node, and a checkpointer per
   `MEMORY_DESIGN.md`.
 - The scanned-manual OCR path. Deferred past MVP per DECISIONS S1.

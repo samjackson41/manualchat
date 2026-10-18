@@ -14,6 +14,7 @@ from backend.agent.graph import graph
 from backend.config import get_settings, model_label
 from backend.llm import LLMError
 from backend import ingest
+from backend import retrieval
 from backend import storage
 from backend.schemas import Manual, Vehicle
 
@@ -41,6 +42,10 @@ class VehicleCreate(BaseModel):
 
 class VehicleUpdate(BaseModel):
     display_name: str
+
+
+class ManualUpdate(BaseModel):
+    enabled: bool
 
 
 @app.get("/health")
@@ -121,6 +126,28 @@ def get_manual(manual_id: str) -> Manual:
     if manual is None:
         raise HTTPException(status_code=404, detail="manual not found")
     return manual
+
+
+@app.patch("/manuals/{manual_id}")
+def update_manual(manual_id: str, req: ManualUpdate) -> Manual:
+    manual = storage.update_manual(manual_id, enabled=req.enabled)
+    if manual is None:
+        raise HTTPException(status_code=404, detail="manual not found")
+    return manual
+
+
+@app.delete("/manuals/{manual_id}")
+def delete_manual(manual_id: str) -> dict:
+    """Purge the manual's indexed chunks, then remove it and its directory.
+
+    The purge runs first so a failure there leaves the record in place to
+    retry; deleting the record first would strand searchable chunks.
+    """
+    if storage.get_manual(manual_id) is None:
+        raise HTTPException(status_code=404, detail="manual not found")
+    retrieval.delete_manual_index(manual_id)
+    storage.delete_manual(manual_id)
+    return {"deleted": manual_id}
 
 
 # --- Vehicle profiles (SPECIFICATION §5) ---
