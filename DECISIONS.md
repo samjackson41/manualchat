@@ -216,7 +216,16 @@ mock to stay testable without a download.
 
 | Item | Decision |
 |---|---|
-| V1 | A dedicated **Manual Viewer** mode — a UI toggle that opens a full-width PDF view of the pages the agent deemed relevant (the top-scored `search_manual` chunk page-set, gated by a rerank-score threshold), rendered with `react-pdf` in `[Page−2, Page+2]` 5-page slices. (See SPECIFICATION §2.1 and IMPLEMENTATION Tasks 2/6.) |
+| V1 | A dedicated **Manual Viewer** mode — a UI toggle that opens the page set the agent deemed relevant (the top-scored `search_manual` chunk page-set, gated by a rerank-score threshold) in a pane beside the chat, rendered with `react-pdf` in `[Page−2, Page+2]` 5-page slices. (See SPECIFICATION §2.1 and IMPLEMENTATION Tasks 2/6.) |
+
+---
+
+## Frontend appearance
+
+| Item | Decision |
+|---|---|
+| C1 | The UI has a light theme and a dark theme. The first visit follows the operating system's colour scheme. After the visitor chooses, the choice is stored in `localStorage` and wins on later visits. The theme is applied before the first paint, so the page never flashes the wrong theme. |
+| C2 | A top bar carries the vehicle selector, the upload button, the viewer toggle, the model selector, and the theme toggle, over a thin red rule. The manual viewer opens as a right-hand pane beside the chat. The wrench-in-bubble logo (`frontend/assets/manual-chat-logo.svg`) replaces the ManualChat wordmark at the top of the thread list. |
 
 ---
 

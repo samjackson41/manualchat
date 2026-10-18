@@ -11,11 +11,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  listManuals,
-  uploadManual,
-  type Manual,
-} from "@/lib/api";
+import { Textarea } from "@/components/ui/textarea";
+import { VehiclePicker } from "@/components/vehicle-picker";
+import { listManuals, uploadManual, type Manual } from "@/lib/api";
 import { useVehicles } from "@/app/vehicle-runtime";
 
 // Ingest runs in the background after the upload, so the list below refreshes
@@ -31,6 +29,7 @@ function statusText(manual: Manual): string {
 export function ManualUpload() {
   const { activeVehicleId } = useVehicles();
   const [open, setOpen] = useState(false);
+  const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [description, setDescription] = useState("");
@@ -41,7 +40,7 @@ export function ManualUpload() {
   const anyProcessing = manuals.some((manual) => manual.status === "processing");
 
   useEffect(() => {
-    if (!open || !activeVehicleId) {
+    if (!open || !vehicleId) {
       setManuals([]);
       return;
     }
@@ -50,7 +49,7 @@ export function ManualUpload() {
       .then((all) => {
         if (!cancelled) {
           setManuals(
-            all.filter((manual) => manual.vehicle_id === activeVehicleId),
+            all.filter((manual) => manual.vehicle_id === vehicleId),
           );
         }
       })
@@ -60,15 +59,15 @@ export function ManualUpload() {
     return () => {
       cancelled = true;
     };
-  }, [open, activeVehicleId]);
+  }, [open, vehicleId]);
 
   useEffect(() => {
-    if (!open || !activeVehicleId || !anyProcessing) return;
+    if (!open || !vehicleId || !anyProcessing) return;
     const timer = setInterval(() => {
       listManuals()
         .then((all) =>
           setManuals(
-            all.filter((manual) => manual.vehicle_id === activeVehicleId),
+            all.filter((manual) => manual.vehicle_id === vehicleId),
           ),
         )
         .catch(() => {
@@ -76,9 +75,10 @@ export function ManualUpload() {
         });
     }, POLL_MS);
     return () => clearInterval(timer);
-  }, [open, activeVehicleId, anyProcessing]);
+  }, [open, vehicleId, anyProcessing]);
 
   function reset() {
+    setVehicleId(activeVehicleId);
     setFile(null);
     setDisplayName("");
     setDescription("");
@@ -90,13 +90,13 @@ export function ManualUpload() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     const trimmed = displayName.trim();
-    if (!activeVehicleId || !file || !trimmed) return;
+    if (!vehicleId || !file || !trimmed) return;
     setBusy(true);
     setError(null);
     try {
       const manual = await uploadManual({
         file,
-        vehicleId: activeVehicleId,
+        vehicleId,
         displayName: trimmed,
         description: description.trim() || undefined,
       });
@@ -137,45 +137,45 @@ export function ManualUpload() {
             <DialogTitle>Upload a manual</DialogTitle>
           </DialogHeader>
 
-          {activeVehicleId ? (
-            <form onSubmit={submit} className="flex flex-col gap-3">
-              <input
-                type="file"
-                accept="application/pdf"
-                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              />
-              <Input
-                value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
-                placeholder="Manual name, e.g. Rhino 700 service manual"
-              />
-              <Input
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                placeholder="Description (optional), e.g. 2009 factory service manual"
-              />
+          <form onSubmit={submit} className="flex flex-col gap-3">
+            <VehiclePicker
+              value={vehicleId}
+              onValueChange={(id) => setVehicleId(id)}
+              triggerClassName="w-full text-xs"
+            />
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            />
+            <Input
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              placeholder="Manual name, e.g. Rhino 700 service manual"
+            />
+            <Textarea
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Description (optional)"
+              className="min-h-12"
+            />
 
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              {done && (
-                <p className="text-sm text-muted-foreground">
-                  Manual uploaded.
-                </p>
-              )}
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            {done && (
+              <p className="text-sm text-muted-foreground">
+                Manual uploaded.
+              </p>
+            )}
 
-              <DialogFooter>
-                <Button
-                  type="submit"
-                  disabled={!file || !displayName.trim() || busy}
-                >
-                  Upload
-                </Button>
-              </DialogFooter>
-            </form>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Add a vehicle before uploading a manual.
-            </p>
-          )}
+            <DialogFooter>
+              <Button
+                type="submit"
+                disabled={!vehicleId || !file || !displayName.trim() || busy}
+              >
+                Upload
+              </Button>
+            </DialogFooter>
+          </form>
 
           {manuals.length > 0 && (
             <div className="flex flex-col gap-1.5">

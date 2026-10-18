@@ -110,7 +110,7 @@ The conceptual hierarchy defines the relationship between physical assets and op
 
 ### Domain Entities:
 * **Vehicle**: The operational subject of all repairs. All queries, retrieved chunks, and active conversation threads exist inside the scope of a single Vehicle.
-* **Manual**: A distinct uploaded publication covering a Vehicle. It possesses user-visible metadata (title, publisher, kind: OEM vs. Aftermarket, page count).
+* **Manual**: A distinct uploaded publication covering a Vehicle. It possesses user-visible metadata (title, optional description, page count).
 * **Section / Segment**: A logical division within a manual (e.g., "Periodic Checks and Adjustments", "Cooling System") spanning a range of physical pages. Used for contextual document slicing.
 * **Page**: The fundamental unit of verification and citation. Represents an individual printed sheet in the manual, containing text, tables, and figures.
 * **Specification**: A structured data tuple extracted from a manual: `(Subject, Parameter, Value, Unit, Condition, Source Page)`.

@@ -29,14 +29,16 @@ manualchat/
     uv.lock          #                 generated lockfile (deps only)
     Dockerfile
   frontend/          # Next.js 14 App Router + Tailwind v4 + shadcn/ui + assistant-ui
-    app/page.tsx     # Thread + ThreadList sidebar, vehicle + model selectors,
-                     # manual-upload button, manual-viewer toggle
+    app/page.tsx     # top bar + thread-list sidebar + chat, side-by-side viewer
     app/chat-runtime.tsx  # thread-list runtime + localStorage adapter -> POST /chat
     app/vehicle-runtime.tsx  # vehicle list + selection context -> /vehicles
-    app/layout.tsx   # TooltipProvider + VehicleProvider + AssistantRuntimeProvider
-    app/globals.css  # Tailwind v4 theme (red, white, gray, black, gold)
+    app/theme-runtime.tsx  # light/dark theme state; the choice survives reloads
+    app/layout.tsx   # provider stack + a pre-paint script that sets the theme
+    app/globals.css  # Tailwind v4 theme, light and dark (red, white, gray, black, gold)
     lib/api.ts       # typed client for every backend call
+    lib/theme.ts     # theme key, the stored choice, and the pre-paint script
     components/      # assistant-ui elements + shadcn/ui primitives + garage UI
+                     # (top bar, vehicle selector, manual upload and viewer)
     Dockerfile
   docker-compose.yml # services: backend, frontend (started one-per-terminal)
   README.md          # this file

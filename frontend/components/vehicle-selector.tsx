@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { PencilIcon, TrashIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,14 +11,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useVehicles } from "@/app/vehicle-runtime";
+import { VehiclePicker } from "@/components/vehicle-picker";
 import {
   deleteManual,
   listManuals,
@@ -41,7 +35,6 @@ export function VehicleSelector() {
     vehicles,
     activeVehicleId,
     selectVehicle,
-    addVehicle,
     renameVehicle,
     removeVehicle,
   } = useVehicles();
@@ -52,29 +45,7 @@ export function VehicleSelector() {
 
   return (
     <div className="flex items-center gap-1.5">
-      <Select
-        value={activeVehicleId ?? null}
-        items={vehicles.map((vehicle) => ({
-          value: vehicle.vehicle_id,
-          label: vehicle.display_name,
-        }))}
-        onValueChange={(value) => {
-          if (value) selectVehicle(value);
-        }}
-      >
-        <SelectTrigger aria-label="Vehicle selector" className="w-44">
-          <SelectValue placeholder="Pick a vehicle" />
-        </SelectTrigger>
-        <SelectContent>
-          {vehicles.map((vehicle) => (
-            <SelectItem key={vehicle.vehicle_id} value={vehicle.vehicle_id}>
-              {vehicle.display_name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <AddVehicleDialog onAdd={addVehicle} />
+      <VehiclePicker value={activeVehicleId} onValueChange={selectVehicle} />
 
       {activeVehicle && (
         <ManageVehicleDialog
@@ -84,68 +55,6 @@ export function VehicleSelector() {
         />
       )}
     </div>
-  );
-}
-
-function AddVehicleDialog({
-  onAdd,
-}: {
-  onAdd: (name: string) => Promise<unknown>;
-}) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await onAdd(trimmed);
-      setName("");
-      setOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add vehicle");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <>
-      <Button
-        variant="outline"
-        size="icon"
-        aria-label="Add vehicle"
-        onClick={() => setOpen(true)}
-      >
-        <PlusIcon />
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add a vehicle</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={submit} className="flex flex-col gap-3">
-            <Input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="e.g. 2023 Civic"
-              autoFocus
-            />
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <DialogFooter>
-              <Button type="submit" disabled={busy || !name.trim()}>
-                Add
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
   );
 }
 
