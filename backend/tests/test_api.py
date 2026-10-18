@@ -226,3 +226,98 @@ def test_upload_defaults_kind_to_oem(manuals_dir, no_ingest):
     )
     assert resp.status_code == 200
     assert resp.json()["kind"] == "oem"
+
+
+# --- Vehicle profiles (SPECIFICATION §5) ---
+
+
+@pytest.fixture
+def vehicles_dir(tmp_path, monkeypatch):
+    """Point vehicle storage at a throwaway directory (VEHICLES_DIR)."""
+    monkeypatch.setenv("VEHICLES_DIR", str(tmp_path / "vehicles"))
+    return tmp_path / "vehicles"
+
+
+def test_create_and_list_vehicles(vehicles_dir):
+    client = TestClient(app)
+    resp = client.post("/vehicles", json={"display_name": "2023 Civic"})
+    assert resp.status_code == 200
+    vehicle = resp.json()
+    assert vehicle["display_name"] == "2023 Civic"
+    assert vehicle["user_id"] == "default_user"
+    assert vehicle["vehicle_id"]
+
+    # The record landed in a UUID subdirectory.
+    assert (vehicles_dir / vehicle["vehicle_id"] / "vehicle.json").is_file()
+
+    listing = client.get("/vehicles")
+    assert listing.status_code == 200
+    assert [v["vehicle_id"] for v in listing.json()] == [vehicle["vehicle_id"]]
+
+
+def test_list_vehicles_returns_all(vehicles_dir):
+    client = TestClient(app)
+    first = client.post("/vehicles", json={"display_name": "Subaru"}).json()
+    second = client.post("/vehicles", json={"display_name": "Civic"}).json()
+    ids = {v["vehicle_id"] for v in client.get("/vehicles").json()}
+    assert ids == {first["vehicle_id"], second["vehicle_id"]}
+
+
+def test_create_vehicle_rejects_blank_name(vehicles_dir):
+    client = TestClient(app)
+    resp = client.post("/vehicles", json={"display_name": "   "})
+    assert resp.status_code == 400
+    assert "display_name is required" in resp.json()["detail"]
+
+
+def test_rename_vehicle(vehicles_dir):
+    client = TestClient(app)
+    vehicle = client.post("/vehicles", json={"display_name": "Civic"}).json()
+
+    resp = client.patch(
+        f"/vehicles/{vehicle['vehicle_id']}",
+        json={"display_name": "2023 Civic"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["display_name"] == "2023 Civic"
+    assert resp.json()["vehicle_id"] == vehicle["vehicle_id"]
+
+    # The rename is persisted, not just returned.
+    assert client.get("/vehicles").json()[0]["display_name"] == "2023 Civic"
+
+
+def test_rename_unknown_vehicle_returns_404(vehicles_dir):
+    client = TestClient(app)
+    resp = client.patch("/vehicles/does-not-exist", json={"display_name": "X"})
+    assert resp.status_code == 404
+
+
+def test_delete_vehicle(vehicles_dir):
+    client = TestClient(app)
+    vehicle = client.post("/vehicles", json={"display_name": "Civic"}).json()
+    vehicle_dir = vehicles_dir / vehicle["vehicle_id"]
+    assert vehicle_dir.is_dir()
+
+    resp = client.delete(f"/vehicles/{vehicle['vehicle_id']}")
+    assert resp.status_code == 200
+    assert resp.json() == {"deleted": vehicle["vehicle_id"]}
+    assert not vehicle_dir.exists()
+    assert client.get("/vehicles").json() == []
+
+
+def test_delete_unknown_vehicle_returns_404(vehicles_dir):
+    client = TestClient(app)
+    resp = client.delete("/vehicles/does-not-exist")
+    assert resp.status_code == 404
+
+
+def test_chat_accepts_vehicle_id(monkeypatch):
+    fake, _ = _fake_llm(
+        [{"role": "assistant", "content": "ok", "tool_calls": None}]
+    )
+    monkeypatch.setattr(llm, "chat", fake)
+
+    client = TestClient(app)
+    resp = client.post("/chat", json={"query": "hi", "vehicle_id": "v1"})
+    assert resp.status_code == 200
+    assert resp.json()["reply"] == "ok"

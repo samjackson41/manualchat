@@ -18,6 +18,12 @@
   `status` to `ready` (or `error`). The same pipeline runs by hand with
   `python -m backend.ingest <manual_id>`. The real run on `pl.pdf` produced 56
   pages and 9 tables.
+- Vehicle profiles: `GET/POST /vehicles` and `PATCH/DELETE /vehicles/{id}`
+  create, rename, and delete vehicles under `vehicles/{vehicle_id}/` (a
+  server-generated UUID), mirroring manual storage (SPECIFICATION §5). The
+  directory is the `vehicles_dir` config value (env `VEHICLES_DIR`), mounted
+  as `/data/vehicles`. `POST /chat` takes an optional `vehicle_id` that scopes
+  the conversation to one vehicle (SPECIFICATION §6).
 - Tool calling: the graph runs a `chat -> tools -> chat` loop. The `calculator`
   and three RAG tools (`search_manual`, `extract_specs`, `get_page_text`) are in
   `backend/tools.py`. The RAG tools are stubs that return sample data. Real
@@ -30,8 +36,11 @@
 - Frontend: Next.js chat built on assistant-ui. The styled Thread shows
   messages, markdown, streaming, and regeneration. A thread-list sidebar keeps
   chat history in localStorage across reloads. The chat adapter in
-  `frontend/app/chat-runtime.tsx` calls `POST /chat`. The model selector is a
-  shadcn Select. Tailwind is v4.
+  `frontend/app/chat-runtime.tsx` calls `POST /chat` scoped to the active
+  vehicle. A vehicle selector (create, rename, delete) feeds a manual-upload
+  button and a manual-viewer toggle (a placeholder until the page-slice viewer
+  lands, DECISIONS V1). A typed client in `frontend/lib/api.ts` wraps every
+  backend call. Tailwind is v4, themed in red, white, gray, black, and gold.
 - Docker Compose runs the backend and the frontend in two terminals.
 - Git workflow: Conventional Commits, feature branches, squash merges.
 - Repo hygiene: the spike experiments moved out of the repo to

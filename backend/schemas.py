@@ -20,6 +20,21 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class Vehicle(BaseModel):
+    """A named vehicle profile, the scope of a repair conversation.
+
+    `vehicle_id` is a server-generated UUID, the same way `manual_id` is. The
+    client names the vehicle in `display_name` and keys everything else — its
+    manuals, chunks, and the active conversation — to the returned id
+    (SPECIFICATION §5 domain model).
+    """
+
+    vehicle_id: str
+    user_id: str = "default_user"  # single-user local default
+    display_name: str
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
 class Manual(BaseModel):
     """A registered, locally stored manual (DECISIONS U1).
 

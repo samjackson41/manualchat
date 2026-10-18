@@ -10,7 +10,7 @@ without rework.
 > OpenRouter, Next.js chat + model dropdown, Docker (one image per terminal).
 >
 > **Out of scope (not built / no deps):** Qdrant, Redis, embeddings, rerankers,
-> Docling, PDF ingestion, vector search, the spec ledger, the PDF Manual Viewer.
+> vector search, the spec ledger, the PDF Manual Viewer.
 
 ## Lay of the land
 
@@ -21,18 +21,22 @@ manualchat/
     llm.py           # thin OpenRouter wrapper (httpx) -> chat(messages, model, params, tools)
     tools.py         # agent tools: OpenAI schemas + executors (calculator, RAG stubs)
     agent/graph.py   # StateGraph: AgentState, chat -> tools -> chat loop (iteration point)
-    api/main.py      # FastAPI: /health, /models, /chat, and /manuals upload + read
-    storage.py       # local manual storage: manuals/{manual_id}/ (DECISIONS U1)
-    schemas.py       # shared Pydantic contracts (Manual, chunk/spec/search models)
+    api/main.py      # FastAPI: /health, /models, /chat, /manuals upload + read,
+                     # /vehicles create/rename/delete
+    storage.py       # local manual + vehicle storage (DECISIONS U1, SPEC §5)
+    schemas.py       # shared Pydantic contracts (Vehicle, Manual, RAG models)
     pyproject.toml   #                 uv project (package = false; deps only)
     uv.lock          #                 generated lockfile (deps only)
     Dockerfile
   frontend/          # Next.js 14 App Router + Tailwind v4 + shadcn/ui + assistant-ui
-    app/page.tsx     # assistant-ui Thread + ThreadList sidebar + model selector
+    app/page.tsx     # Thread + ThreadList sidebar, vehicle + model selectors,
+                     # manual-upload button, manual-viewer toggle
     app/chat-runtime.tsx  # thread-list runtime + localStorage adapter -> POST /chat
-    app/layout.tsx   # TooltipProvider + AssistantRuntimeProvider
-    app/globals.css  # Tailwind v4 theme
-    components/      # assistant-ui elements + shadcn/ui primitives
+    app/vehicle-runtime.tsx  # vehicle list + selection context -> /vehicles
+    app/layout.tsx   # TooltipProvider + VehicleProvider + AssistantRuntimeProvider
+    app/globals.css  # Tailwind v4 theme (red, white, gray, black, gold)
+    lib/api.ts       # typed client for every backend call
+    components/      # assistant-ui elements + shadcn/ui primitives + garage UI
     Dockerfile
   docker-compose.yml # services: backend, frontend (started one-per-terminal)
   README.md          # this file
@@ -52,8 +56,9 @@ OPENROUTER_API_KEY=sk-or-... docker compose up backend
 docker compose up frontend
 ```
 
-Then open <http://localhost:3000>, pick **DeepSeek Flash** or **DeepSeek Pro**
-in the dropdown, type a query, and get a reply.
+Then open <http://localhost:3000>, add a vehicle, upload a manual, pick
+**DeepSeek Flash** or **DeepSeek Pro** in the dropdown, type a query, and get
+a reply.
 
 > Do **not** run `docker compose up` (all-in-one) or `-d` (detached) — the two
 > services are meant to run in two explicit terminals.
@@ -89,6 +94,7 @@ in the repo. If it's missing, `POST /chat` fails fast with a clear error while
 | `MODEL_MAX_TOKENS` | _(unset)_ | **TBD** — omit to use provider default |
 | `AGENT_SYSTEM_PROMPT` | the grounding prompt text | DECISIONS A3 — prepended before the first chat call |
 | `MANUALS_DIR` | `manuals` | DECISIONS U1 — where each uploaded manual lands as `{manual_id}/`; in Docker this is `/data/manuals` |
+| `VEHICLES_DIR` | `vehicles` | SPEC §5 — where each vehicle profile lands as `{vehicle_id}/`; in Docker this is `/data/vehicles` |
 | `INGEST_OCR_MIN_CHARS_PER_PAGE` | `50` | DECISIONS D1 — a manual below this average needs OCR and is refused |
 | `INGEST_STRIP_HIDDEN_OCR_LAYER` | `true` | DECISIONS D2 — remove the ghost OCR font before Docling |
 | `INGEST_NORMALIZATION_ENABLED` | `true` | DECISIONS D3 — repair unit and header noise after Docling |
