@@ -7,13 +7,17 @@ extract_specs, get_page_text) land here for IMPLEMENTATION Task 4.
 """
 
 import ast
+import json
 import operator
+import re
 from typing import Callable
 
+from backend import retrieval, storage
+from backend.config import get_settings
 from backend.schemas import (
-    ChunkPayload,
     ExtractSpecsResult,
     GetPageTextResult,
+    IngestTable,
     PageText,
     SearchResult,
     SpecItem,
@@ -59,86 +63,68 @@ def calculator(expression: str) -> str:
     return str(result)
 
 
-# --- RAG tools (STUBS) -----------------------------------------------------
-# IMPLEMENTATION Task 4. These are the agent's retrieval surface. The bodies
-# are STUBS: they return sample fixtures so the chat -> tools -> chat loop can
-# be proven end to end before real Qdrant retrieval lands. Task 4 swaps the
-# bodies, not the contracts.
-#
-# The fixtures hold no manual-specific identity. Every stub answers for any
-# vehicle and echoes back the ids it is given, as real retrieval will.
+# --- RAG tools (IMPLEMENTATION Task 4) ------------------------------------
+# The agent's retrieval surface. Each executor calls the real retrieval
+# backend (backend.retrieval) or reads a manual's ingest output from disk, then
+# serializes the matching output contract from backend.schemas to JSON.
 
-# Placeholder ids for the fixture payloads; each call overwrites them.
-_STUB_VEHICLE_ID = "demo_vehicle"
-_STUB_MANUAL_ID = "demo_manual"
+# Words that never identify a spec row on their own; they are dropped before
+# matching a subject against table captions and row labels.
+_STOPWORDS = {
+    "the", "a", "an", "of", "for", "and", "to", "in", "on", "with", "at",
+    "by", "or", "is", "are", "be", "as", "it", "this", "that", "from",
+}
 
-_STUB_CHUNKS: list[ChunkPayload] = [
-    ChunkPayload(
-        text=(
-            "Engine oil and oil filter change: 1. Remove the oil drain bolt at "
-            "the bottom of the crankcase and drain the oil. 2. Remove the oil "
-            "filter. 3. Install a new filter and the drain bolt, then refill "
-            "with the specified amount of engine oil."
-        ),
-        vehicle_id=_STUB_VEHICLE_ID,
-        manual_id=_STUB_MANUAL_ID,
-        page_number=82,
-        section_name="Engine oil and oil filter",
-        score=0.93,
-    ),
-    ChunkPayload(
-        text="Tightening torque — engine oil drain bolt (M14): 30 N·m (22 ft·lb).",
-        vehicle_id=_STUB_VEHICLE_ID,
-        manual_id=_STUB_MANUAL_ID,
-        page_number=24,
-        section_name="Specifications",
-        is_table=True,
-        score=0.87,
-    ),
-]
 
-_STUB_SPECS: list[SpecItem] = [
-    SpecItem(item="Engine oil drain bolt", value="30", unit="N·m (22 ft·lb)", page_number=24),
-    SpecItem(item="Engine oil capacity (oil change)", value="2.0", unit="L", page_number=24),
-    SpecItem(item="Engine oil capacity (overhaul)", value="2.1", unit="L", page_number=24),
-    SpecItem(item="Final gear oil capacity", value="3.0", unit="L", page_number=24),
-]
+def _tokens(text: str) -> set[str]:
+    """Lowercase alphanumeric words, minus stopwords, for loose subject matching."""
+    return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in _STOPWORDS}
 
-_STUB_PAGES: list[PageText] = [
-    PageText(
-        page_number=82,
-        text=(
-            "[82] ENGINE OIL AND OIL FILTER — Remove the oil drain bolt and "
-            "drain the engine oil into a suitable container. Install a new "
-            "sealing washer, refit the bolt, and hand-tighten."
-        ),
-    ),
-    PageText(
-        page_number=83,
-        text=(
-            "[83] — Refill with the specified engine oil (2.0 L for an oil "
-            "change) and tighten the drain bolt to 30 N·m (22 ft·lb)."
-        ),
-    ),
-]
+
+def _read_tables(manual_id: str) -> list[IngestTable]:
+    """Read one manual's extracted tables, or an empty list when absent."""
+    path = storage.manual_dir(manual_id) / "tables.json"
+    if not path.is_file():
+        return []
+    return [IngestTable.model_validate(t) for t in json.loads(path.read_text())]
+
+
+def _parse_pipe_table(markdown: str) -> list[tuple[str, str]]:
+    """Return (item, value) pairs from a Markdown pipe table's data rows.
+
+    A pipe table is a header row, a ``|---|`` separator row, then data rows.
+    Each data row's first cell is the item (row label); the remaining cells are
+    joined into the value. Rows with an empty item or value are skipped.
+    """
+    lines = [ln.strip() for ln in markdown.splitlines() if ln.strip().startswith("|")]
+    rows = [[c.strip() for c in ln.strip("|").split("|")] for ln in lines]
+    data: list[list[str]] = []
+    for row in rows:
+        if all(set(c) <= set("-: ") for c in row if c):
+            continue  # the separator row
+        data.append(row)
+    if data:
+        data = data[1:]  # drop the header row
+    pairs: list[tuple[str, str]] = []
+    for row in data:
+        if not row or not row[0]:
+            continue
+        value = " | ".join(c for c in row[1:] if c)
+        if not value:
+            continue
+        pairs.append((row[0], value))
+    return pairs
 
 
 def search_manual(
     query: str,
     vehicle_id: str,
     manual_id: str | None = None,
-    top_k: int | None = None,  # accepted for the contract; unused until real retrieval
+    top_k: int | None = None,
 ) -> str:
-    """STUB — return sample chunks for the requested vehicle; real Qdrant search lands in Task 4."""
-    chunks = [
-        chunk.model_copy(
-            update={
-                "vehicle_id": vehicle_id,
-                "manual_id": manual_id or chunk.manual_id,
-            }
-        )
-        for chunk in _STUB_CHUNKS
-    ]
+    """Search the manual and return reranked chunks with page citations."""
+    top_n = top_k if top_k is not None else get_settings().retrieval_top_n
+    chunks = retrieval.search(query, vehicle_id, manual_id, top_n=top_n)
     return SearchResult(query=query, results=chunks).model_dump_json()
 
 
@@ -147,8 +133,33 @@ def extract_specs(
     vehicle_id: str,
     manual_id: str | None = None,
 ) -> str:
-    """STUB — return sample specs for any vehicle; real table retrieval lands in Task 4."""
-    return ExtractSpecsResult(subject=subject, specs=_STUB_SPECS).model_dump_json()
+    """Return exact key/value rows from the manual's tables that match a subject.
+
+    The subject is matched loosely against each table's caption and row labels;
+    matched rows are returned verbatim (never guessed). An empty ``specs`` list
+    means no table matched.
+    """
+    manual_ids = (
+        [manual_id]
+        if manual_id
+        else [m.manual_id for m in storage.list_manuals() if m.vehicle_id == vehicle_id]
+    )
+    subject_tokens = _tokens(subject)
+    specs: list[SpecItem] = []
+    for mid in manual_ids:
+        for table in _read_tables(mid):
+            caption_tokens = _tokens(table.caption or "")
+            for item, value in _parse_pipe_table(table.markdown):
+                if subject_tokens & (_tokens(item) | caption_tokens):
+                    specs.append(
+                        SpecItem(
+                            item=item,
+                            value=value,
+                            unit="",
+                            page_number=table.page_number,
+                        )
+                    )
+    return ExtractSpecsResult(subject=subject, specs=specs).model_dump_json()
 
 
 def get_page_text(
@@ -156,8 +167,17 @@ def get_page_text(
     manual_id: str,
     vehicle_id: str | None = None,
 ) -> str:
-    """STUB — return sample page text for any manual; real unchunked retrieval lands in Task 4."""
-    return GetPageTextResult(manual_id=manual_id, pages=_STUB_PAGES).model_dump_json()
+    """Return the full, unchunked text of each requested physical page.
+
+    Page numbers are physical (1-indexed), matching the ``page_NNNN.txt``
+    filenames (DECISIONS D12). Pages with no file on disk are skipped.
+    """
+    pages: list[PageText] = []
+    for page_number in page_numbers:
+        path = storage.manual_dir(manual_id) / "page_text" / f"page_{page_number:04d}.txt"
+        if path.is_file():
+            pages.append(PageText(page_number=page_number, text=path.read_text()))
+    return GetPageTextResult(manual_id=manual_id, pages=pages).model_dump_json()
 
 
 # OpenAI function-calling schemas (bound to the model in llm.chat).

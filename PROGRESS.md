@@ -46,8 +46,12 @@
   point ids stay unique across manuals indexed into one collection.
 - Tool calling: the graph runs a `chat -> tools -> chat` loop. The `calculator`
   and three RAG tools (`search_manual`, `extract_specs`, `get_page_text`) are in
-  `backend/tools.py`. The RAG tools are stubs that return sample data. Wiring
-  them to the retrieval backend is left (IMPLEMENTATION Task 4).
+  `backend/tools.py`. The RAG tools now use real retrieval (IMPLEMENTATION
+  Task 4). `search_manual` calls `retrieval.search` and returns reranked chunks
+  with page citations. `get_page_text` reads the full, unchunked text of each
+  requested physical page from `page_text/page_NNNN.txt`. `extract_specs` reads
+  `tables.json`, matches the subject against table captions and row labels, and
+  returns the matched rows verbatim (an empty list when nothing matches).
 - System prompt: the graph prepends the grounding prompt before the first chat
   call. The prompt demands a `[Page N]` citation on every claim and step,
   answers only from the manual, states plainly when the manual holds no answer,
@@ -89,9 +93,9 @@
 
 ## What is left
 
-- The RAG pipeline, in phases. The ingest stage (Task 1) and chunking and
-  indexing (Task 3) are done. Real retrieval behind the tools (Task 4) and the
-  chunk eval are next. The prototype runs against the 56-page `pl.pdf`. The
+- The RAG pipeline, in phases. The ingest stage (Task 1), chunking and
+  indexing (Task 3), and real retrieval behind the tools (Task 4) are done. The
+  chunk eval is next. The prototype runs against the 56-page `pl.pdf`. The
   graph stays a flat `chat ↔ tools` loop and the answer stays markdown text with
   `[Page N]` citations. The ratified values are in `DECISIONS.md` (D9 to D13,
   R3 to R9, A1 to A3, T1 to T3).
@@ -100,9 +104,6 @@
 - Future work (DECISIONS Deferred): the Supervisor and Synthesizer graph, the
   structured `AgentAnswer`, the spec ledger, the PDF viewer with citation
   badges, the scanned-manual OCR path, and the Docker work.
-- Real retrieval behind `search_manual`, `extract_specs`, and `get_page_text`.
-  The `backend/retrieval.py` backend is in place (Task 3); the tool stubs still
-  return sample data, and Task 4 wires them to it.
 - Memory: the summary field, the compaction node, and a checkpointer per
   `MEMORY_DESIGN.md`.
 - The scanned-manual OCR path. Deferred past MVP per DECISIONS S1.
