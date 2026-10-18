@@ -89,6 +89,24 @@ def _read_tables(manual_id: str) -> list[IngestTable]:
     return [IngestTable.model_validate(t) for t in json.loads(path.read_text())]
 
 
+def _enabled_manual_ids(vehicle_id: str, manual_id: str | None) -> list[str]:
+    """Source manual ids for a spec lookup, skipping disabled manuals (DECISIONS M1).
+
+    Mirrors ``retrieval.search``: a manual named from another vehicle matches
+    nothing, and a disabled manual never surfaces its specs.
+    """
+    if manual_id:
+        manual = storage.get_manual(manual_id)
+        if manual is None or manual.vehicle_id != vehicle_id or not manual.enabled:
+            return []
+        return [manual_id]
+    return [
+        m.manual_id
+        for m in storage.list_manuals()
+        if m.vehicle_id == vehicle_id and m.enabled
+    ]
+
+
 def _parse_pipe_table(markdown: str) -> list[tuple[str, str]]:
     """Return (item, value) pairs from a Markdown pipe table's data rows.
 
@@ -139,11 +157,7 @@ def extract_specs(
     matched rows are returned verbatim (never guessed). An empty ``specs`` list
     means no table matched.
     """
-    manual_ids = (
-        [manual_id]
-        if manual_id
-        else [m.manual_id for m in storage.list_manuals() if m.vehicle_id == vehicle_id]
-    )
+    manual_ids = _enabled_manual_ids(vehicle_id, manual_id)
     subject_tokens = _tokens(subject)
     specs: list[SpecItem] = []
     for mid in manual_ids:
