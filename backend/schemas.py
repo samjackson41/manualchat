@@ -50,7 +50,7 @@ class Manual(BaseModel):
     vehicle_id: str
     display_name: str
     source_filename: str
-    kind: Literal["oem", "aftermarket", "supplement", "other"] = "oem"
+    description: Optional[str] = None
     status: Literal["processing", "ready", "error"] = "processing"
     enabled: bool = True
     page_count: int = 0

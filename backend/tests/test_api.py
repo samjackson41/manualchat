@@ -163,14 +163,18 @@ def test_upload_list_and_get_manual(manuals_dir, no_ingest):
     resp = client.post(
         "/manuals",
         files=_pdf(),
-        data={"vehicle_id": "v1", "display_name": "Rhino 700", "kind": "oem"},
+        data={
+            "vehicle_id": "v1",
+            "display_name": "Rhino 700",
+            "description": "Full service manual",
+        },
     )
     assert resp.status_code == 200
     manual = resp.json()
     assert manual["vehicle_id"] == "v1"
     assert manual["display_name"] == "Rhino 700"
     assert manual["source_filename"] == "rhino.pdf"
-    assert manual["kind"] == "oem"
+    assert manual["description"] == "Full service manual"
     assert manual["status"] == "processing"
 
     # Upload schedules the ingest pipeline for the new manual.
@@ -201,24 +205,13 @@ def test_upload_rejects_non_pdf(manuals_dir):
     resp = client.post(
         "/manuals",
         files={"file": ("notes.txt", b"not a pdf", "text/plain")},
-        data={"vehicle_id": "v1", "display_name": "Notes", "kind": "oem"},
+        data={"vehicle_id": "v1", "display_name": "Notes"},
     )
     assert resp.status_code == 400
     assert "not a PDF" in resp.json()["detail"]
 
 
-def test_upload_rejects_unknown_kind(manuals_dir):
-    client = TestClient(app)
-    resp = client.post(
-        "/manuals",
-        files=_pdf(),
-        data={"vehicle_id": "v1", "display_name": "Rhino 700", "kind": "pamphlet"},
-    )
-    assert resp.status_code == 400
-    assert "kind must be one of" in resp.json()["detail"]
-
-
-def test_upload_defaults_kind_to_oem(manuals_dir, no_ingest):
+def test_upload_description_is_optional(manuals_dir, no_ingest):
     client = TestClient(app)
     resp = client.post(
         "/manuals",
@@ -226,7 +219,7 @@ def test_upload_defaults_kind_to_oem(manuals_dir, no_ingest):
         data={"vehicle_id": "v1", "display_name": "Rhino 700"},
     )
     assert resp.status_code == 200
-    assert resp.json()["kind"] == "oem"
+    assert resp.json()["description"] is None
 
 
 # --- Manual management: enable, disable, delete (DECISIONS M1/M2) ---

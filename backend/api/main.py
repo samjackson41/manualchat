@@ -5,8 +5,6 @@ calling `llm.chat` directly — this is what proves the reply went through the
 LangGraph graph (the "done when" criterion).
 """
 
-from typing import get_args
-
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import HumanMessage
@@ -83,18 +81,13 @@ def chat(req: ChatRequest) -> dict:
     return {"reply": reply, "model": model}
 
 
-# The kinds allowed for an uploaded manual, taken from the `Manual` schema's
-# `Literal` so the two cannot drift apart.
-_MANUAL_KINDS: set[str] = set(get_args(Manual.model_fields["kind"].annotation))
-
-
 @app.post("/manuals")
 async def create_manual(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     vehicle_id: str = Form(...),
     display_name: str = Form(...),
-    kind: str = Form("oem"),
+    description: str = Form(""),
 ) -> Manual:
     """Store an uploaded manual PDF and run ingest on it in the background.
 
@@ -106,11 +99,6 @@ async def create_manual(
         raise HTTPException(status_code=400, detail="vehicle_id is required")
     if not display_name.strip():
         raise HTTPException(status_code=400, detail="display_name is required")
-    if kind not in _MANUAL_KINDS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"kind must be one of {sorted(_MANUAL_KINDS)}",
-        )
 
     content = await file.read()
     if not content.startswith(b"%PDF"):
@@ -120,7 +108,7 @@ async def create_manual(
         source_pdf=content,
         vehicle_id=vehicle_id.strip(),
         display_name=display_name.strip(),
-        kind=kind,
+        description=description.strip() or None,
         source_filename=file.filename or "manual.pdf",
     )
     background_tasks.add_task(ingest.ingest_in_background, manual.manual_id)
