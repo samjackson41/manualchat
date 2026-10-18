@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import uuid
 from functools import lru_cache
 from pathlib import Path
 
@@ -326,7 +327,13 @@ def index_manual(manual_id: str, *, embed=None) -> int:
     from qdrant_client.models import PointStruct
 
     points = [
-        PointStruct(id=i, vector=[float(x) for x in vec], payload=_payload(chunk))
+        # IDs must be unique across the whole collection, so they are derived
+        # from the manual id; a bare chunk index would collide between manuals.
+        PointStruct(
+            id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{manual_id}:chunk:{i}")),
+            vector=[float(x) for x in vec],
+            payload=_payload(chunk),
+        )
         for i, (chunk, vec) in enumerate(zip(chunks, vectors))
     ]
     client.upsert(
