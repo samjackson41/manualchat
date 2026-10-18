@@ -10,7 +10,7 @@ without rework.
 > OpenRouter, Next.js chat + model dropdown, Docker (one image per terminal).
 >
 > **Out of scope (not built / no deps):** Qdrant, Redis, embeddings, rerankers,
-> vector search, the spec ledger, the PDF Manual Viewer.
+> vector search, the spec ledger.
 
 ## Lay of the land
 
@@ -21,24 +21,27 @@ manualchat/
     llm.py           # thin OpenRouter wrapper (httpx) -> chat(messages, model, params, tools)
     tools.py         # agent tools: OpenAI schemas + executors (calculator, RAG stubs)
     agent/graph.py   # StateGraph: AgentState, chat -> tools -> chat loop (iteration point)
-    api/main.py      # FastAPI: /health, /models, /chat, /manuals upload + read +
-                     # enable/disable/delete, /vehicles create/rename/delete
+    api/main.py      # FastAPI: /health, /models, /chat, /chat/stream, /manuals
+                     # (upload/read/toggle/delete, page slices, thumbnails),
+                     # /vehicles create/rename/delete
     storage.py       # local manual + vehicle storage (DECISIONS U1, SPEC §5)
+    slicer.py        # on-demand PDF page slices for the manual viewer (PyMuPDF)
     schemas.py       # shared Pydantic contracts (Vehicle, Manual, RAG models)
     pyproject.toml   #                 uv project (package = false; deps only)
     uv.lock          #                 generated lockfile (deps only)
     Dockerfile
-  frontend/          # Next.js 14 App Router + Tailwind v4 + shadcn/ui + assistant-ui
+  frontend/          # Next.js 14 App Router + Tailwind v4 + shadcn/ui + assistant-ui + react-pdf
     app/page.tsx     # top bar + thread-list sidebar + chat, side-by-side viewer
     app/chat-runtime.tsx  # thread-list runtime + localStorage adapter -> POST /chat
     app/vehicle-runtime.tsx  # vehicle list + selection context -> /vehicles
+    app/viewer-runtime.tsx  # viewer state: open/close, cited page, manual choice
     app/theme-runtime.tsx  # light/dark theme state; the choice survives reloads
     app/layout.tsx   # provider stack + a pre-paint script that sets the theme
     app/globals.css  # Tailwind v4 theme, light and dark (red, white, gray, black, gold)
     lib/api.ts       # typed client for every backend call
     lib/theme.ts     # theme key, the stored choice, and the pre-paint script
     components/      # assistant-ui elements + shadcn/ui primitives + garage UI
-                     # (top bar, vehicle selector, manual upload and viewer)
+                     # (top bar, vehicle selector, manual upload, PDF viewer)
     Dockerfile
   docker-compose.yml # services: backend, frontend (started one-per-terminal)
   README.md          # this file

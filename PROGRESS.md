@@ -53,12 +53,19 @@
   answers only from the manual, states plainly when the manual holds no answer,
   and shows both values when the manual conflicts. The text is tunable via
   `AGENT_SYSTEM_PROMPT` (DECISIONS A3).
+- Backend services (Task 5): `POST /chat/stream` streams the graph's answer as
+  SSE JSON chunks — `{"type": "token"}` deltas then one final
+  `{"type": "done"}` — through a new `llm.stream_chat` and a `stream` state flag
+  that routes `chat_node` through a streaming path (the graph shape and the
+  plain `/chat` reply are unchanged). `GET /manuals/{id}/thumbnails/{page}`
+  renders one physical page of the stored `source.pdf` to a PNG at
+  `THUMBNAIL_DPI` (default 150) for the viewer's raster fallback.
 - Frontend: Next.js chat built on assistant-ui. The styled Thread shows
   messages, markdown, streaming, and regeneration. A thread-list sidebar keeps
   chat history in localStorage across reloads. The chat adapter in
   `frontend/app/chat-runtime.tsx` calls `POST /chat` scoped to the active
   vehicle. A vehicle selector feeds a manual-upload button and a manual-viewer
-  toggle (a placeholder until the page-slice viewer lands, DECISIONS V1). The
+  toggle. The
   selector's dropdown ends with an Add vehicle entry; rename and delete sit
   behind a pencil icon. The upload dialog takes an optional description in
   place of the old manual kind, and its own vehicle picker (with an Add
@@ -72,6 +79,13 @@
   stored choice wins (DECISIONS C1). The ManualChat wordmark is replaced by the
   wrench-in-bubble logo, and the manual viewer opens side by side with the chat
   instead of above it (DECISIONS C2).
+- Manual viewer and citations (Task 6): each `[Page N]` in a reply renders as a
+  clickable badge. Clicking one opens the viewer pane beside the chat and
+  shows the cited page plus two pages on each side with selectable text,
+  rendered with react-pdf (DECISIONS V1). A manual selector in the viewer
+  defaults to the active vehicle's first enabled manual. The slice loads from
+  `GET /manuals/{id}/pages/{start}-{end}`, which cuts the pages on demand with
+  PyMuPDF (`backend/slicer.py`).
 - Docker Compose runs the backend and the frontend in two terminals.
 - Git workflow: Conventional Commits, feature branches, squash merges.
 - Repo hygiene: the spike experiments moved out of the repo to
@@ -98,8 +112,8 @@
 - The chunk eval: about 15 questions with known answer pages from `pl.pdf`, to
   check recall and citation precision and confirm the chunk size and overlap.
 - Future work (DECISIONS Deferred): the Supervisor and Synthesizer graph, the
-  structured `AgentAnswer`, the spec ledger, the PDF viewer with citation
-  badges, the scanned-manual OCR path, and the Docker work.
+  structured `AgentAnswer`, the spec ledger, the scanned-manual OCR path, and
+  the Docker work.
 - Real retrieval behind `search_manual`, `extract_specs`, and `get_page_text`.
   The `backend/retrieval.py` backend is in place (Task 3); the tool stubs still
   return sample data, and Task 4 wires them to it.
