@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ChatRuntimeProvider } from "./chat-runtime";
 import { ThemeProvider } from "./theme-runtime";
 import { VehicleProvider } from "./vehicle-runtime";
+import { ViewerProvider } from "./viewer-runtime";
 
 export const metadata: Metadata = {
   title: "ManualChat",
@@ -25,7 +26,9 @@ export default function RootLayout({
         <ThemeProvider>
           <TooltipProvider>
             <VehicleProvider>
-              <ChatRuntimeProvider>{children}</ChatRuntimeProvider>
+              <ViewerProvider>
+                <ChatRuntimeProvider>{children}</ChatRuntimeProvider>
+              </ViewerProvider>
             </VehicleProvider>
           </TooltipProvider>
         </ThemeProvider>
