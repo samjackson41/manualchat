@@ -49,8 +49,8 @@ def store_manual(
     source_pdf: bytes,
     vehicle_id: str,
     display_name: str,
-    kind: str,
     source_filename: str,
+    description: str | None = None,
 ) -> Manual:
     """Write an uploaded manual and return its record.
 
@@ -68,7 +68,7 @@ def store_manual(
         vehicle_id=vehicle_id,
         display_name=display_name,
         source_filename=source_filename,
-        kind=kind,
+        description=description,
         status="processing",
     )
     (manual_dir / "manual.json").write_text(

@@ -41,7 +41,6 @@ def _store_manual(pages: list[str]) -> str:
         source_pdf=_pdf_bytes(pages),
         vehicle_id="demo_vehicle",
         display_name="Demo manual",
-        kind="oem",
         source_filename="demo.pdf",
     )
     return manual.manual_id

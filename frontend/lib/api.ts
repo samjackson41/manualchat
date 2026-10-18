@@ -6,9 +6,6 @@ const BACKEND_URL =
 
 export type ModelOption = { id: string; label: string };
 
-export const MANUAL_KINDS = ["oem", "aftermarket", "supplement", "other"] as const;
-export type ManualKind = (typeof MANUAL_KINDS)[number];
-
 export type Vehicle = {
   vehicle_id: string;
   user_id: string;
@@ -21,7 +18,7 @@ export type Manual = {
   vehicle_id: string;
   display_name: string;
   source_filename: string;
-  kind: ManualKind;
+  description: string | null;
   status: "processing" | "ready" | "error";
   page_count: number;
   created_at: string;
@@ -91,13 +88,13 @@ export async function uploadManual(input: {
   file: File;
   vehicleId: string;
   displayName: string;
-  kind: ManualKind;
+  description: string;
 }): Promise<Manual> {
   const form = new FormData();
   form.append("file", input.file);
   form.append("vehicle_id", input.vehicleId);
   form.append("display_name", input.displayName);
-  form.append("kind", input.kind);
+  form.append("description", input.description);
   const res = await fetch(`${BACKEND_URL}/manuals`, {
     method: "POST",
     body: form,
