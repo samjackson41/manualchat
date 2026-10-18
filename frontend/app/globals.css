@@ -7,37 +7,48 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Palette: red, white, gray, black, and gold (CMYK-mapped RGB). */
+  --background: #ffffff;          /* white */
+  --foreground: #000000;          /* black */
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+  --primary: #ed1c24;             /* red */
+  --primary-foreground: #ffffff;
+  --secondary: #f2f2f3;           /* silver (gray tint) */
+  --secondary-foreground: #000000;
+  --muted: #f2f2f3;               /* silver */
+  --muted-foreground: #717074;    /* gray */
+  --accent: #f2f2f3;              /* silver */
+  --accent-foreground: #000000;
+  --destructive: #ed1c24;         /* red */
+  --border: #e0e0e2;              /* light silver */
+  --input: #e0e0e2;
+  --ring: #ed1c24;                /* red */
+  --gold: #fdba40;                /* gold accent */
+  --chrome-gradient: linear-gradient(
+    180deg,
+    #f2f2f3 0%,
+    #ffffff 22%,
+    #9b9b9f 45%,
+    #ffffff 55%,
+    #717074 78%,
+    #ffffff 100%
+  );
+  --chart-1: #ed1c24;             /* red */
+  --chart-2: #fdba40;             /* gold */
+  --chart-3: #717074;             /* gray */
+  --chart-4: #000000;             /* black */
+  --chart-5: #f2f2f3;             /* silver */
+  --sidebar: #f2f2f3;             /* silver */
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #ed1c24;     /* red */
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e0e0e2;      /* silver */
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #e0e0e2;
+  --sidebar-ring: #ed1c24;        /* red */
 }
 
 .dark {
@@ -47,18 +58,18 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: #ed1c24;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+  --destructive: #ed1c24;
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: #ed1c24;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -66,12 +77,12 @@
   --chart-5: oklch(0.269 0 0);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-primary: #ed1c24;
+  --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: #ed1c24;
 }
 
 @theme inline {
@@ -99,6 +110,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-gold: var(--gold);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -136,6 +148,15 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .text-chrome {
+    background: var(--chrome-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 }
 
