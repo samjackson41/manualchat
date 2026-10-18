@@ -42,7 +42,12 @@
   lands, DECISIONS V1). The upload dialog lists the active vehicle's manuals
   with their ingest status and polls `GET /manuals` until the ingest finishes.
   A typed client in `frontend/lib/api.ts` wraps every backend call. Tailwind is
-  v4, themed in red, white, gray, black, and gold.
+  v4, themed in red, white, gray, black, and gold. A light/dark theme toggle
+  sits in a top bar that also holds the selector, upload, viewer, and model
+  controls; on first visit the theme follows the operating system, then the
+  stored choice wins (DECISIONS C1). The ManualChat wordmark is replaced by the
+  wrench-in-bubble logo, and the manual viewer opens side by side with the chat
+  instead of above it (DECISIONS C2).
 - Docker Compose runs the backend and the frontend in two terminals.
 - Git workflow: Conventional Commits, feature branches, squash merges.
 - Repo hygiene: the spike experiments moved out of the repo to
