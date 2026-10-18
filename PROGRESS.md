@@ -39,8 +39,10 @@
   `frontend/app/chat-runtime.tsx` calls `POST /chat` scoped to the active
   vehicle. A vehicle selector (create, rename, delete) feeds a manual-upload
   button and a manual-viewer toggle (a placeholder until the page-slice viewer
-  lands, DECISIONS V1). A typed client in `frontend/lib/api.ts` wraps every
-  backend call. Tailwind is v4, themed in red, white, gray, black, and gold.
+  lands, DECISIONS V1). The upload dialog lists the active vehicle's manuals
+  with their ingest status and polls `GET /manuals` until the ingest finishes.
+  A typed client in `frontend/lib/api.ts` wraps every backend call. Tailwind is
+  v4, themed in red, white, gray, black, and gold.
 - Docker Compose runs the backend and the frontend in two terminals.
 - Git workflow: Conventional Commits, feature branches, squash merges.
 - Repo hygiene: the spike experiments moved out of the repo to
