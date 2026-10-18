@@ -133,7 +133,6 @@ def _store_ingested_manual(pages: dict[int, str]) -> str:
         source_pdf=b"%PDF-fake",
         vehicle_id="demo_vehicle",
         display_name="Demo",
-        kind="oem",
         source_filename="demo.pdf",
     )
     manual_dir = storage.manual_dir(manual.manual_id)
