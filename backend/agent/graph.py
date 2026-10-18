@@ -15,6 +15,7 @@ WHERE THE NEXT CHANGES GO (documented so the structure is obviously extensible):
      §4-5) and a checkpointer (InMemorySaver, later RedisSaver).
 """
 
+import inspect
 import json
 from typing import Annotated, TypedDict
 
@@ -111,7 +112,12 @@ def chat_node(state: AgentState) -> dict:
 
 
 def tool_node(state: AgentState) -> dict:
-    """Run the pending tool calls from the last AI message, one ToolMessage each."""
+    """Run the pending tool calls, scoping them to the state's vehicle.
+
+    The model cannot know the vehicle id, so the state's value is merged into
+    every tool argument and overrides any value the model supplied. Tools that
+    do not take a ``vehicle_id`` parameter (calculator) are left alone.
+    """
     last = state["messages"][-1]
     tool_messages: list[ToolMessage] = []
     for call in last.tool_calls:
@@ -120,7 +126,10 @@ def tool_node(state: AgentState) -> dict:
             output = f"Error: unknown tool '{call['name']}'"
         else:
             try:
-                output = fn(**call["args"])
+                args = dict(call["args"])
+                if "vehicle_id" in inspect.signature(fn).parameters:
+                    args["vehicle_id"] = state["vehicle_id"]
+                output = fn(**args)
             except TypeError as exc:
                 output = f"Error: bad arguments for '{call['name']}': {exc}"
         tool_messages.append(
