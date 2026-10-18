@@ -12,12 +12,27 @@ dependencies = [
     "pydantic>=2.8.0",
     "pydantic-settings>=2.4.0",
     "python-multipart>=0.0.32",
+    "docling>=2.52.0",
+    "pymupdf>=1.28.2",
+    "torch>=2.14",
+    "torchvision>=0.29",
 ]
 
 # This project is NOT itself installed as a package — the `backend/` source is
 # bind-mounted for hot reload. `uv sync` only installs the dependencies above.
 [tool.uv]
 package = false
+
+# CPU-only torch/torchvision (no CUDA). Revisit when scanned-manual OCR lands
+# (DECISIONS S1) and a GPU host is in play.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
 
 # Tests import the `backend` package, which lives one directory up.
 [tool.pytest.ini_options]

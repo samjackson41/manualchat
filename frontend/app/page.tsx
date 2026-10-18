@@ -47,6 +47,10 @@ export default function Home() {
             </Button>
             <Select
               value={model}
+              items={models.map((option) => ({
+                value: option.id,
+                label: option.label,
+              }))}
               onValueChange={(value) => {
                 if (value) setModel(value);
               }}

@@ -49,7 +49,7 @@ status: ## Check services run and are up to date
 		if [ -z "$$created" ]; then echo "  $$label  not built"; return; fi; \
 		im="$$(date -u -d "$$created" +%s)"; nm=0; \
 		for f in "$$@"; do t="$$(stat -c %Y "$$f" 2>/dev/null || echo 0)"; [ "$$t" -gt "$$nm" ] && nm=$$t; done; \
-		if [ "$$nm" -gt "$$im" ]; then echo "  $$label  STALE (run: make build)"; else echo "  $$label  up to date"; fi; \
+		if [ "$$nm" -gt "$$im" ]; then echo "  $$label  STALE (run: make build)"; else echo "  $$label up to date"; fi; \
 	}; \
 	check_img "backend image" manualchat-backend backend/uv.lock backend/pyproject.toml backend/Dockerfile; \
 	check_img "frontend image" manualchat-frontend frontend/package.json frontend/package-lock.json frontend/Dockerfile; \

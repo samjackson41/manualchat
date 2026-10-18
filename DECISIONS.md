@@ -57,10 +57,16 @@ path returns — no spike, no config churn, just a deferred note.
 | D11 | Chunk overlap in tokens | `64` | `ingest.chunk_overlap_tokens` |
 | D12 | Citations use the physical PDF page number for every manual. Manuals use different printed numbering systems, so the printed number is not recovered. The interface tells the user that the number is a PDF page number. | `false` | `ingest.use_printed_page_numbers` |
 | D13 | Token counter for chunking | `cl100k_base`, the counter that `memory.tokenizer` already names | `ingest.tokenizer` |
+| D14 | Docker image ships **CPU-only torch/torchvision** (no CUDA) for MVP | CPU | — (build-time) |
 
 D1–D3 apply defensively to the Rhino + Johnson manuals (the Rhino was produced through an
 Acrobat "Paper Capture" pipeline, so it may carry the ghost OCR layer — sanitize-at-source
 is harmless either way).
+
+D14 keeps the image CPU-only for MVP. The CPU torch build is pinned in
+`backend/pyproject.toml` through the PyTorch CPU index. GPU acceleration is
+deferred to MVP+1, when the scanned-manual OCR path (S1) returns and a GPU host
+is in play.
 
 D9 to D11 and D13 follow common practice. A chunk holds 256 to 1024 tokens, and
 neighbouring chunks share 10 to 20 percent of their text. The prototype runs
@@ -231,3 +237,5 @@ Last-checked: 2026-10-13
 - **Manual Viewer rerank threshold** — the value that opens the viewer page set.
 - **Docker work** — the Qdrant service in `docker-compose.yml` and the baked
   ingestion models.
+- **GPU acceleration** — deferred to MVP+1 with the scanned-manual OCR path (S1).
+  The Docker image ships CPU-only torch (D14); revisit when a GPU host is in play.

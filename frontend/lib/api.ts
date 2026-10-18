@@ -23,6 +23,7 @@ export type Manual = {
   source_filename: string;
   kind: ManualKind;
   status: "processing" | "ready" | "error";
+  page_count: number;
   created_at: string;
 };
 

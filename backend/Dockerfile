@@ -20,7 +20,10 @@ ENV PYTHONPATH=/app \
 # `[tool.uv] package = false` — and the source is bind-mounted by compose, so
 # there is no `COPY backend` here.
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev
+# Persist uv's download cache across builds so a changed uv.lock re-resolves
+# from already-downloaded wheels instead of fetching them again.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
 EXPOSE 8000
 
