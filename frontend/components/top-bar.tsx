@@ -65,7 +65,7 @@ export function TopBar({
             <SelectContent>
               {models.map((option) => (
                 <SelectItem key={option.id} value={option.id}>
-                  {option.label}
+                  <span className="block truncate">{option.label}</span>
                 </SelectItem>
               ))}
             </SelectContent>

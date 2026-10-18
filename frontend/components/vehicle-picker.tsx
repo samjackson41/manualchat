@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { listManuals, type Manual } from "@/lib/api";
 import { useVehicles } from "@/app/vehicle-runtime";
 
 // Sentinel value for the "Add vehicle" entry at the bottom of the list.
@@ -35,6 +36,25 @@ export function VehiclePicker({
 }) {
   const { vehicles, addVehicle } = useVehicles();
   const [addOpen, setAddOpen] = useState(false);
+  const [manualsByVehicle, setManualsByVehicle] = useState<
+    Record<string, Manual[]>
+  >({});
+
+  // Refresh on each open, so a manual uploaded elsewhere shows up next time.
+  const refreshManuals = useCallback(async () => {
+    const all = await listManuals();
+    const grouped: Record<string, Manual[]> = {};
+    for (const manual of all) {
+      (grouped[manual.vehicle_id] ??= []).push(manual);
+    }
+    setManualsByVehicle(grouped);
+  }, []);
+
+  useEffect(() => {
+    refreshManuals().catch(() => {
+      // The sublist is a convenience; a failed load must not block selection.
+    });
+  }, [refreshManuals]);
 
   function handleSelect(next: string) {
     if (next === ADD_VEHICLE) {
@@ -60,23 +80,54 @@ export function VehiclePicker({
         onValueChange={(next) => {
           if (next) handleSelect(next);
         }}
+        onOpenChange={(open) => {
+          if (open) refreshManuals().catch(() => {});
+        }}
       >
         <SelectTrigger
           aria-label="Vehicle selector"
-          className={triggerClassName ?? "w-44"}
+          className={triggerClassName ?? "w-72 text-xs"}
         >
           <SelectValue placeholder="Pick a vehicle" />
         </SelectTrigger>
         <SelectContent>
-          {vehicles.map((vehicle) => (
-            <SelectItem key={vehicle.vehicle_id} value={vehicle.vehicle_id}>
-              {vehicle.display_name}
-            </SelectItem>
-          ))}
+          {vehicles.map((vehicle) => {
+            const manuals = manualsByVehicle[vehicle.vehicle_id] ?? [];
+            return (
+              <SelectItem
+                key={vehicle.vehicle_id}
+                value={vehicle.vehicle_id}
+                className="text-xs"
+              >
+                <div className="flex min-w-0 flex-col gap-0.5 py-0.5">
+                  <span className="min-w-0 truncate font-semibold">
+                    {vehicle.display_name}
+                  </span>
+                  {manuals.length > 0 && (
+                    <div className="flex flex-col gap-0.5">
+                      {manuals.map((manual, index) => (
+                        <div
+                          key={manual.manual_id}
+                          className="flex min-w-0 items-baseline gap-1.5 pl-1"
+                        >
+                          <span className="text-muted-foreground! shrink-0">
+                            {index === manuals.length - 1 ? "└ -" : "| -"}
+                          </span>
+                          <span className="text-muted-foreground! min-w-0 flex-1 truncate">
+                            {manual.display_name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </SelectItem>
+            );
+          })}
           <SelectSeparator />
           <SelectItem value={ADD_VEHICLE}>
-            <span className="text-primary flex items-center gap-2">
-              <PlusIcon className="size-4" />
+            <span className="text-primary! flex items-center gap-2 text-xs">
+              <PlusIcon className="text-primary! size-4" />
               Add vehicle
             </span>
           </SelectItem>

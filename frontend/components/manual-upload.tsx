@@ -141,7 +141,7 @@ export function ManualUpload() {
             <VehiclePicker
               value={vehicleId}
               onValueChange={(id) => setVehicleId(id)}
-              triggerClassName="w-full"
+              triggerClassName="w-full text-xs"
             />
             <input
               type="file"
