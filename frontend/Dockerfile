@@ -2,7 +2,7 @@
 # Source is bind-mounted at run time; node_modules is preserved via an
 # anonymous volume in docker-compose.yml.
 
-FROM node:20-slim
+FROM node:22-slim
 
 WORKDIR /app
 
