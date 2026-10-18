@@ -16,6 +16,10 @@ manuals/*.pdf
 manuals/**/*.pdf
 manuals/*/
 
+# Vehicle profiles are runtime data (SPECIFICATION §5), the same way manuals
+# are. Keep them out of git.
+vehicles/*/
+
 Makefile.local
 
 # Spike experiments (moved to ../spikes)
