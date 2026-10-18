@@ -104,20 +104,32 @@ export function VehiclePicker({
                     {vehicle.display_name}
                   </span>
                   {manuals.length > 0 && (
-                    <div className="flex flex-col gap-0.5">
-                      {manuals.map((manual, index) => (
-                        <div
-                          key={manual.manual_id}
-                          className="flex min-w-0 items-baseline gap-1.5 pl-1"
-                        >
-                          <span className="text-muted-foreground! shrink-0">
-                            {index === manuals.length - 1 ? "└ -" : "| -"}
-                          </span>
-                          <span className="text-muted-foreground! min-w-0 flex-1 truncate">
-                            {manual.display_name}
-                          </span>
-                        </div>
-                      ))}
+                    <div className="relative flex flex-col">
+                      {manuals.map((manual, index) => {
+                        const isLast = index === manuals.length - 1;
+                        return (
+                          <div
+                            key={manual.manual_id}
+                            className="relative flex h-5 min-w-0 items-center"
+                          >
+                            {/* the trunk continues past every elbow but the last */}
+                            {!isLast && (
+                              <span
+                                aria-hidden
+                                className="bg-muted-foreground/40 absolute top-1/2 left-2 h-1/2 w-px"
+                              />
+                            )}
+                            {/* the elbow: a rounded corner swinging into the label */}
+                            <span
+                              aria-hidden
+                              className="border-muted-foreground/40 absolute top-0 left-2 h-2.5 w-3 rounded-bl-sm border-b border-l"
+                            />
+                            <span className="text-muted-foreground! min-w-0 flex-1 truncate pl-6">
+                              {manual.display_name}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
