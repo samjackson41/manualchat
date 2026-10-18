@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { BookOpenIcon } from "lucide-react";
+import logo from "@/assets/manual-chat-logo.svg";
 import { useModelSelection } from "@/app/chat-runtime";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +28,17 @@ export function TopBar({
   return (
     <header className="bg-topbar border-border flex flex-col border-b">
       <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-        <VehicleSelector />
+        <div className="flex items-center gap-3">
+          <Image
+            src={logo}
+            alt="ManualChat"
+            width={32}
+            height={32}
+            unoptimized
+            className="size-8 shrink-0"
+          />
+          <VehicleSelector />
+        </div>
 
         <div className="flex items-center gap-2">
           <ManualUpload />
