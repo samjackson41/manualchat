@@ -12,27 +12,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  MANUAL_KINDS,
   listManuals,
   uploadManual,
   type Manual,
-  type ManualKind,
 } from "@/lib/api";
 import { useVehicles } from "@/app/vehicle-runtime";
-
-const KIND_LABELS: Record<ManualKind, string> = {
-  oem: "OEM service manual",
-  aftermarket: "Aftermarket guide",
-  supplement: "Supplement",
-  other: "Other",
-};
 
 // Ingest runs in the background after the upload, so the list below refreshes
 // while any manual is still processing.
@@ -49,7 +33,7 @@ export function ManualUpload() {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [displayName, setDisplayName] = useState("");
-  const [kind, setKind] = useState<ManualKind>("oem");
+  const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -97,7 +81,7 @@ export function ManualUpload() {
   function reset() {
     setFile(null);
     setDisplayName("");
-    setKind("oem");
+    setDescription("");
     setBusy(false);
     setError(null);
     setDone(false);
@@ -114,7 +98,7 @@ export function ManualUpload() {
         file,
         vehicleId: activeVehicleId,
         displayName: trimmed,
-        kind,
+        description: description.trim() || undefined,
       });
       setManuals((previous) => [
         manual,
@@ -165,27 +149,11 @@ export function ManualUpload() {
                 onChange={(event) => setDisplayName(event.target.value)}
                 placeholder="Manual name, e.g. Rhino 700 service manual"
               />
-              <Select
-                value={kind}
-                items={MANUAL_KINDS.map((option) => ({
-                  value: option,
-                  label: KIND_LABELS[option],
-                }))}
-                onValueChange={(value) => {
-                  if (value) setKind(value as ManualKind);
-                }}
-              >
-                <SelectTrigger aria-label="Manual kind" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MANUAL_KINDS.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {KIND_LABELS[option]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Description (optional), e.g. 2009 factory service manual"
+              />
 
               {error && <p className="text-sm text-destructive">{error}</p>}
               {done && (

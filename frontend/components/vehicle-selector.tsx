@@ -317,7 +317,7 @@ function ManageVehicleDialog({
                       {manual.display_name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      <span className="uppercase">{manual.kind}</span> ·{" "}
+                      {manual.description ? `${manual.description} · ` : ""}
                       {manualStatusText(manual)}
                     </p>
                   </div>

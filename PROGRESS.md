@@ -39,7 +39,8 @@
   and index, but the search skips its chunks (DECISIONS M1). Deletion purges
   the manual's chunks from Qdrant first, then removes the record and its
   directory; it is permanent (DECISIONS M2). The vehicle dialog in the
-  frontend shows the vehicle's details, lists its manuals with kind, status,
+  frontend shows the vehicle's details, lists its manuals with their optional
+  description, status,
   page and chunk counts, and offers enable/disable switches plus a two-step
   delete for each manual. Chunk point ids are derived from the manual id, so
   point ids stay unique across manuals indexed into one collection.
