@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { ManualUpload } from "@/components/manual-upload";
 import { ManualViewerPanel } from "@/components/manual-viewer";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { VehicleSelector } from "@/components/vehicle-selector";
 import { useModelSelection } from "./chat-runtime";
 
@@ -66,6 +67,7 @@ export default function Home() {
                 ))}
               </SelectContent>
             </Select>
+            <ThemeToggle />
           </div>
         </header>
 
