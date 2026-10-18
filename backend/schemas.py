@@ -41,6 +41,9 @@ class Manual(BaseModel):
     `page_count` and `chunk_count` are ingest outputs (IMPLEMENTATION §4.1).
     Storage records only what the upload provides; the ingest pipeline fills
     them in later.
+
+    `enabled` gates retrieval only (DECISIONS M1): a disabled manual stays
+    stored and listed, but its chunks never come back from search.
     """
 
     manual_id: str
@@ -49,6 +52,7 @@ class Manual(BaseModel):
     source_filename: str
     kind: Literal["oem", "aftermarket", "supplement", "other"] = "oem"
     status: Literal["processing", "ready", "error"] = "processing"
+    enabled: bool = True
     page_count: int = 0
     chunk_count: int = 0
     created_at: datetime = Field(default_factory=_utcnow)

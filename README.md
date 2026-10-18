@@ -21,8 +21,8 @@ manualchat/
     llm.py           # thin OpenRouter wrapper (httpx) -> chat(messages, model, params, tools)
     tools.py         # agent tools: OpenAI schemas + executors (calculator, RAG stubs)
     agent/graph.py   # StateGraph: AgentState, chat -> tools -> chat loop (iteration point)
-    api/main.py      # FastAPI: /health, /models, /chat, /manuals upload + read,
-                     # /vehicles create/rename/delete
+    api/main.py      # FastAPI: /health, /models, /chat, /manuals upload + read +
+                     # enable/disable/delete, /vehicles create/rename/delete
     storage.py       # local manual + vehicle storage (DECISIONS U1, SPEC §5)
     schemas.py       # shared Pydantic contracts (Vehicle, Manual, RAG models)
     pyproject.toml   #                 uv project (package = false; deps only)
@@ -119,8 +119,12 @@ request entirely.
   fills the manual's directory with `page_text/`, `tables.json`, and
   `ingest.json`, then sets `status` to `ready` or `error`. Clients poll
   `GET /manuals/{id}` for the outcome. The pipeline is also runnable by hand
-  with `python -m backend.ingest <manual_id>`. The next steps are chunking and
-  indexing (Tasks 3-4).
+  with `python -m backend.ingest <manual_id>`.
+- **Manual management** → `PATCH /manuals/{id}` enables or disables a manual.
+  A disabled manual keeps its stored files and its index, but search skips its
+  chunks. `DELETE /manuals/{id}` purges the manual's chunks from the index,
+  then removes the record and its directory. Deletion is permanent, so the
+  vehicle dialog in the frontend asks for confirmation before it deletes.
 - **Memory** → add `summary` field + compaction node (MEMORY_DESIGN §4-5) and a
   checkpointer.
 

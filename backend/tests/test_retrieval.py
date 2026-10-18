@@ -196,6 +196,68 @@ def test_search_is_scoped_to_vehicle():
     assert result == []
 
 
+# --- Disabled manuals are excluded from search (DECISIONS M1) ---
+
+
+def test_search_skips_disabled_manuals():
+    manual_id = _store_ingested_manual(
+        {1: "Engine oil and oil filter change: remove the oil drain bolt."}
+    )
+    retrieval.index_manual(manual_id, embed=_fake_embed)
+
+    found = retrieval.search(
+        "oil change",
+        "demo_vehicle",
+        manual_id,
+        embed=_fake_embed,
+        rerank=_fake_rerank,
+    )
+    assert found
+
+    storage.update_manual(manual_id, enabled=False)
+    assert (
+        retrieval.search(
+            "oil change",
+            "demo_vehicle",
+            manual_id,
+            embed=_fake_embed,
+            rerank=_fake_rerank,
+        )
+        == []
+    )
+
+    # Re-enabling brings the chunks straight back; nothing was deleted.
+    storage.update_manual(manual_id, enabled=True)
+    again = retrieval.search(
+        "oil change",
+        "demo_vehicle",
+        manual_id,
+        embed=_fake_embed,
+        rerank=_fake_rerank,
+    )
+    assert again == found
+
+
+def test_search_skips_only_disabled_manuals():
+    keep_id = _store_ingested_manual(
+        {1: "Engine oil and oil filter change: remove the oil drain bolt."}
+    )
+    drop_id = _store_ingested_manual({1: "Check the tire pressure monthly."})
+    retrieval.index_manual(keep_id, embed=_fake_embed)
+    retrieval.index_manual(drop_id, embed=_fake_embed)
+
+    storage.update_manual(drop_id, enabled=False)
+
+    result = retrieval.search(
+        "oil change",
+        "demo_vehicle",
+        embed=_fake_embed,
+        rerank=_fake_rerank,
+    )
+    assert result
+    assert {c.manual_id for c in result} == {keep_id}
+
+
 # --- Heavy end-to-end (real models; excluded from the default run) --------
 
 

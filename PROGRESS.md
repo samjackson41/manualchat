@@ -34,6 +34,15 @@
   directory is the `vehicles_dir` config value (env `VEHICLES_DIR`), mounted
   as `/data/vehicles`. `POST /chat` takes an optional `vehicle_id` that scopes
   the conversation to one vehicle (SPECIFICATION §6).
+- Manual management: `PATCH /manuals/{id}` enables or disables a manual, and
+  `DELETE /manuals/{id}` removes it. A disabled manual keeps its stored files
+  and index, but the search skips its chunks (DECISIONS M1). Deletion purges
+  the manual's chunks from Qdrant first, then removes the record and its
+  directory; it is permanent (DECISIONS M2). The vehicle dialog in the
+  frontend shows the vehicle's details, lists its manuals with kind, status,
+  page and chunk counts, and offers enable/disable switches plus a two-step
+  delete for each manual. Chunk point ids are derived from the manual id, so
+  point ids stay unique across manuals indexed into one collection.
 - Tool calling: the graph runs a `chat -> tools -> chat` loop. The `calculator`
   and three RAG tools (`search_manual`, `extract_specs`, `get_page_text`) are in
   `backend/tools.py`. The RAG tools are stubs that return sample data. Wiring

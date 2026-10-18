@@ -300,6 +300,22 @@ def _delete_manual_points(client, manual_id: str) -> None:
     )
 
 
+def delete_manual_index(manual_id: str) -> None:
+    """Purge every indexed chunk of a manual (used when the manual is deleted).
+
+    A missing store or collection means nothing was ever indexed, so this is
+    a no-op rather than an error (and never creates a store just to delete
+    from it).
+    """
+    settings = get_settings()
+    if not settings.qdrant_url and not _qdrant_dir().is_dir():
+        return
+    client = _client()
+    if not client.collection_exists(settings.qdrant_collection):
+        return
+    _delete_manual_points(client, manual_id)
+
+
 def index_manual(manual_id: str, *, embed=None) -> int:
     """Chunk one ingested manual, embed the chunks, and upsert them into Qdrant.
 
@@ -352,8 +368,12 @@ def search(
     embed=None,
     rerank=None,
 ) -> list[ChunkPayload]:
-    """Two-stage retrieval: bi-encoder first pass, cross-encoder rerank (R6-R9)."""
-    from qdrant_client.models import FieldCondition, Filter, MatchValue
+    """Two-stage retrieval: bi-encoder first pass, cross-encoder rerank (R6-R9).
+
+    Chunks from disabled manuals (DECISIONS M1) never come back, even when
+    ``manual_id`` names one directly.
+    """
+    from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
 
     settings = get_settings()
     embed_fn = embed or embed_texts
@@ -363,11 +383,22 @@ def search(
     if manual_id:
         must.append(FieldCondition(key="manual_id", match=MatchValue(value=manual_id)))
 
+    disabled = [
+        m.manual_id
+        for m in storage.list_manuals()
+        if m.vehicle_id == vehicle_id and not m.enabled
+    ]
+    must_not = (
+        [FieldCondition(key="manual_id", match=MatchAny(any=disabled))]
+        if disabled
+        else []
+    )
+
     vector = [float(x) for x in embed_fn([query])[0]]
     hits = _client().query_points(
         collection_name=settings.qdrant_collection,
         query=vector,
-        query_filter=Filter(must=must),
+        query_filter=Filter(must=must, must_not=must_not),
         limit=settings.retrieval_candidate_k,
         with_payload=True,
     ).points
