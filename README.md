@@ -100,6 +100,7 @@ in the repo. If it's missing, `POST /chat` fails fast with a clear error while
 | `AGENT_SYSTEM_PROMPT` | the grounding prompt text | DECISIONS A3 — prepended before the first chat call |
 | `MANUALS_DIR` | `manuals` | DECISIONS U1 — where each uploaded manual lands as `{manual_id}/`; in Docker this is `/data/manuals` |
 | `VEHICLES_DIR` | `vehicles` | SPEC §5 — where each vehicle profile lands as `{vehicle_id}/`; in Docker this is `/data/vehicles` |
+| `THUMBNAIL_DPI` | `150` | IMPLEMENTATION Task 5 — the PNG page-preview resolution (dots per inch) for the manual viewer's raster fallback |
 | `INGEST_OCR_MIN_CHARS_PER_PAGE` | `50` | DECISIONS D1 — a manual below this average needs OCR and is refused |
 | `INGEST_STRIP_HIDDEN_OCR_LAYER` | `true` | DECISIONS D2 — remove the ghost OCR font before Docling |
 | `INGEST_NORMALIZATION_ENABLED` | `true` | DECISIONS D3 — repair unit and header noise after Docling |
