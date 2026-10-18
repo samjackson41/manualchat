@@ -89,8 +89,8 @@ class ChunkPayload(BaseModel):
     text: str
     vehicle_id: str
     manual_id: str
-    page_number: int  # printed page number (not the PDF's 0-indexed physical page)
-    physical_page: Optional[int] = None
+    page_number: int  # physical PDF page (1-indexed); printed numbers stay unrecovered (DECISIONS D12)
+    physical_page: Optional[int] = None  # legacy; unused now that D12 fixed physical pages
     section_name: Optional[str] = None
     is_table: bool = False
     score: float = 0.0

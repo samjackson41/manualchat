@@ -16,6 +16,9 @@ dependencies = [
     "pymupdf>=1.28.2",
     "torch>=2.14",
     "torchvision>=0.29",
+    "tiktoken>=0.14.0",
+    "sentence-transformers>=6.1.0",
+    "qdrant-client>=1.19.1",
 ]
 
 # This project is NOT itself installed as a package — the `backend/` source is
@@ -35,8 +38,12 @@ torch = { index = "pytorch-cpu" }
 torchvision = { index = "pytorch-cpu" }
 
 # Tests import the `backend` package, which lives one directory up.
+# The `heavy` retrieval test downloads models and stays out of the default run
+# (DECISIONS T2/T3); run it alone with `uv run pytest -m heavy`.
 [tool.pytest.ini_options]
 pythonpath = [".."]
+addopts = "-m 'not heavy'"
+markers = ["heavy: end-to-end retrieval; downloads models"]
 
 [dependency-groups]
 dev = [

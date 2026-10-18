@@ -13,6 +13,9 @@ env vars case-insensitively, so:
     model_default           <- MODEL_DEFAULT
     model_options           <- MODEL_OPTIONS   (comma-separated)
     openrouter_api_key      <- OPENROUTER_API_KEY
+    ingest_chunk_tokens     <- INGEST_CHUNK_TOKENS
+    qdrant_url              <- QDRANT_URL      (empty = local mode)
+    retrieval_embed_model   <- RETRIEVAL_EMBED_MODEL
 """
 
 from functools import lru_cache
@@ -107,6 +110,28 @@ class Settings(BaseSettings):
     ingest_table_mode: str = "FAST"
     ingest_threads: int = 2
     ingest_batch_size: int = 1
+
+    # --- Chunking (DECISIONS D9-D13) ---
+    # Split prose on section headings and keep each table as one chunk (D9).
+    ingest_chunk_structure_aware: bool = True
+    # Prose chunk target and overlap, in tokens (D10, D11).
+    ingest_chunk_tokens: int = 512
+    ingest_chunk_overlap_tokens: int = 64
+    # Token counter for chunking (D13), the cl100k_base tiktoken encoding.
+    ingest_tokenizer: str = "cl100k_base"
+
+    # --- Retrieval (DECISIONS R3-R9) ---
+    # Empty `qdrant_url` means embedded local mode (R3): Qdrant stores under
+    # `qdrant_path` on disk with no server, network, or credentials. A http(s)
+    # URL switches to a remote client.
+    qdrant_url: str = ""
+    qdrant_path: str = "qdrant"  # local-mode on-disk dir, repo-relative
+    qdrant_collection: str = "manualchat_chunks"  # R4
+    qdrant_api_key: str = ""  # R5 (empty in dev; production sets it via env)
+    retrieval_embed_model: str = "multi-qa-mpnet-base-dot-v1"  # R6
+    retrieval_rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"  # R7
+    retrieval_candidate_k: int = 50  # R8, first-pass candidates for the reranker
+    retrieval_top_n: int = 5  # R9, chunks returned to the agent
 
     @field_validator("model_options", mode="before")
     @classmethod
