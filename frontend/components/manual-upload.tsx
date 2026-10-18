@@ -107,6 +107,10 @@ export function ManualUpload() {
               />
               <Select
                 value={kind}
+                items={MANUAL_KINDS.map((option) => ({
+                  value: option,
+                  label: KIND_LABELS[option],
+                }))}
                 onValueChange={(value) => {
                   if (value) setKind(value as ManualKind);
                 }}

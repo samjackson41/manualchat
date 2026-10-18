@@ -37,7 +37,11 @@ export function VehicleSelector() {
   return (
     <div className="flex items-center gap-1.5">
       <Select
-        value={activeVehicleId ?? undefined}
+        value={activeVehicleId ?? null}
+        items={vehicles.map((vehicle) => ({
+          value: vehicle.vehicle_id,
+          label: vehicle.display_name,
+        }))}
         onValueChange={(value) => {
           if (value) selectVehicle(value);
         }}
