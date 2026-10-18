@@ -8,7 +8,10 @@ WORKDIR /app
 
 # Install dependencies first (layer-cached), then the source.
 COPY package.json package-lock.json ./
-RUN npm ci
+# Persist npm's download cache across builds so a changed lockfile re-installs
+# from cached tarballs instead of fetching them again.
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 COPY . .
 
