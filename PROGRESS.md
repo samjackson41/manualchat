@@ -37,10 +37,14 @@
   messages, markdown, streaming, and regeneration. A thread-list sidebar keeps
   chat history in localStorage across reloads. The chat adapter in
   `frontend/app/chat-runtime.tsx` calls `POST /chat` scoped to the active
-  vehicle. A vehicle selector (create, rename, delete) feeds a manual-upload
-  button and a manual-viewer toggle (a placeholder until the page-slice viewer
-  lands, DECISIONS V1). The upload dialog lists the active vehicle's manuals
-  with their ingest status and polls `GET /manuals` until the ingest finishes.
+  vehicle. A vehicle selector feeds a manual-upload button and a manual-viewer
+  toggle (a placeholder until the page-slice viewer lands, DECISIONS V1). The
+  selector's dropdown ends with an Add vehicle entry; rename and delete sit
+  behind a pencil icon. The upload dialog takes an optional description in
+  place of the old manual kind, and its own vehicle picker (with an Add
+  vehicle entry) aims the manual at a vehicle from the form. It lists the
+  chosen vehicle's manuals with their ingest status and polls `GET /manuals`
+  until the ingest finishes.
   A typed client in `frontend/lib/api.ts` wraps every backend call. Tailwind is
   v4, themed in red, white, gray, black, and gold. A light/dark theme toggle
   sits in a top bar that also holds the selector, upload, viewer, and model
