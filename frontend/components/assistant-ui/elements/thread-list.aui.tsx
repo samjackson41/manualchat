@@ -265,7 +265,7 @@ export const ThreadListNew = forwardRef<
 >(({ className, labelClassName, children, ...props }, ref) => {
   return (
     <ThreadListPrimitive.New render={<Button ref={ref} variant="ghost" data-slot="aui_thread-list-new" className={cn(
-                "hover:bg-muted data-active:bg-muted h-8 justify-start gap-2 rounded-md px-2.5 text-sm font-normal",
+                "hover:bg-sidebar-accent data-active:bg-sidebar-accent h-8 justify-start gap-2 rounded-md px-2.5 text-sm font-normal",
                 className,
               )} {...props} />}>{children ?? (
                 <>
@@ -325,7 +325,7 @@ export const ThreadListItem: FC = () => {
   return (
     <ThreadListItemPrimitive.Root
       data-slot="aui_thread-list-item"
-      className="group hover:bg-muted focus-visible:bg-muted data-active:bg-muted has-focus-visible:bg-muted has-data-[state=open]:bg-muted before:absolute before:inset-y-1 before:start-0 before:w-[3px] before:rounded-full before:bg-transparent data-active:before:bg-primary relative flex h-8 items-center rounded-md transition-colors focus-visible:outline-none"
+      className="group hover:bg-sidebar-accent focus-visible:bg-sidebar-accent data-active:bg-sidebar-accent has-focus-visible:bg-sidebar-accent has-data-[state=open]:bg-sidebar-accent before:absolute before:inset-y-1 before:start-0 before:w-[3px] before:rounded-full before:bg-transparent data-active:before:bg-primary relative flex h-8 items-center rounded-md transition-colors focus-visible:outline-none"
     >
       {isRenaming ? (
         <ThreadListItemRename
@@ -430,7 +430,7 @@ const ThreadListItemRename: FC<{
 const ThreadListItemMore: FC<{ onRename: () => void }> = ({ onRename }) => {
   return (
     <ThreadListItemMorePrimitive.Root sharedFocusGroup>
-      <ThreadListItemMorePrimitive.Trigger render={<Button variant="ghost" size="icon" data-slot="aui_thread-list-item-more" className="data-[state=open]:bg-accent absolute end-1.5 top-1/2 size-6 -translate-y-1/2 p-0 opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100 group-data-active:opacity-100 data-[state=open]:opacity-100" />}><MoreHorizontalIcon className="size-3.5" /><span className="sr-only">More options</span></ThreadListItemMorePrimitive.Trigger>
+      <ThreadListItemMorePrimitive.Trigger render={<Button variant="ghost" size="icon" data-slot="aui_thread-list-item-more" className="data-[state=open]:bg-sidebar-accent absolute end-1.5 top-1/2 size-6 -translate-y-1/2 p-0 opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100 group-data-active:opacity-100 data-[state=open]:opacity-100" />}><MoreHorizontalIcon className="size-3.5" /><span className="sr-only">More options</span></ThreadListItemMorePrimitive.Trigger>
       <ThreadListItemMorePrimitive.Content
         side="right"
         align="start"

@@ -30,15 +30,6 @@
   --input: #c9c9d1;
   --ring: #ed1c24;                /* red */
   --gold: #fdba40;                /* gold accent */
-  --chrome-gradient: linear-gradient(
-    180deg,
-    #f2f2f3 0%,
-    #ffffff 22%,
-    #9b9b9f 45%,
-    #ffffff 55%,
-    #717074 78%,
-    #ffffff 100%
-  );
   --topbar-gradient: linear-gradient(
     180deg,
     #fbfbfc 0%,
@@ -172,13 +163,6 @@
 }
 
 @layer components {
-  .text-chrome {
-    background: var(--chrome-gradient);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
   .bg-topbar {
     background-image: var(--topbar-gradient);
   }
