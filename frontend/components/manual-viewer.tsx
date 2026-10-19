@@ -13,7 +13,7 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import { BookOpenIcon, LoaderCircleIcon, XIcon, ZoomInIcon, ZoomOutIcon } from "lucide-react";
 
 import { useViewer } from "@/app/viewer-runtime";
-import { manualPagesUrl, manualPdfUrl } from "@/lib/api";
+import { loadSliceBytes, loadWholeManualBytes } from "@/lib/pdf-cache";
 import {
   PAGE_ASPECT,
   SLICE_PAGES_AFTER,
@@ -44,14 +44,15 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 // A window of pages from one stored PDF: the bytes plus, for each page of the
 // document, the physical PDF page number it holds. A window is either the
-// cited slice (DECISIONS V1) or the whole manual (DECISIONS V2).
+// cited slice (DECISIONS V1) or the whole manual (DECISIONS V2). The bytes are
+// a Blob, which react-pdf can read more than once.
 type PdfWindow = {
   // Names one fetched window. A new key mounts a new <Document>, so a live
   // document never has its `file` swapped for another window.
   key: string;
   manualId: string;
   pages: number[];
-  data: ArrayBuffer;
+  data: Blob;
 };
 
 // The 1px border on each side of a page wrapper, taken off the pane width so a
@@ -240,13 +241,14 @@ export function ManualViewerPanel() {
   }, [citedPage]);
 
   // The window a citation opens: the cited page plus the configured pages on
-  // each side (DECISIONS V1).
+  // each side (DECISIONS V1). It keys off primitives so a refresh of the manual
+  // list does not recompute it.
   const sliceWindow = useMemo(() => {
-    if (!manual || citedPage === null) return null;
+    if (!manualKey || citedPage === null) return null;
     const start = Math.max(1, citedPage - SLICE_PAGES_BEFORE);
-    const end = Math.min(manual.page_count, citedPage + SLICE_PAGES_AFTER);
+    const end = Math.min(pageCount, citedPage + SLICE_PAGES_AFTER);
     return start <= end ? { start, end } : null;
-  }, [manual, citedPage]);
+  }, [manualKey, pageCount, citedPage]);
 
   const sliceLabel = sliceWindow
     ? sliceWindow.start === sliceWindow.end
@@ -264,17 +266,12 @@ export function ManualViewerPanel() {
     let cancelled = false;
     setError(null);
     const key = `${manualKey}:${start}-${end}`;
-    fetch(manualPagesUrl(manualKey, start, end))
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`Could not load pages ${start}-${end} (${res.status})`);
-        }
-        return res.arrayBuffer();
-      })
+    loadSliceBytes(manualKey, start, end)
       .then((buffer) => {
         if (cancelled) return;
-        // A repeated window keeps the buffer it already holds: react-pdf
-        // reloads on a new `file` object even when the bytes are the same.
+        // A window that is already open keeps its document: react-pdf reloads
+        // on a new `file` object, and a reload of a window whose pages are
+        // mounted is unsafe.
         setSlice((current) =>
           current?.key === key
             ? current
@@ -305,28 +302,32 @@ export function ManualViewerPanel() {
   // The whole manual loads only when the reader asks for it (DECISIONS V2).
   useEffect(() => {
     if (!wholeRequested || !manualKey || pageCount === 0) {
-      // pdfjs detaches the buffer it is handed, so a dismissed document is
-      // dropped rather than shown again.
+      // A dismissed document is dropped, so a stale window never reappears
+      // while its replacement loads.
       setWhole(null);
       return;
     }
     let cancelled = false;
     setWholeError(null);
-    fetch(manualPdfUrl(manualKey))
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`Could not load the manual (${res.status})`);
-        }
-        return res.arrayBuffer();
-      })
+    const key = `whole:${manualKey}`;
+    loadWholeManualBytes(manualKey)
       .then((buffer) => {
         if (cancelled) return;
-        setWhole({
-          key: `whole:${manualKey}`,
-          manualId: manualKey,
-          pages: Array.from({ length: pageCount }, (_, index) => index + 1),
-          data: buffer,
-        });
+        // Keep an open document: react-pdf reloads on a new `file` object, and
+        // a reload while its pages are mounted is unsafe.
+        setWhole((current) =>
+          current?.key === key
+            ? current
+            : {
+                key,
+                manualId: manualKey,
+                pages: Array.from(
+                  { length: pageCount },
+                  (_, index) => index + 1,
+                ),
+                data: buffer,
+              },
+        );
       })
       .catch((err) => {
         if (!cancelled) {
@@ -583,10 +584,25 @@ export function ManualViewerPanel() {
           </EmptyState>
         )}
 
+        {manual && citedPage !== null && !error && !sliceWindow && (
+          <EmptyState>
+            <p className="text-sm font-medium">
+              Page {citedPage} is not in this manual
+            </p>
+            <p className="text-muted-foreground max-w-xs text-sm">
+              {manual.display_name} has {pageCount} pages. Pick the manual the
+              citation came from, or open the whole manual.
+            </p>
+          </EmptyState>
+        )}
+
         {manual &&
           citedPage !== null &&
           !error &&
-          (!shownSlice || containerWidth === 0) && <Loader label="Loading pages…" />}
+          sliceWindow &&
+          (!shownSlice || containerWidth === 0) && (
+            <Loader label="Loading pages…" />
+          )}
 
         {manual && citedPage !== null && shownSlice && containerWidth > 0 && (
           <>

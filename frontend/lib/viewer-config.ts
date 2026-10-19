@@ -48,3 +48,9 @@ export const PANE_WIDTH_MAX = numberFromEnv(
 export function clampPaneWidth(width: number): number {
   return Math.min(PANE_WIDTH_MAX, Math.max(PANE_WIDTH_MIN, width));
 }
+
+// How many slice byte windows the viewer keeps in memory (DECISIONS V6).
+export const SLICE_CACHE_ENTRIES = numberFromEnv(
+  process.env.NEXT_PUBLIC_VIEWER_SLICE_CACHE_ENTRIES,
+  12,
+);

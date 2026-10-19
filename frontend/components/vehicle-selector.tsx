@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useVehicles } from "@/app/vehicle-runtime";
 import { VehiclePicker } from "@/components/vehicle-picker";
+import { forgetManualBytes } from "@/lib/pdf-cache";
 import {
   deleteManual,
   listManuals,
@@ -156,6 +157,8 @@ function ManageVehicleDialog({
     setManualError(null);
     try {
       await deleteManual(manual.manual_id);
+      // The viewer must not serve the deleted manual's bytes from its caches.
+      await forgetManualBytes(manual.manual_id);
       setManuals((prev) => prev.filter((m) => m.manual_id !== manual.manual_id));
       setConfirmId(null);
     } catch (err) {
