@@ -103,6 +103,11 @@ class Settings(BaseSettings):
     # Resolution of the PNG page previews, in dots per inch (Task 2).
     thumbnail_dpi: int = 150
 
+    # --- Manual viewer: caching of stored page bytes (DECISIONS V5) ---
+    # A manual and its pages never change after upload (DECISIONS U1), so the
+    # viewer may cache the served bytes for this long, in seconds.
+    viewer_cache_max_age_seconds: int = 31536000
+
     # --- Ingestion pipeline (DECISIONS D1-D3, D12; IMPLEMENTATION Task 1) ---
     # OCR is off for MVP because every manual is born-digital (DECISIONS S2).
     ingest_do_ocr: bool = False

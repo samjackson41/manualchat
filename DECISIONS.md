@@ -220,6 +220,7 @@ mock to stay testable without a download.
 | V2 | The pane can open a manual's whole PDF on demand, so the reader can read the full manual in the app. A `View whole manual` button in the pane fetches `GET /manuals/{id}/pdf`, which streams the stored `source.pdf`. The button carries the tooltip `Whole manual may be slow to load`. The pages mount lazily as the reader scrolls, so a large manual stays responsive. |
 | V3 | The pane carries zoom controls over the pages: a step per click (`NEXT_PUBLIC_VIEWER_ZOOM_STEP`, default `0.25`) inside a range (`NEXT_PUBLIC_VIEWER_ZOOM_MIN` `0.5` to `NEXT_PUBLIC_VIEWER_ZOOM_MAX` `3`). A zoom of `1` fits a page to the pane width. A click on the shown percentage resets the zoom to `1`. |
 | V4 | The reader sets the chat/pane split by dragging the pane's left edge, or with the arrow keys on that edge. The width is clamped to `NEXT_PUBLIC_VIEWER_WIDTH_MIN` (`280`) and `NEXT_PUBLIC_VIEWER_WIDTH_MAX` (`900`) pixels and defaults to `NEXT_PUBLIC_VIEWER_WIDTH_DEFAULT` (`416`). The choice survives reloads in `localStorage`. |
+| V5 | The stored page bytes never change after upload (U1), so the page-slice and whole-manual endpoints answer with `Cache-Control: public, max-age=<VIEWER_CACHE_MAX_AGE_SECONDS>, immutable` (default `31536000`) and an `ETag`. A request whose `If-None-Match` matches returns `304`. The slice `ETag` comes from the stored PDF and the page range, not the slice bytes, because PyMuPDF stamps a fresh document id into every re-serialisation. |
 
 ---
 

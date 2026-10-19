@@ -5,6 +5,7 @@ calling `llm.chat` directly — this is what proves the reply went through the
 LangGraph graph (the "done when" criterion).
 """
 
+import hashlib
 import json
 
 from fastapi import (
@@ -13,6 +14,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Request,
     Response,
     UploadFile,
 )
@@ -142,8 +144,32 @@ def get_manual(manual_id: str) -> Manual:
     return manual
 
 
+def _slice_etag(manual_id: str, start: int, end: int) -> str:
+    """A strong ETag for one slice, from the stored PDF and the range.
+
+    PyMuPDF stamps a fresh document id when it re-serialises the pages, so the
+    slice bytes are not stable between requests. The manual's stored PDF and
+    the page range are stable, because a manual never changes after upload
+    (DECISIONS U1, V5).
+    """
+    stat = (storage.manual_dir(manual_id) / "source.pdf").stat()
+    seed = f"{manual_id}:{start}-{end}:{stat.st_size}:{stat.st_mtime_ns}"
+    return '"' + hashlib.sha256(seed.encode()).hexdigest()[:32] + '"'
+
+
+def _viewer_cache_headers(etag: str | None = None) -> dict[str, str]:
+    """Headers for the stored page bytes, which never change after upload."""
+    max_age = get_settings().viewer_cache_max_age_seconds
+    headers = {"Cache-Control": f"public, max-age={max_age}, immutable"}
+    if etag is not None:
+        headers["ETag"] = etag
+    return headers
+
+
 @app.get("/manuals/{manual_id}/pages/{page_range}")
-def get_page_slice(manual_id: str, page_range: str) -> Response:
+def get_page_slice(
+    manual_id: str, page_range: str, request: Request
+) -> Response:
     """Serve a PDF holding one manual's pages ``start-end`` (DECISIONS V1).
 
     ``page_range`` looks like ``80-84``; both ends are inclusive 1-indexed
@@ -166,7 +192,13 @@ def get_page_slice(manual_id: str, page_range: str) -> Response:
     except slicer.SliceError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    return Response(content=data, media_type="application/pdf")
+    etag = _slice_etag(manual_id, start, end)
+    headers = _viewer_cache_headers(etag)
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=headers)
+    return Response(
+        content=data, media_type="application/pdf", headers=headers
+    )
 
 
 @app.get("/manuals/{manual_id}/pdf")
@@ -181,7 +213,11 @@ def get_manual_pdf(manual_id: str) -> FileResponse:
     source = storage.manual_dir(manual_id) / "source.pdf"
     if not source.is_file():
         raise HTTPException(status_code=404, detail="source.pdf is missing")
-    return FileResponse(source, media_type="application/pdf")
+    return FileResponse(
+        source,
+        media_type="application/pdf",
+        headers=_viewer_cache_headers(),
+    )
 
 
 @app.patch("/manuals/{manual_id}")

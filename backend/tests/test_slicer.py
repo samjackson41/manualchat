@@ -92,3 +92,26 @@ def test_page_slice_unknown_manual_returns_404():
     client = TestClient(app)
     resp = client.get("/manuals/does-not-exist/pages/1-2")
     assert resp.status_code == 404
+
+
+def test_page_slice_sets_immutable_cache_headers():
+    manual_id = _store_manual(["one", "two", "three"])
+    client = TestClient(app)
+
+    resp = client.get(f"/manuals/{manual_id}/pages/2-3")
+    assert resp.status_code == 200
+    assert "immutable" in resp.headers["cache-control"]
+    assert resp.headers["etag"]
+
+
+def test_page_slice_answers_a_matching_etag_with_304():
+    manual_id = _store_manual(["one", "two", "three"])
+    client = TestClient(app)
+
+    first = client.get(f"/manuals/{manual_id}/pages/2-3")
+    again = client.get(
+        f"/manuals/{manual_id}/pages/2-3",
+        headers={"If-None-Match": first.headers["etag"]},
+    )
+    assert again.status_code == 304
+    assert again.content == b""

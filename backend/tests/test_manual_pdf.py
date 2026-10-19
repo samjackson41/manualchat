@@ -63,3 +63,13 @@ def test_whole_pdf_unknown_manual_returns_404():
     client = TestClient(app)
     resp = client.get("/manuals/does-not-exist/pdf")
     assert resp.status_code == 404
+
+
+def test_whole_pdf_is_cacheable():
+    manual_id = _store_manual(["one", "two"])
+    client = TestClient(app)
+
+    resp = client.get(f"/manuals/{manual_id}/pdf")
+    assert resp.status_code == 200
+    assert "immutable" in resp.headers["cache-control"]
+    assert resp.headers["etag"]
