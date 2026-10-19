@@ -22,10 +22,13 @@ import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { cn } from "@/lib/utils";
 
 // Citations come back from the model as plain `[Page 82]` text. This plugin
-// rewrites each one into a link whose `citation:` URL the `a` renderer below
+// rewrites each one into a link whose `#page-82` URL the `a` renderer below
 // turns into a clickable badge that opens the manual viewer at that page
 // (DECISIONS V1, IMPLEMENTATION Task 6).
 
+// The marker must be a fragment: react-markdown's URL sanitizer drops an
+// unknown scheme, and a stripped URL renders as a link to the current page.
+const CITATION_URL_PREFIX = "#page-";
 const CITATION_PATTERN = /\[Page\s+(\d+)\]/g;
 
 type CitationNode = {
@@ -48,7 +51,7 @@ function splitCitations(value: string): CitationNode[] | null {
     }
     parts.push({
       type: "link",
-      url: `citation:${match[1]}`,
+      url: `${CITATION_URL_PREFIX}${match[1]}`,
       children: [{ type: "text", value: match[0] }],
     });
     cursor = match.index + match[0].length;
@@ -220,8 +223,8 @@ const defaultComponents = memoizeMarkdownComponents({
   ),
   a: ({ className, href, children, ...props }) => {
     const { openPage } = useViewer();
-    if (href && href.startsWith("citation:")) {
-      const page = Number(href.slice("citation:".length));
+    if (href && href.startsWith(CITATION_URL_PREFIX)) {
+      const page = Number(href.slice(CITATION_URL_PREFIX.length));
       return (
         <button
           type="button"
