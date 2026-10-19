@@ -147,6 +147,7 @@ after a change.
 | `NEXT_PUBLIC_VIEWER_WIDTH_MIN` | `280` | DECISIONS V4 — the narrowest the pane drags |
 | `NEXT_PUBLIC_VIEWER_WIDTH_MAX` | `900` | DECISIONS V4 — the widest the pane gets while the chat shows |
 | `NEXT_PUBLIC_CHAT_MIN_WIDTH` | `360` | DECISIONS V4 — the narrowest the chat gets before it hides and the pane fills the row |
+| `NEXT_PUBLIC_CHAT_RESTORE_TRAVEL` | `24` | DECISIONS V4 — how far the pane is pulled right, in pixels, before a hidden chat returns |
 | `NEXT_PUBLIC_VIEWER_SLICE_CACHE_ENTRIES` | `12` | DECISIONS V6 — slice byte windows kept in memory |
 
 ## Where the next change goes (documented in code)

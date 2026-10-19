@@ -17,6 +17,7 @@ import { BookOpenIcon, LoaderCircleIcon, XIcon, ZoomInIcon, ZoomOutIcon } from "
 import { useViewer } from "@/app/viewer-runtime";
 import { loadSliceBytes, loadWholeManualBytes } from "@/lib/pdf-cache";
 import {
+  CHAT_RESTORE_TRAVEL,
   PAGE_ASPECT,
   SLICE_PAGES_AFTER,
   SLICE_PAGES_BEFORE,
@@ -420,14 +421,25 @@ export function ManualViewerPanel() {
   };
 
   // Dragging the left edge sets the chat/pane split. The pane grows past the
-  // chat's minimum width by hiding the chat and filling the row (DECISIONS V4).
-  // The keyboard nudges the same split, so the handle needs no pointer.
+  // chat's minimum width by hiding the chat and filling the row, and a short
+  // pull back brings the chat home (DECISIONS V4). The keyboard nudges the same
+  // split, so the handle needs no pointer.
   const dragStart = useRef<{ x: number; width: number } | null>(null);
 
-  const paneWidthNow = () =>
-    paneRef.current?.getBoundingClientRect().width ?? paneWidth;
+  // The width a drag or a key press works from. A hidden chat fills the row, so
+  // its drag resumes from the width the pane had before it collapsed.
+  const paneBasis = () =>
+    chatHidden
+      ? clampVisiblePaneWidth(paneWidth, rowWidth)
+      : paneRef.current?.getBoundingClientRect().width ?? paneWidth;
 
-  const applyPaneWidth = (wanted: number) => {
+  const showChat = () => {
+    setChatHidden(false);
+    setPaneWidth(clampVisiblePaneWidth(paneWidth, rowWidth));
+  };
+
+  const nudgePane = (delta: number) => {
+    const wanted = paneBasis() + delta;
     if (rowWidth > 0 && wanted > visiblePaneMax(rowWidth)) {
       setChatHidden(true);
       return;
@@ -438,13 +450,29 @@ export function ManualViewerPanel() {
 
   const onResizePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId);
-    dragStart.current = { x: event.clientX, width: paneWidthNow() };
+    dragStart.current = { x: event.clientX, width: paneBasis() };
   };
 
   const onResizePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     const start = dragStart.current;
     if (!start) return;
-    applyPaneWidth(start.width - (event.clientX - start.x));
+    const travelled = event.clientX - start.x;
+
+    if (chatHidden) {
+      // A short pull right returns the chat, so restoring it takes little
+      // travel rather than the width the pane took from it.
+      if (travelled < CHAT_RESTORE_TRAVEL) return;
+      setChatHidden(false);
+      setPaneWidth(clampVisiblePaneWidth(start.width - travelled, rowWidth));
+      return;
+    }
+
+    const wanted = start.width - travelled;
+    if (rowWidth > 0 && wanted > visiblePaneMax(rowWidth)) {
+      setChatHidden(true);
+      return;
+    }
+    setPaneWidth(clampVisiblePaneWidth(wanted, rowWidth));
   };
 
   const onResizePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -454,9 +482,15 @@ export function ManualViewerPanel() {
 
   const onResizeKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const step = event.shiftKey ? 96 : 24;
-    if (event.key === "ArrowLeft") applyPaneWidth(paneWidthNow() + step);
-    else if (event.key === "ArrowRight") applyPaneWidth(paneWidthNow() - step);
-    else return;
+    if (event.key === "ArrowLeft") {
+      if (chatHidden) return;
+      nudgePane(step);
+    } else if (event.key === "ArrowRight") {
+      if (chatHidden) showChat();
+      else nudgePane(-step);
+    } else {
+      return;
+    }
     event.preventDefault();
   };
 

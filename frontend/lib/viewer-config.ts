@@ -52,6 +52,13 @@ export const CHAT_MIN_WIDTH = numberFromEnv(
   360,
 );
 
+// How far the reader pulls the pane right before a hidden chat returns
+// (DECISIONS V4). Keep it short: restoring the chat takes little travel.
+export const CHAT_RESTORE_TRAVEL = numberFromEnv(
+  process.env.NEXT_PUBLIC_CHAT_RESTORE_TRAVEL,
+  24,
+);
+
 export function clampPaneWidth(width: number): number {
   return Math.min(PANE_WIDTH_MAX, Math.max(PANE_WIDTH_MIN, width));
 }
