@@ -143,7 +143,13 @@ Planned work for the Manual viewer pane. None of it is built.
   pane, at minimum for a side-by-side layout.
 - Add viewer controls, such as zoom.
 - Let the reader open the whole manual in the pane. The pane then acts as a web
-  PDF viewer, so the reader can read the full manual in the app.
+  PDF viewer, so the reader can read the full manual in the app. The pane holds a
+  `View whole manual` button for this, with the tooltip
+  `Whole manual may be slow to load`.
+- Hide the manual selector while the pane shows a cited slice. The pane then
+  shows the slice pages in its place, in the form
+  `Manual name, Pgs 15-19`. Manual browsing returns only after the reader closes
+  the pane, so a slice and a browsed manual never mix.
 - Review the slice buffer. The candidates are `[Page−1, Page+2]` and
   `[Page−0, Page+2]`, in place of the ratified `[Page−2, Page+2]`
   (DECISIONS V1).
@@ -158,8 +164,20 @@ Planned work for the Manual viewer pane. None of it is built.
   an off-by-n error, so that the numbers match the citations.
 - MVP+1: make the pane reactive, so that it works on a phone.
 
+### Frontend backlog
+
+Planned frontend work. None of it is built.
+
+- Stream the agent's progress in the chat. Show the tool calls and the RAG model
+  weight loading the way the terminal shows them, so the reader sees progress
+  instead of a loading spinner.
+- Let the reader rename a chat session in the frontend.
+- Add tooltips to the edit, theme, and manual upload buttons.
+
 ## Known problems
 
+- The chat shows the whole answer in one flash. The frontend does not render the
+  token stream one chunk at a time, so the answer does not form smoothly.
 - DeepSeek `-latest` slugs need the `~` prefix, or OpenRouter returns 400. This
   is recorded in the `README.md` "Deviations" section and in `DECISIONS.md`.
 
