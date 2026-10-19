@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -53,19 +53,28 @@ export function ManualViewerPanel() {
 
   const manual = manuals.find((item) => item.manual_id === manualId) ?? null;
   const manualKey = manual?.manual_id ?? null;
-  const pageCount = manual?.page_count ?? 0;
+
+  // The window a citation opens: the cited page plus the configured pages on
+  // each side (DECISIONS V1).
+  const sliceWindow = useMemo(() => {
+    if (!manual || citedPage === null) return null;
+    const start = Math.max(1, citedPage - SLICE_PAGES_BEFORE);
+    const end = Math.min(manual.page_count, citedPage + SLICE_PAGES_AFTER);
+    return start <= end ? { start, end } : null;
+  }, [manual, citedPage]);
+
+  const sliceLabel = sliceWindow
+    ? sliceWindow.start === sliceWindow.end
+      ? `Pg ${sliceWindow.start}`
+      : `Pgs ${sliceWindow.start}-${sliceWindow.end}`
+    : "";
 
   useEffect(() => {
-    if (!manualKey || citedPage === null) {
+    if (!manualKey || !sliceWindow) {
       setSlice(null);
       return;
     }
-    const start = Math.max(1, citedPage - SLICE_PAGES_BEFORE);
-    const end = Math.min(pageCount, citedPage + SLICE_PAGES_AFTER);
-    if (start > end) {
-      setSlice(null);
-      return;
-    }
+    const { start, end } = sliceWindow;
 
     let cancelled = false;
     setError(null);
@@ -103,7 +112,7 @@ export function ManualViewerPanel() {
     return () => {
       cancelled = true;
     };
-  }, [manualKey, pageCount, citedPage]);
+  }, [manualKey, sliceWindow]);
 
   // Hides the pages of another manual while the replacement window loads.
   const shownSlice = slice && slice.manualId === manualKey ? slice : null;
@@ -123,31 +132,37 @@ export function ManualViewerPanel() {
         <div className="flex min-w-0 items-center gap-2">
           <BookOpenIcon className="text-primary size-4 shrink-0" />
           <h2 className="shrink-0 text-sm font-semibold">Manual viewer</h2>
-          <Select
-            value={manualId ?? undefined}
-            items={manuals.map((item) => ({
-              value: item.manual_id,
-              label: item.display_name,
-            }))}
-            onValueChange={(value) => {
-              if (value) selectManual(value);
-            }}
-          >
-            <SelectTrigger
-              aria-label="Manual selector"
-              className="w-40"
-              disabled={manuals.length === 0}
+          {citedPage !== null && manual ? (
+            <span className="text-muted-foreground min-w-0 truncate text-sm">
+              {manual.display_name}, {sliceLabel}
+            </span>
+          ) : (
+            <Select
+              value={manualId ?? undefined}
+              items={manuals.map((item) => ({
+                value: item.manual_id,
+                label: item.display_name,
+              }))}
+              onValueChange={(value) => {
+                if (value) selectManual(value);
+              }}
             >
-              <SelectValue placeholder="Pick a manual" />
-            </SelectTrigger>
-            <SelectContent>
-              {manuals.map((item) => (
-                <SelectItem key={item.manual_id} value={item.manual_id}>
-                  <span className="block truncate">{item.display_name}</span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+              <SelectTrigger
+                aria-label="Manual selector"
+                className="w-40"
+                disabled={manuals.length === 0}
+              >
+                <SelectValue placeholder="Pick a manual" />
+              </SelectTrigger>
+              <SelectContent>
+                {manuals.map((item) => (
+                  <SelectItem key={item.manual_id} value={item.manual_id}>
+                    <span className="block truncate">{item.display_name}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
         <Button
           variant="ghost"
@@ -197,7 +212,7 @@ export function ManualViewerPanel() {
         {manual && citedPage !== null && shownSlice && (
           <>
             <p className="text-muted-foreground mb-2 text-xs">
-              Page {citedPage} of {manual.page_count} · {manual.display_name}
+              Page {citedPage} of {manual.page_count}
             </p>
             <Document
               key={shownSlice.key}

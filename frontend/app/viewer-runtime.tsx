@@ -95,6 +95,12 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
 
   const close = useCallback(() => setOpen(false), []);
 
+  // Closing the pane ends the cited view, so a slice and a browsed manual
+  // never mix and browsing starts clean on the next open.
+  useEffect(() => {
+    if (!open) setCitedPage(null);
+  }, [open]);
+
   const value = useMemo<ViewerState>(
     () => ({
       open,
