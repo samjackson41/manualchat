@@ -17,7 +17,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
@@ -167,6 +167,21 @@ def get_page_slice(manual_id: str, page_range: str) -> Response:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return Response(content=data, media_type="application/pdf")
+
+
+@app.get("/manuals/{manual_id}/pdf")
+def get_manual_pdf(manual_id: str) -> FileResponse:
+    """Serve the manual's whole stored PDF (DECISIONS V2).
+
+    The viewer shows the full manual on demand, so the reader can read it in
+    the app. The bytes are the uploaded ``source.pdf``, streamed as-is.
+    """
+    if storage.get_manual(manual_id) is None:
+        raise HTTPException(status_code=404, detail="manual not found")
+    source = storage.manual_dir(manual_id) / "source.pdf"
+    if not source.is_file():
+        raise HTTPException(status_code=404, detail="source.pdf is missing")
+    return FileResponse(source, media_type="application/pdf")
 
 
 @app.patch("/manuals/{manual_id}")
