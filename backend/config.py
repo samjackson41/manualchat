@@ -12,6 +12,11 @@ env vars case-insensitively, so:
     vehicles_dir            <- VEHICLES_DIR
     model_default           <- MODEL_DEFAULT
     model_options           <- MODEL_OPTIONS   (comma-separated)
+    super_sub_tiers         <- SUPER_SUB_TIERS         (JSON)
+    super_sub_slug_tiers    <- SUPER_SUB_SLUG_TIERS    (JSON)
+    super_sub_default_tier  <- SUPER_SUB_DEFAULT_TIER
+    agent_max_hops          <- AGENT_MAX_HOPS
+    agent_max_tool_steps    <- AGENT_MAX_TOOL_STEPS
     openrouter_api_key      <- OPENROUTER_API_KEY
     ingest_chunk_tokens     <- INGEST_CHUNK_TOKENS
     qdrant_url              <- QDRANT_URL      (empty = local mode)
@@ -19,16 +24,51 @@ env vars case-insensitively, so:
 """
 
 from functools import lru_cache
+import json
 
-from pydantic import Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Display labels for the model selector. The slugs in `model_options` are the
 # source of truth (DECISIONS M2). OpenRouter requires the `~` prefix.
+_FLASH = "~deepseek/deepseek-flash-latest"
+_PRO = "~deepseek/deepseek-pro-latest"
+
 _MODEL_LABELS: dict[str, str] = {
-    "~deepseek/deepseek-flash-latest": "DeepSeek Flash",
-    "~deepseek/deepseek-pro-latest": "DeepSeek Pro",
+    _FLASH: "DeepSeek Flash",
+    _PRO: "DeepSeek Pro",
 }
+
+
+class SuperSubTier(BaseModel):
+    """One model tier: the supervisor and the retrieval worker, with effort.
+
+    The supervisor plans and writes the final answer; the sub-agent is the
+    retrieval worker that runs the tool loop (DECISIONS M1).
+    """
+
+    supervisor_model: str
+    supervisor_effort: str
+    sub_model: str
+    sub_effort: str
+
+
+def _default_tiers() -> dict[str, SuperSubTier]:
+    """The ratified tier table (DECISIONS M1). Overridable with `SUPER_SUB_TIERS`."""
+    return {
+        "fast": SuperSubTier(
+            supervisor_model=_FLASH,
+            supervisor_effort="high",
+            sub_model=_FLASH,
+            sub_effort="low",
+        ),
+        "pro": SuperSubTier(
+            supervisor_model=_PRO,
+            supervisor_effort="max",
+            sub_model=_FLASH,
+            sub_effort="high",
+        ),
+    }
 
 
 class Settings(BaseSettings):
@@ -42,18 +82,28 @@ class Settings(BaseSettings):
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     # --- Model selection (DECISIONS M1-M3) ---
-    model_default: str = "~deepseek/deepseek-flash-latest"
-    model_options: list[str] = Field(
-        default_factory=lambda: [
-            "~deepseek/deepseek-flash-latest",
-            "~deepseek/deepseek-pro-latest",
-        ]
-    )
+    model_default: str = _FLASH
+    model_options: list[str] = Field(default_factory=lambda: [_FLASH, _PRO])
 
     # --- Generation params (tunable via env; unset values are omitted) ---
-    model_reasoning_effort: str | None = "medium"  # ratified (DECISIONS M note)
+    model_reasoning_effort: str | None = "medium"  # fallback when a node passes no effort
     model_temperature: float | None = None         # TBD
     model_max_tokens: int | None = None            # TBD
+
+    # --- Supervisor and sub-agent tiers (DECISIONS M1) ---
+    # Keyed by tier name (`fast`, `pro`); each entry fixes the supervisor and
+    # the worker model and reasoning effort. Load with JSON, e.g.
+    # SUPER_SUB_TIERS='{"fast": {"supervisor_model": "...", ...}, "pro": {...}}'.
+    super_sub_tiers: dict[str, SuperSubTier] = Field(default_factory=_default_tiers)
+    # The selected slug picks a tier; an unknown slug falls back to the default.
+    super_sub_slug_tiers: dict[str, str] = Field(
+        default_factory=lambda: {_FLASH: "fast", _PRO: "pro"}
+    )
+    super_sub_default_tier: str = "fast"
+    # Hop cap: the supervisor forces synthesis after this many worker hops
+    # (IMPLEMENTATION §7). `agent_max_tool_steps` caps the worker's tool loop.
+    agent_max_hops: int = 4
+    agent_max_tool_steps: int = 4
 
     # --- Agent graph (DECISIONS A3) ---
     agent_system_prompt: str = (
@@ -159,6 +209,25 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
+
+    @field_validator("super_sub_tiers", "super_sub_slug_tiers", mode="before")
+    @classmethod
+    def _parse_json_dict(cls, value):
+        """Allow a JSON string (e.g. `SUPER_SUB_TIERS=...`) as well as a dict."""
+        if isinstance(value, str):
+            return json.loads(value)
+        return value
+
+    def tier_for_model(self, model: str) -> SuperSubTier:
+        """Resolve a selected model slug to its supervisor/worker tier.
+
+        A slug that is not in `super_sub_slug_tiers` falls back to
+        `super_sub_default_tier` (DECISIONS M1).
+        """
+        name = self.super_sub_slug_tiers.get(model, self.super_sub_default_tier)
+        return self.super_sub_tiers.get(name) or self.super_sub_tiers[
+            self.super_sub_default_tier
+        ]
 
 
 @lru_cache
