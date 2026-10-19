@@ -195,8 +195,16 @@ function PageList({
 }
 
 export function ManualViewerPanel() {
-  const { citedPage, manualId, manuals, selectManual, clearCitation, close } =
-    useViewer();
+  const {
+    citedPage,
+    manualId,
+    manuals,
+    selectManual,
+    clearCitation,
+    close,
+    paneWidth,
+    setPaneWidth,
+  } = useViewer();
   const [slice, setSlice] = useState<PdfWindow | null>(null);
   const [whole, setWhole] = useState<PdfWindow | null>(null);
   const [wholeRequested, setWholeRequested] = useState(false);
@@ -346,11 +354,51 @@ export function ManualViewerPanel() {
     }
   };
 
+  // Dragging the left edge sets the chat/pane split. The keyboard nudges the
+  // same split, so the handle is reachable without a pointer.
+  const dragStart = useRef<{ x: number; width: number } | null>(null);
+
+  const onResizePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragStart.current = { x: event.clientX, width: paneWidth };
+  };
+
+  const onResizePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const start = dragStart.current;
+    if (!start) return;
+    setPaneWidth(start.width - (event.clientX - start.x));
+  };
+
+  const onResizePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    dragStart.current = null;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+
+  const onResizeKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = event.shiftKey ? 96 : 24;
+    if (event.key === "ArrowLeft") setPaneWidth(paneWidth + step);
+    else if (event.key === "ArrowRight") setPaneWidth(paneWidth - step);
+    else return;
+    event.preventDefault();
+  };
+
   return (
     <aside
       aria-label="Manual viewer"
-      className="bg-card border-border relative flex w-[26rem] max-w-[55%] shrink-0 flex-col border-l"
+      style={{ width: paneWidth }}
+      className="bg-card border-border relative flex max-w-[75%] shrink-0 flex-col border-l"
     >
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize manual viewer"
+        tabIndex={0}
+        onPointerDown={onResizePointerDown}
+        onPointerMove={onResizePointerMove}
+        onPointerUp={onResizePointerUp}
+        onKeyDown={onResizeKeyDown}
+        className="hover:bg-primary/40 focus-visible:bg-primary/40 absolute top-0 left-0 z-20 h-full w-1.5 -translate-x-1/2 cursor-col-resize touch-none select-none"
+      />
       <header className="border-border flex items-center justify-between gap-2 border-b px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <BookOpenIcon className="text-primary size-4 shrink-0" />

@@ -29,3 +29,22 @@ export const PAGE_ASPECT = numberFromEnv(
 export const ZOOM_STEP = numberFromEnv(process.env.NEXT_PUBLIC_VIEWER_ZOOM_STEP, 0.25);
 export const ZOOM_MIN = numberFromEnv(process.env.NEXT_PUBLIC_VIEWER_ZOOM_MIN, 0.5);
 export const ZOOM_MAX = numberFromEnv(process.env.NEXT_PUBLIC_VIEWER_ZOOM_MAX, 3);
+
+// The pane width the reader drags, in pixels, and the range it stays inside
+// (DECISIONS V4).
+export const PANE_WIDTH_DEFAULT = numberFromEnv(
+  process.env.NEXT_PUBLIC_VIEWER_WIDTH_DEFAULT,
+  416,
+);
+export const PANE_WIDTH_MIN = numberFromEnv(
+  process.env.NEXT_PUBLIC_VIEWER_WIDTH_MIN,
+  280,
+);
+export const PANE_WIDTH_MAX = numberFromEnv(
+  process.env.NEXT_PUBLIC_VIEWER_WIDTH_MAX,
+  900,
+);
+
+export function clampPaneWidth(width: number): number {
+  return Math.min(PANE_WIDTH_MAX, Math.max(PANE_WIDTH_MIN, width));
+}
