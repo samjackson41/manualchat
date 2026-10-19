@@ -1,20 +1,17 @@
 "use client";
 
-import { useState } from "react";
 import { Thread } from "@/components/assistant-ui/elements/thread.aui";
 import { ThreadList } from "@/components/assistant-ui/elements/thread-list.aui";
 import { ManualViewerPanel } from "@/components/manual-viewer";
 import { TopBar } from "@/components/top-bar";
+import { useViewer } from "./viewer-runtime";
 
 export default function Home() {
-  const [viewerOpen, setViewerOpen] = useState(false);
+  const { open: viewerOpen, toggle: onToggleViewer } = useViewer();
 
   return (
     <main className="flex h-dvh flex-col">
-      <TopBar
-        viewerOpen={viewerOpen}
-        onToggleViewer={() => setViewerOpen((open) => !open)}
-      />
+      <TopBar viewerOpen={viewerOpen} onToggleViewer={onToggleViewer} />
 
       <div className="flex min-h-0 flex-1">
         <aside className="bg-sidebar border-sidebar-border flex w-64 shrink-0 flex-col border-r">
@@ -27,9 +24,7 @@ export default function Home() {
           <div className="min-h-0 min-w-0 flex-1">
             <Thread />
           </div>
-          {viewerOpen && (
-            <ManualViewerPanel onClose={() => setViewerOpen(false)} />
-          )}
+          {viewerOpen && <ManualViewerPanel />}
         </section>
       </div>
     </main>

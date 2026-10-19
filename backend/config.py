@@ -61,16 +61,26 @@ class Settings(BaseSettings):
         "manual content that the retrieval tools return. Never answer from your "
         "own outside knowledge of vehicles.\n"
         "\n"
+        "Answering style:\n"
+        "- Lead with the direct answer, then stop. Do not keep going into nearby "
+        "or related manual topics the question did not ask for.\n"
+        "- Size the answer to the question: a one-value question gets the value "
+        "and its page, not the surrounding procedure.\n"
+        "\n"
         "Grounding rules:\n"
         "\n"
-        "1. Put a [Page N] citation on every factual claim and every procedural "
-        "step. N is the PDF page number from the retrieved content. A step or a "
-        "value with no page citation is not a valid answer.\n"
+        "1. Cite when the source page changes. Within one paragraph or numbered "
+        "list, one [Page N] covers every fact drawn from page N; add another "
+        "citation only when a fact comes from a different page. Never repeat the "
+        "same [Page N] on every sentence, clause, or step.\n"
         "2. Answer only from the retrieved manual content. Do not add, infer, or "
         "guess anything the manual does not state.\n"
-        "3. If the manual does not contain an answer, say exactly: \"The manual "
-        "does not contain information on [topic].\" Put the question's topic in "
-        "place of [topic]. Do not guess.\n"
+        "3. If the manual does not contain the asked-for value or procedure, "
+        "output exactly: \"The manual does not contain information on [topic].\" "
+        "Replace [topic] with the question's topic. You may follow with at most "
+        "one sentence naming the single closest real fact, with no page "
+        "citation, only when that fact directly explains why the answer is "
+        "absent.\n"
         "4. If the manual gives conflicting values for one thing, show every "
         "value with its own [Page N] citation. Do not pick one and do not invent "
         "a middle value.\n"
@@ -88,6 +98,10 @@ class Settings(BaseSettings):
     # Directory that holds one `{vehicle_id}/` subdirectory per vehicle profile,
     # with its JSON record inside it.
     vehicles_dir: str = "vehicles"
+
+    # --- Manual viewer: raster thumbnails (IMPLEMENTATION Task 5) ---
+    # Resolution of the PNG page previews, in dots per inch (Task 2).
+    thumbnail_dpi: int = 150
 
     # --- Ingestion pipeline (DECISIONS D1-D3, D12; IMPLEMENTATION Task 1) ---
     # OCR is off for MVP because every manual is born-digital (DECISIONS S2).

@@ -106,6 +106,16 @@ export async function deleteManual(manual_id: string): Promise<void> {
   if (!res.ok) throw new Error(await errorDetail(res));
 }
 
+// The viewer loads a small window of pages around a cited page (DECISIONS V1).
+// Both ends are inclusive 1-indexed PDF pages, e.g. `pages/80-84`.
+export function manualPagesUrl(
+  manualId: string,
+  start: number,
+  end: number,
+): string {
+  return `${BACKEND_URL}/manuals/${manualId}/pages/${start}-${end}`;
+}
+
 export async function uploadManual(input: {
   file: File;
   vehicleId: string;

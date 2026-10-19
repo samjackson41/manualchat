@@ -20,6 +20,7 @@ import json
 from typing import Annotated, TypedDict
 
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage, ToolMessage
+from langgraph.config import get_stream_writer
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 
@@ -41,6 +42,7 @@ class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
     model: str
     vehicle_id: str | None
+    stream: bool
 
 
 _ROLE_MAP = {
@@ -88,13 +90,8 @@ def _with_system_prompt(messages: list[BaseMessage]) -> list[BaseMessage]:
     return [system, *messages]
 
 
-def chat_node(state: AgentState) -> dict:
-    """Call OpenRouter (with tool schemas) and append the assistant's reply."""
-    reply = llm.chat(
-        _serialize(_with_system_prompt(state["messages"])),
-        state["model"],
-        tools=TOOL_SCHEMAS,
-    )
+def _tool_calls_from_reply(reply: dict) -> list[dict]:
+    """Convert an OpenRouter assistant reply's tool_calls to langchain shape."""
     tool_calls = []
     for call in reply.get("tool_calls") or []:
         try:
@@ -104,9 +101,75 @@ def chat_node(state: AgentState) -> dict:
         tool_calls.append(
             {"id": call["id"], "name": call["function"]["name"], "args": args}
         )
+    return tool_calls
+
+
+def chat_node(state: AgentState) -> dict:
+    """Call OpenRouter (with tool schemas) and append the assistant's reply."""
+    if state.get("stream"):
+        return _streamed_chat_node(state)
+
+    reply = llm.chat(
+        _serialize(_with_system_prompt(state["messages"])),
+        state["model"],
+        tools=TOOL_SCHEMAS,
+    )
     return {
         "messages": [
-            AIMessage(content=reply.get("content") or "", tool_calls=tool_calls)
+            AIMessage(
+                content=reply.get("content") or "",
+                tool_calls=_tool_calls_from_reply(reply),
+            )
+        ]
+    }
+
+
+def _streamed_chat_node(state: AgentState) -> dict:
+    """Stream the assistant reply to the client and append the full message.
+
+    Content deltas are emitted through the stream writer (consumed by
+    ``POST /chat/stream`` via ``stream_mode="custom"``). Tool-call fragments
+    stream across several deltas, so they are reassembled index by index.
+    """
+    writer = get_stream_writer()
+    content_parts: list[str] = []
+    tool_slots: dict[int, dict] = {}
+
+    for delta in llm.stream_chat(
+        _serialize(_with_system_prompt(state["messages"])),
+        state["model"],
+        tools=TOOL_SCHEMAS,
+    ):
+        if delta.get("content"):
+            content_parts.append(delta["content"])
+            writer({"type": "token", "content": delta["content"]})
+        for call in delta.get("tool_calls") or []:
+            slot = tool_slots.setdefault(
+                call.get("index", 0), {"id": "", "name": "", "arguments": ""}
+            )
+            if call.get("id"):
+                slot["id"] = call["id"]
+            function = call.get("function") or {}
+            if function.get("name"):
+                slot["name"] = function["name"]
+            if function.get("arguments"):
+                slot["arguments"] += function["arguments"]
+
+    tool_calls = []
+    for index in sorted(tool_slots):
+        slot = tool_slots[index]
+        try:
+            args = json.loads(slot["arguments"] or "{}")
+        except (json.JSONDecodeError, TypeError):
+            args = {}
+        tool_calls.append({"id": slot["id"], "name": slot["name"], "args": args})
+
+    return {
+        "messages": [
+            AIMessage(
+                content="".join(content_parts),
+                tool_calls=tool_calls,
+            )
         ]
     }
 

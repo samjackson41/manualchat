@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { BookOpenIcon } from "lucide-react";
-import logo from "@/assets/manual-chat-logo.svg";
+import logo from "@/assets/manualchat-logo.svg";
 import { useModelSelection } from "@/app/chat-runtime";
 import { Button } from "@/components/ui/button";
 import {

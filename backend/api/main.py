@@ -5,8 +5,19 @@ calling `llm.chat` directly — this is what proves the reply went through the
 LangGraph graph (the "done when" criterion).
 """
 
-from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
+import json
+
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Response,
+    UploadFile,
+)
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response, StreamingResponse
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
@@ -15,7 +26,9 @@ from backend.config import get_settings, model_label
 from backend.llm import LLMError
 from backend import ingest
 from backend import retrieval
+from backend import slicer
 from backend import storage
+from backend import thumbnails
 from backend.schemas import Manual, Vehicle
 
 app = FastAPI(title="ManualChat API", version="0.1.0")
@@ -71,6 +84,7 @@ def chat(req: ChatRequest) -> dict:
         "messages": [HumanMessage(content=req.query)],
         "model": model,
         "vehicle_id": req.vehicle_id,
+        "stream": False,
     }
     try:
         result = graph.invoke(initial_state)
@@ -128,6 +142,33 @@ def get_manual(manual_id: str) -> Manual:
     return manual
 
 
+@app.get("/manuals/{manual_id}/pages/{page_range}")
+def get_page_slice(manual_id: str, page_range: str) -> Response:
+    """Serve a PDF holding one manual's pages ``start-end`` (DECISIONS V1).
+
+    ``page_range`` looks like ``80-84``; both ends are inclusive 1-indexed
+    physical PDF pages. The viewer asks for the pages around the page an
+    answer cites, so it can render a small slice with selectable text.
+    """
+    try:
+        start_s, end_s = page_range.split("-", 1)
+        start, end = int(start_s), int(end_s)
+    except ValueError:
+        raise HTTPException(
+            status_code=400, detail="page range must be start-end"
+        ) from None
+
+    if storage.get_manual(manual_id) is None:
+        raise HTTPException(status_code=404, detail="manual not found")
+
+    try:
+        data = slicer.slice_pages(manual_id, start, end)
+    except slicer.SliceError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return Response(content=data, media_type="application/pdf")
+
+
 @app.patch("/manuals/{manual_id}")
 def update_manual(manual_id: str, req: ManualUpdate) -> Manual:
     manual = storage.update_manual(manual_id, enabled=req.enabled)
@@ -182,3 +223,60 @@ def delete_vehicle(vehicle_id: str) -> dict:
     if not storage.delete_vehicle(vehicle_id):
         raise HTTPException(status_code=404, detail="vehicle not found")
     return {"deleted": vehicle_id}
+
+
+# --- Manual viewer: page thumbnails (IMPLEMENTATION Task 5) ---
+
+
+@app.get("/manuals/{manual_id}/thumbnails/{page}")
+def get_page_thumbnail(manual_id: str, page: int) -> Response:
+    """Serve one manual page as a raster PNG (IMPLEMENTATION §7 fallback).
+
+    ``page`` is a 1-indexed physical PDF page. The resolution is the
+    ``thumbnail_dpi`` config value, so a client can tune it without code edits.
+    """
+    if storage.get_manual(manual_id) is None:
+        raise HTTPException(status_code=404, detail="manual not found")
+    try:
+        png = thumbnails.thumbnail_png(
+            manual_id, page, get_settings().thumbnail_dpi
+        )
+    except thumbnails.ThumbnailError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return Response(content=png, media_type="image/png")
+
+
+# --- Streaming chat (SSE) ---
+
+
+@app.post("/chat/stream")
+def chat_stream(req: ChatRequest) -> StreamingResponse:
+    """Stream the graph's reply as SSE JSON chunks (IMPLEMENTATION Task 5).
+
+    Each event carries one JSON object on a ``data:`` line. Content arrives as
+    ``{"type": "token", "content": "..."}``, then a final
+    ``{"type": "done", "content": "<full reply>", "model": "<slug>"}``. An early
+    failure ends the stream with ``{"type": "error", "message": "..."}``.
+    """
+    model = req.model or get_settings().model_default
+    initial_state = {
+        "messages": [HumanMessage(content=req.query)],
+        "model": model,
+        "vehicle_id": req.vehicle_id,
+        "stream": True,
+    }
+
+    def event_stream():
+        parts: list[str] = []
+        try:
+            for chunk in graph.stream(initial_state, stream_mode="custom"):
+                if isinstance(chunk, dict) and chunk.get("type") == "token":
+                    parts.append(chunk["content"])
+                    yield f"data: {json.dumps(chunk)}\n\n"
+            done = {"type": "done", "content": "".join(parts), "model": model}
+            yield f"data: {json.dumps(done)}\n\n"
+        except LLMError as exc:
+            err = {"type": "error", "message": str(exc)}
+            yield f"data: {json.dumps(err)}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")

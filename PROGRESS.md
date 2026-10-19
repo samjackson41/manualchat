@@ -66,12 +66,19 @@
   answers only from the manual, states plainly when the manual holds no answer,
   and shows both values when the manual conflicts. The text is tunable via
   `AGENT_SYSTEM_PROMPT` (DECISIONS A3).
+- Backend services (Task 5): `POST /chat/stream` streams the graph's answer as
+  SSE JSON chunks — `{"type": "token"}` deltas then one final
+  `{"type": "done"}` — through a new `llm.stream_chat` and a `stream` state flag
+  that routes `chat_node` through a streaming path (the graph shape and the
+  plain `/chat` reply are unchanged). `GET /manuals/{id}/thumbnails/{page}`
+  renders one physical page of the stored `source.pdf` to a PNG at
+  `THUMBNAIL_DPI` (default 150) for the viewer's raster fallback.
 - Frontend: Next.js chat built on assistant-ui. The styled Thread shows
   messages, markdown, streaming, and regeneration. A thread-list sidebar keeps
   chat history in localStorage across reloads. The chat adapter in
   `frontend/app/chat-runtime.tsx` calls `POST /chat` scoped to the active
   vehicle. A vehicle selector feeds a manual-upload button and a manual-viewer
-  toggle (a placeholder until the page-slice viewer lands, DECISIONS V1). The
+  toggle. The
   selector's dropdown ends with an Add vehicle entry; rename and delete sit
   behind a pencil icon. The upload dialog takes an optional description in
   place of the old manual kind, and its own vehicle picker (with an Add
@@ -85,6 +92,13 @@
   stored choice wins (DECISIONS C1). The ManualChat wordmark is replaced by the
   wrench-in-bubble logo, and the manual viewer opens side by side with the chat
   instead of above it (DECISIONS C2).
+- Manual viewer and citations (Task 6): each `[Page N]` in a reply renders as a
+  clickable badge. Clicking one opens the viewer pane beside the chat and
+  shows the cited page plus two pages on each side with selectable text,
+  rendered with react-pdf (DECISIONS V1). A manual selector in the viewer
+  defaults to the active vehicle's first enabled manual. The slice loads from
+  `GET /manuals/{id}/pages/{start}-{end}`, which cuts the pages on demand with
+  PyMuPDF (`backend/slicer.py`).
 - Docker Compose runs the backend and the frontend in two terminals. The
   backend bind-mounts `manuals/`, `vehicles/`, and `qdrant/` so uploads,
   profiles, and the embedded Qdrant index all persist on the host.
@@ -113,16 +127,57 @@
 - The chunk eval: about 15 questions with known answer pages from `pl.pdf`, to
   check recall and citation precision and confirm the chunk size and overlap.
 - Future work (DECISIONS Deferred): the Supervisor and Synthesizer graph, the
-  structured `AgentAnswer`, the spec ledger, the PDF viewer with citation
-  badges, the scanned-manual OCR path, and the Docker work.
+  structured `AgentAnswer`, the spec ledger, the scanned-manual OCR path, and
+  the Docker work.
 - Memory: the summary field, the compaction node, and a checkpointer per
   `MEMORY_DESIGN.md`.
 - The scanned-manual OCR path. Deferred past MVP per DECISIONS S1.
 - CI linting, formatting, and tests. The current CI checks syntax, types, and the
   build only.
 
+### Manual viewer backlog
+
+Planned work for the Manual viewer pane. None of it is built.
+
+- Make the pane resizable. The reader sets the split between the chat and the
+  pane, at minimum for a side-by-side layout.
+- Add viewer controls, such as zoom.
+- Let the reader open the whole manual in the pane. The pane then acts as a web
+  PDF viewer, so the reader can read the full manual in the app. The pane holds a
+  `View whole manual` button for this, with the tooltip
+  `Whole manual may be slow to load`.
+- Hide the manual selector while the pane shows a cited slice. The pane then
+  shows the slice pages in its place, in the form
+  `Manual name, Pgs 15-19`. Manual browsing returns only after the reader closes
+  the pane, so a slice and a browsed manual never mix.
+- Review the slice buffer. The candidates are `[Page−1, Page+2]` and
+  `[Page−0, Page+2]`, in place of the ratified `[Page−2, Page+2]`
+  (DECISIONS V1).
+- Open the slice at the cited page. A buffer of `−n` puts the cited page on
+  page `n+1` of the slice. The pane must scroll to that page, and must not open
+  at slice page 1.
+- Cite the manual page that holds the answer. The answer must not name page 1 of
+  the slice.
+- Add a note that the page count follows the PDF page index, not the printed
+  page number on the sheet.
+- MVP+1: add a page-number offset. The reader shifts the page numbers to repair
+  an off-by-n error, so that the numbers match the citations.
+- MVP+1: make the pane reactive, so that it works on a phone.
+
+### Frontend backlog
+
+Planned frontend work. None of it is built.
+
+- Stream the agent's progress in the chat. Show the tool calls and the RAG model
+  weight loading the way the terminal shows them, so the reader sees progress
+  instead of a loading spinner.
+- Let the reader rename a chat session in the frontend.
+- Add tooltips to the edit, theme, and manual upload buttons.
+
 ## Known problems
 
+- The chat shows the whole answer in one flash. The frontend does not render the
+  token stream one chunk at a time, so the answer does not form smoothly.
 - DeepSeek `-latest` slugs need the `~` prefix, or OpenRouter returns 400. This
   is recorded in the `README.md` "Deviations" section and in `DECISIONS.md`.
 

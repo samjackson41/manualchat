@@ -6,6 +6,8 @@ for the skeleton. When RAG/tool-calling lands, this is the one place to swap in
 a streaming client or the full SDK without touching the graph.
 """
 
+import json
+
 import httpx
 
 from backend.config import get_settings
@@ -80,3 +82,62 @@ def chat(
         return data["choices"][0]["message"]
     except (KeyError, IndexError, TypeError) as exc:
         raise LLMError(f"Unexpected OpenRouter response shape: {data}") from exc
+
+
+def stream_chat(
+    messages: list[dict],
+    model: str,
+    params: dict | None = None,
+    tools: list[dict] | None = None,
+):
+    """Stream a chat reply from OpenRouter, yielding one delta dict per chunk.
+
+    Mirrors `chat` but uses SSE (``stream=True``) and yields OpenAI-shaped
+    deltas — ``{"content": str|None, "tool_calls": list|None}`` — instead of the
+    assembled message. The caller accumulates content and any index-keyed
+    tool-call fragments into a full assistant message.
+    """
+    settings = get_settings()
+    if not settings.openrouter_api_key:
+        raise LLMError(
+            "OPENROUTER_API_KEY is not set. Export it in the shell before starting "
+            "the backend, e.g.: OPENROUTER_API_KEY=sk-or-... docker compose up backend"
+        )
+
+    body: dict = {"model": model, "messages": messages, "stream": True}
+    if tools:
+        body["tools"] = tools
+    body.update(_sampling_params())
+    if params:
+        body.update({k: v for k, v in params.items() if v not in (None, "")})
+
+    url = f"{settings.openrouter_base_url.rstrip('/')}/chat/completions"
+    headers = {"Authorization": f"Bearer {settings.openrouter_api_key}"}
+
+    try:
+        with httpx.stream(
+            "POST", url, headers=headers, json=body, timeout=120.0
+        ) as resp:
+            if resp.is_error:
+                detail = resp.read().decode("utf-8", errors="replace")
+                raise LLMError(f"OpenRouter error {resp.status_code}: {detail}")
+            for line in resp.iter_lines():
+                if not line or not line.startswith("data:"):
+                    continue
+                payload = line[len("data:"):].strip()
+                if payload == "[DONE]":
+                    break
+                try:
+                    data = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+                choices = data.get("choices") or []
+                if not choices:
+                    continue
+                delta = choices[0].get("delta") or {}
+                yield {
+                    "content": delta.get("content"),
+                    "tool_calls": delta.get("tool_calls"),
+                }
+    except httpx.HTTPError as exc:
+        raise LLMError(f"OpenRouter request failed: {exc}") from exc
