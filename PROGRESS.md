@@ -172,6 +172,8 @@ Planned frontend work. None of it is built.
   instead of a loading spinner.
 - Let the reader rename a chat session in the frontend.
 - Add tooltips to the edit, theme, and manual upload buttons.
+- Make the threads sidebar collapsible with a small button that shows a double
+  right chevron icon to expand it.
 
 ## Known problems
 
