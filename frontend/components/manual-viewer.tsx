@@ -26,6 +26,15 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 // The viewer shows the cited page plus two pages on each side (DECISIONS V1).
 const SLICE_RADIUS = 2;
 
+type PdfSlice = {
+  // Names one fetched page window. A new key mounts a new <Document>, so a
+  // live document never has its `file` swapped for another window.
+  key: string;
+  manualId: string;
+  pages: number[];
+  data: ArrayBuffer;
+};
+
 function EmptyState({ children }: { children: React.ReactNode }) {
   return (
     <div className="border-border bg-muted/40 flex h-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-6 text-center">
@@ -37,32 +46,31 @@ function EmptyState({ children }: { children: React.ReactNode }) {
 
 export function ManualViewerPanel() {
   const { citedPage, manualId, manuals, selectManual, close } = useViewer();
-  const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
-  const [sliceStart, setSliceStart] = useState<number | null>(null);
-  const [numPages, setNumPages] = useState<number>(0);
+  const [slice, setSlice] = useState<PdfSlice | null>(null);
+  const [loadCount, setLoadCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const citedRef = useRef<HTMLDivElement>(null);
 
-  const manual =
-    manuals.find((item) => item.manual_id === manualId) ?? null;
+  const manual = manuals.find((item) => item.manual_id === manualId) ?? null;
+  const manualKey = manual?.manual_id ?? null;
+  const pageCount = manual?.page_count ?? 0;
 
   useEffect(() => {
-    if (!manual || citedPage === null) {
-      setPdfData(null);
-      setSliceStart(null);
+    if (!manualKey || citedPage === null) {
+      setSlice(null);
       return;
     }
     const start = Math.max(1, citedPage - SLICE_RADIUS);
-    const end = Math.min(manual.page_count, citedPage + SLICE_RADIUS);
+    const end = Math.min(pageCount, citedPage + SLICE_RADIUS);
     if (start > end) {
-      setPdfData(null);
-      setSliceStart(null);
+      setSlice(null);
       return;
     }
 
     let cancelled = false;
     setError(null);
-    fetch(manualPagesUrl(manual.manual_id, start, end))
+    const key = `${manualKey}:${start}-${end}`;
+    fetch(manualPagesUrl(manualKey, start, end))
       .then((res) => {
         if (!res.ok) {
           throw new Error(`Could not load pages ${start}-${end} (${res.status})`);
@@ -70,10 +78,22 @@ export function ManualViewerPanel() {
         return res.arrayBuffer();
       })
       .then((buffer) => {
-        if (!cancelled) {
-          setSliceStart(start);
-          setPdfData(buffer);
-        }
+        if (cancelled) return;
+        // A repeated window keeps the buffer it already holds: react-pdf
+        // reloads on a new `file` object even when the bytes are the same.
+        setSlice((current) =>
+          current?.key === key
+            ? current
+            : {
+                key,
+                manualId: manualKey,
+                pages: Array.from(
+                  { length: end - start + 1 },
+                  (_, index) => start + index,
+                ),
+                data: buffer,
+              },
+        );
       })
       .catch((err) => {
         if (!cancelled) {
@@ -83,13 +103,16 @@ export function ManualViewerPanel() {
     return () => {
       cancelled = true;
     };
-  }, [manual, citedPage]);
+  }, [manualKey, pageCount, citedPage]);
+
+  // Hides the pages of another manual while the replacement window loads.
+  const shownSlice = slice && slice.manualId === manualKey ? slice : null;
 
   useEffect(() => {
-    if (pdfData && citedRef.current) {
+    if (loadCount > 0 && citedRef.current) {
       citedRef.current.scrollIntoView({ block: "start", behavior: "smooth" });
     }
-  }, [pdfData, numPages]);
+  }, [loadCount]);
 
   return (
     <aside
@@ -164,30 +187,30 @@ export function ManualViewerPanel() {
           </EmptyState>
         )}
 
-        {manual && citedPage !== null && !error && !pdfData && (
+        {manual && citedPage !== null && !error && !shownSlice && (
           <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
             <LoaderCircleIcon className="size-4 animate-spin" />
             Loading pages…
           </div>
         )}
 
-        {manual && citedPage !== null && pdfData && sliceStart !== null && (
+        {manual && citedPage !== null && shownSlice && (
           <>
             <p className="text-muted-foreground mb-2 text-xs">
               Page {citedPage} of {manual.page_count} · {manual.display_name}
             </p>
             <Document
-              file={pdfData}
+              key={shownSlice.key}
+              file={shownSlice.data}
               loading={
                 <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
                   <LoaderCircleIcon className="size-4 animate-spin" />
                   Rendering…
                 </div>
               }
-              onLoadSuccess={({ numPages: count }) => setNumPages(count)}
+              onLoadSuccess={() => setLoadCount((count) => count + 1)}
             >
-              {Array.from({ length: numPages }, (_, index) => {
-                const page = sliceStart + index;
+              {shownSlice.pages.map((page, index) => {
                 const isCited = page === citedPage;
                 return (
                   <div
