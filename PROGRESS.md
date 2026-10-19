@@ -92,13 +92,29 @@
   stored choice wins (DECISIONS C1). The ManualChat wordmark is replaced by the
   wrench-in-bubble logo, and the manual viewer opens side by side with the chat
   instead of above it (DECISIONS C2).
-- Manual viewer and citations (Task 6): each `[Page N]` in a reply renders as a
-  clickable badge. Clicking one opens the viewer pane beside the chat and
-  shows the cited page plus two pages on each side with selectable text,
-  rendered with react-pdf (DECISIONS V1). A manual selector in the viewer
-  defaults to the active vehicle's first enabled manual. The slice loads from
+- Manual viewer and citations (Task 6, DECISIONS V1-V4): each `[Page N]` in a
+  reply renders as a clickable badge. Clicking one opens the viewer pane beside
+  the chat and shows the cited page plus one page before and two after, with
+  selectable text, rendered with react-pdf. The pane opens at the cited page,
+  so the page held before it scrolls out of view. While a slice shows, the pane
+  hides the manual selector and names the slice in its place, in the form
+  `Manual name, Pg. 15-19`; the selector returns when the reader closes the
+  PDF. A floating X closes the PDF without closing the pane. The pane carries
+  zoom controls, and the reader sets the chat/pane split by dragging the pane's
+  left edge or with the arrow keys on it. Dragging past the chat's minimum width
+  hides the chat, so the pane fills the row beside the thread sidebar; a short
+  pull back returns the chat. The slice loads from
   `GET /manuals/{id}/pages/{start}-{end}`, which cuts the pages on demand with
   PyMuPDF (`backend/slicer.py`).
+- Whole-manual view (DECISIONS V2): a `View whole manual` button in the pane
+  opens the manual's stored PDF through `GET /manuals/{id}/pdf`, which streams
+  the file. Pages mount one at a time as the reader scrolls, so a large manual
+  stays responsive.
+- Viewer byte caching (DECISIONS V5-V6): the pane caches PDF bytes, never
+  rendered pages. Slices live in a module-level map with an LRU cap; a whole
+  manual lives once per manual in the Cache API, and deleting a manual drops
+  its bytes. Both endpoints answer with `Cache-Control: immutable` and an
+  `ETag`, and a matching `If-None-Match` returns `304`.
 - Docker Compose runs the backend and the frontend in two terminals. The
   backend bind-mounts `manuals/`, `vehicles/`, and `qdrant/` so uploads,
   profiles, and the embedded Qdrant index all persist on the host.
@@ -139,25 +155,8 @@
 
 Planned work for the Manual viewer pane. None of it is built.
 
-- Make the pane resizable. The reader sets the split between the chat and the
-  pane, at minimum for a side-by-side layout.
-- Add viewer controls, such as zoom.
-- Let the reader open the whole manual in the pane. The pane then acts as a web
-  PDF viewer, so the reader can read the full manual in the app. The pane holds a
-  `View whole manual` button for this, with the tooltip
-  `Whole manual may be slow to load`.
-- Hide the manual selector while the pane shows a cited slice. The pane then
-  shows the slice pages in its place, in the form
-  `Manual name, Pgs 15-19`. Manual browsing returns only after the reader closes
-  the pane, so a slice and a browsed manual never mix.
-- Review the slice buffer. The candidates are `[Page−1, Page+2]` and
-  `[Page−0, Page+2]`, in place of the ratified `[Page−2, Page+2]`
-  (DECISIONS V1).
-- Open the slice at the cited page. A buffer of `−n` puts the cited page on
-  page `n+1` of the slice. The pane must scroll to that page, and must not open
-  at slice page 1.
 - Cite the manual page that holds the answer. The answer must not name page 1 of
-  the slice.
+  the slice if slice buffer start != -0.
 - Add a note that the page count follows the PDF page index, not the printed
   page number on the sheet.
 - MVP+1: add a page-number offset. The reader shifts the page numbers to repair
@@ -173,6 +172,8 @@ Planned frontend work. None of it is built.
   instead of a loading spinner.
 - Let the reader rename a chat session in the frontend.
 - Add tooltips to the edit, theme, and manual upload buttons.
+- Make the threads sidebar collapsible with a small button that shows a double
+  right chevron icon to expand it.
 
 ## Known problems
 

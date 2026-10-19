@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { listManuals, type Manual } from "@/lib/api";
+import { PANE_WIDTH_DEFAULT, clampPaneWidth } from "@/lib/viewer-config";
 import { useVehicles } from "./vehicle-runtime";
 
 // The viewer shows the pages an answer cites. The cited page and which manual
@@ -20,14 +21,24 @@ type ViewerState = {
   open: boolean;
   citedPage: number | null;
   manualId: string | null;
+  // The width the reader set for the pane, in pixels (DECISIONS V4).
+  paneWidth: number;
+  // True while the pane fills the row and the chat is hidden (DECISIONS V4).
+  chatHidden: boolean;
   // The active vehicle's enabled, fully-ingested manuals, newest first.
   manuals: Manual[];
   loading: boolean;
   openPage: (page: number) => void;
   selectManual: (id: string) => void;
+  clearCitation: () => void;
+  setPaneWidth: (width: number) => void;
+  setChatHidden: (hidden: boolean) => void;
   toggle: () => void;
   close: () => void;
 };
+
+// The reader's pane width survives reloads, as the theme and the thread list do.
+const PANE_WIDTH_KEY = "manualchat.viewer.paneWidth";
 
 const ViewerContext = createContext<ViewerState | null>(null);
 
@@ -44,8 +55,25 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [citedPage, setCitedPage] = useState<number | null>(null);
   const [manualId, setManualId] = useState<string | null>(null);
+  const [paneWidth, setPaneWidthState] = useState(PANE_WIDTH_DEFAULT);
+  const [chatHidden, setChatHidden] = useState(false);
   const [manuals, setManuals] = useState<Manual[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // The stored width is read after mount, so the server and the first client
+  // render agree.
+  useEffect(() => {
+    const stored = Number(window.localStorage.getItem(PANE_WIDTH_KEY));
+    if (Number.isFinite(stored) && stored > 0) {
+      setPaneWidthState(clampPaneWidth(stored));
+    }
+  }, []);
+
+  const setPaneWidth = useCallback((width: number) => {
+    const next = clampPaneWidth(Math.round(width));
+    setPaneWidthState(next);
+    window.localStorage.setItem(PANE_WIDTH_KEY, String(next));
+  }, []);
 
   useEffect(() => {
     if (!activeVehicleId) {
@@ -91,23 +119,55 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
 
   const selectManual = useCallback((id: string) => setManualId(id), []);
 
+  const clearCitation = useCallback(() => setCitedPage(null), []);
+
   const toggle = useCallback(() => setOpen((current) => !current), []);
 
   const close = useCallback(() => setOpen(false), []);
+
+  // Closing the pane ends the cited view, so a slice and a browsed manual
+  // never mix and browsing starts clean on the next open. The chat returns,
+  // because a hidden chat with no pane would leave nothing to read.
+  useEffect(() => {
+    if (!open) {
+      setCitedPage(null);
+      setChatHidden(false);
+    }
+  }, [open]);
 
   const value = useMemo<ViewerState>(
     () => ({
       open,
       citedPage,
       manualId,
+      paneWidth,
+      chatHidden,
       manuals,
       loading,
       openPage,
       selectManual,
+      clearCitation,
+      setPaneWidth,
+      setChatHidden,
       toggle,
       close,
     }),
-    [open, citedPage, manualId, manuals, loading, openPage, selectManual, toggle, close],
+    [
+      open,
+      citedPage,
+      manualId,
+      paneWidth,
+      chatHidden,
+      manuals,
+      loading,
+      openPage,
+      selectManual,
+      clearCitation,
+      setPaneWidth,
+      setChatHidden,
+      toggle,
+      close,
+    ],
   );
 
   return (
