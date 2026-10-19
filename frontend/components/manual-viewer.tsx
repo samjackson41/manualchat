@@ -192,7 +192,8 @@ function PageList({
 }
 
 export function ManualViewerPanel() {
-  const { citedPage, manualId, manuals, selectManual, close } = useViewer();
+  const { citedPage, manualId, manuals, selectManual, clearCitation, close } =
+    useViewer();
   const [slice, setSlice] = useState<PdfWindow | null>(null);
   const [whole, setWhole] = useState<PdfWindow | null>(null);
   const [wholeRequested, setWholeRequested] = useState(false);
@@ -214,6 +215,12 @@ export function ManualViewerPanel() {
     setWholeRequested(false);
   }, [manualKey]);
 
+  // A citation replaces the whole-manual view, so a slice and a browsed manual
+  // never mix.
+  useEffect(() => {
+    if (citedPage !== null) setWholeRequested(false);
+  }, [citedPage]);
+
   // The window a citation opens: the cited page plus the configured pages on
   // each side (DECISIONS V1).
   const sliceWindow = useMemo(() => {
@@ -225,8 +232,8 @@ export function ManualViewerPanel() {
 
   const sliceLabel = sliceWindow
     ? sliceWindow.start === sliceWindow.end
-      ? `Pg ${sliceWindow.start}`
-      : `Pgs ${sliceWindow.start}-${sliceWindow.end}`
+      ? `Pg. ${sliceWindow.start}`
+      : `Pg. ${sliceWindow.start}-${sliceWindow.end}`
     : "";
 
   useEffect(() => {
@@ -312,10 +319,22 @@ export function ManualViewerPanel() {
 
   const shownWhole = whole && whole.manualId === manualKey ? whole : null;
 
+  // A PDF is on screen whenever a citation is showing or the whole manual is
+  // open. The floating X dismisses it without closing the pane.
+  const viewingPdf = citedPage !== null || wholeRequested;
+
+  const closePdf = () => {
+    if (citedPage !== null) {
+      clearCitation();
+    } else {
+      setWholeRequested(false);
+    }
+  };
+
   return (
     <aside
       aria-label="Manual viewer"
-      className="bg-card border-border flex w-[26rem] max-w-[55%] shrink-0 flex-col border-l"
+      className="bg-card border-border relative flex w-[26rem] max-w-[55%] shrink-0 flex-col border-l"
     >
       <header className="border-border flex items-center justify-between gap-2 border-b px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
@@ -353,15 +372,42 @@ export function ManualViewerPanel() {
             </Select>
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Close manual viewer"
-          onClick={close}
-        >
-          <XIcon />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Close manual viewer"
+                onClick={close}
+              />
+            }
+          >
+            <XIcon />
+          </TooltipTrigger>
+          <TooltipContent>Close Manual Viewer</TooltipContent>
+        </Tooltip>
       </header>
+
+      {viewingPdf && (
+        <div className="absolute top-12 right-2 z-10">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="secondary"
+                  size="icon-sm"
+                  aria-label="Close PDF"
+                  onClick={closePdf}
+                />
+              }
+            >
+              <XIcon />
+            </TooltipTrigger>
+            <TooltipContent>Close PDF</TooltipContent>
+          </Tooltip>
+        </div>
+      )}
 
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto p-3">
         {!manual && (

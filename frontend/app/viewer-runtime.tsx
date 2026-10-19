@@ -25,6 +25,7 @@ type ViewerState = {
   loading: boolean;
   openPage: (page: number) => void;
   selectManual: (id: string) => void;
+  clearCitation: () => void;
   toggle: () => void;
   close: () => void;
 };
@@ -91,6 +92,8 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
 
   const selectManual = useCallback((id: string) => setManualId(id), []);
 
+  const clearCitation = useCallback(() => setCitedPage(null), []);
+
   const toggle = useCallback(() => setOpen((current) => !current), []);
 
   const close = useCallback(() => setOpen(false), []);
@@ -110,10 +113,22 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
       loading,
       openPage,
       selectManual,
+      clearCitation,
       toggle,
       close,
     }),
-    [open, citedPage, manualId, manuals, loading, openPage, selectManual, toggle, close],
+    [
+      open,
+      citedPage,
+      manualId,
+      manuals,
+      loading,
+      openPage,
+      selectManual,
+      clearCitation,
+      toggle,
+      close,
+    ],
   );
 
   return (
