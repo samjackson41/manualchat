@@ -10,7 +10,7 @@ import {
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
-import { BookOpenIcon, LoaderCircleIcon, XIcon } from "lucide-react";
+import { BookOpenIcon, LoaderCircleIcon, XIcon, ZoomInIcon, ZoomOutIcon } from "lucide-react";
 
 import { useViewer } from "@/app/viewer-runtime";
 import { manualPagesUrl, manualPdfUrl } from "@/lib/api";
@@ -18,6 +18,9 @@ import {
   PAGE_ASPECT,
   SLICE_PAGES_AFTER,
   SLICE_PAGES_BEFORE,
+  ZOOM_MAX,
+  ZOOM_MIN,
+  ZOOM_STEP,
 } from "@/lib/viewer-config";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -137,9 +140,9 @@ function LazyPage({
   return (
     <div
       ref={holder}
-      style={visible ? undefined : { height: width * PAGE_ASPECT }}
+      style={visible ? { width } : { width, height: width * PAGE_ASPECT }}
       className={cn(
-        "mb-3 rounded-md border",
+        "mx-auto mb-3 w-fit rounded-md border",
         isCited ? "border-primary ring-primary/30 ring-2" : "border-border",
       )}
     >
@@ -200,12 +203,19 @@ export function ManualViewerPanel() {
   const [error, setError] = useState<string | null>(null);
   const [wholeError, setWholeError] = useState<string | null>(null);
   const [scrollRef, containerWidth] = useElementWidth<HTMLDivElement>();
+  const [zoom, setZoom] = useState(1);
 
   const manual = manuals.find((item) => item.manual_id === manualId) ?? null;
   const manualKey = manual?.manual_id ?? null;
   const pageCount = manual?.page_count ?? 0;
-  // Pages render at the pane width, so a page fits without a sideways scroll.
-  const pageWidth = Math.max(80, containerWidth - PAGE_BORDER);
+  // Pages render at the pane width times the zoom, so a page fits without a
+  // sideways scroll at the default zoom.
+  const pageWidth = Math.max(80, (containerWidth - PAGE_BORDER) * zoom);
+
+  const stepZoom = (delta: number) =>
+    setZoom((current) =>
+      Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number((current + delta).toFixed(2)))),
+    );
 
   // A new manual drops the manual that was loaded whole, so its pages never
   // show under another manual's name.
@@ -286,7 +296,12 @@ export function ManualViewerPanel() {
 
   // The whole manual loads only when the reader asks for it (DECISIONS V2).
   useEffect(() => {
-    if (!wholeRequested || !manualKey || pageCount === 0) return;
+    if (!wholeRequested || !manualKey || pageCount === 0) {
+      // pdfjs detaches the buffer it is handed, so a dismissed document is
+      // dropped rather than shown again.
+      setWhole(null);
+      return;
+    }
     let cancelled = false;
     setWholeError(null);
     fetch(manualPdfUrl(manualKey))
@@ -406,6 +421,37 @@ export function ManualViewerPanel() {
             </TooltipTrigger>
             <TooltipContent>Close PDF</TooltipContent>
           </Tooltip>
+        </div>
+      )}
+
+      {viewingPdf && (
+        <div className="bg-card/95 border-border absolute right-2 bottom-2 z-10 flex items-center gap-1 rounded-md border p-1 shadow-sm">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Zoom out"
+            disabled={zoom <= ZOOM_MIN}
+            onClick={() => stepZoom(-ZOOM_STEP)}
+          >
+            <ZoomOutIcon />
+          </Button>
+          <button
+            type="button"
+            aria-label="Reset zoom"
+            onClick={() => setZoom(1)}
+            className="text-muted-foreground min-w-10 text-center text-xs tabular-nums"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Zoom in"
+            disabled={zoom >= ZOOM_MAX}
+            onClick={() => stepZoom(ZOOM_STEP)}
+          >
+            <ZoomInIcon />
+          </Button>
         </div>
       )}
 

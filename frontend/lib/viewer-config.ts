@@ -23,3 +23,9 @@ export const PAGE_ASPECT = numberFromEnv(
   process.env.NEXT_PUBLIC_VIEWER_PAGE_ASPECT,
   1.294,
 );
+
+// The zoom controls: the scale a click adds, and the range it stays inside
+// (DECISIONS V3). A zoom of 1 fits a page to the pane width.
+export const ZOOM_STEP = numberFromEnv(process.env.NEXT_PUBLIC_VIEWER_ZOOM_STEP, 0.25);
+export const ZOOM_MIN = numberFromEnv(process.env.NEXT_PUBLIC_VIEWER_ZOOM_MIN, 0.5);
+export const ZOOM_MAX = numberFromEnv(process.env.NEXT_PUBLIC_VIEWER_ZOOM_MAX, 3);

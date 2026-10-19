@@ -217,7 +217,8 @@ mock to stay testable without a download.
 | Item | Decision |
 |---|---|
 | V1 | A dedicated **Manual Viewer** mode — a UI toggle that opens the page set the agent deemed relevant (the top-scored `search_manual` chunk page-set, gated by a rerank-score threshold) in a pane beside the chat, rendered with `react-pdf` in `[Page−1, Page+2]` 4-page slices. The window sizes are the `NEXT_PUBLIC_VIEWER_SLICE_BEFORE` and `NEXT_PUBLIC_VIEWER_SLICE_AFTER` config values. (See SPECIFICATION §2.1 and IMPLEMENTATION Tasks 2/6.) |
-| V2 | The pane can open a manual's whole PDF on demand, so the reader can read the full manual in the app. A `View whole manual` button in the pane fetches `GET /manuals/{id}/pdf`, which streams the stored `source.pdf`. The button carries the tooltip `Whole manual may be slow to load`. |
+| V2 | The pane can open a manual's whole PDF on demand, so the reader can read the full manual in the app. A `View whole manual` button in the pane fetches `GET /manuals/{id}/pdf`, which streams the stored `source.pdf`. The button carries the tooltip `Whole manual may be slow to load`. The pages mount lazily as the reader scrolls, so a large manual stays responsive. |
+| V3 | The pane carries zoom controls over the pages: a step per click (`NEXT_PUBLIC_VIEWER_ZOOM_STEP`, default `0.25`) inside a range (`NEXT_PUBLIC_VIEWER_ZOOM_MIN` `0.5` to `NEXT_PUBLIC_VIEWER_ZOOM_MAX` `3`). A zoom of `1` fits a page to the pane width. A click on the shown percentage resets the zoom to `1`. |
 
 ---
 
