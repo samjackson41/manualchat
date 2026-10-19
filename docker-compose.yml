@@ -25,6 +25,9 @@ services:
       - ./manuals:/data/manuals
       # Vehicle profiles live in the host's `vehicles/` dir and survive rebuilds.
       - ./vehicles:/data/vehicles
+      # The embedded Qdrant index lives in the host's `qdrant/` dir and survives
+      # rebuilds (gitignored; never committed).
+      - ./qdrant:/app/qdrant
 
   frontend:
     build:
