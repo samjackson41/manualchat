@@ -1,265 +1,210 @@
-# DECISIONS — ManualChat (decision log)
+# DECISIONS
 
-> Living log of ratified decisions. Companion to `project_proposal.md`,
-> `SPIKE_FINDINGS.md`, and `MEMORY_DESIGN.md`. Each entry states the decision,
-> the governing default, and (where the value is arbitrary/tunable) the config key
-> that surfaces it.
->
-> Recording sources. When a decision rests on external documentation, add
-> `Source:` and `Last-checked:` lines to the entry. `Source:` is a URL or a doc
-> title. `Last-checked:` is an ISO date (`YYYY-MM-DD`). This makes a stale
-> decision easy to see.
-
----
+The decision log for ManualChat.
+Companion files are `project_proposal.md`, `SPIKE_FINDINGS.md`, and `MEMORY_DESIGN.md`.
+Each entry states the decision, the default value, and the configuration key that holds the value.
+When a decision rests on external documentation, the entry carries `Source:` and `Last-checked:` lines.
+The date makes a stale decision easy to see.
 
 ## Governing principle
 
-**P1 — every arbitrary/tunable value is surfaced to config, never hardcoded.**
+P1: every arbitrary or tunable value lives in the configuration, never in code.
+A Pydantic `BaseSettings` object reads the values from `.env`.
+Non-secret values (thresholds, model slugs, regions) belong in the configuration.
+Secrets (API keys) stay out of the repository and come from the environment.
 
-Thresholds, buffer sizes, model IDs, regions, feature flags — anything a reasonable
-engineer might later tweak — lives in a single config surface (Pydantic `BaseSettings`
-backed by `.env`, matching the project's existing Pydantic-for-tool-contracts choice).
-Non-secret values (thresholds, model slugs, regions) belong in config. Actual secrets
-(API keys) stay out of config/repo — managed via Secret Manager / environment, per the
-workspace secret rules.
-
----
-
-## MVP scope (revised)
+## MVP scope
 
 | Decision | Value |
 |---|---|
-| S1 | **Scanned-manual / FJ40 spike work is out of MVP.** Deferred to post-MVP. |
-| S2 | MVP is **digital-only**: every manual has a PDF text layer → `do_ocr=False` everywhere. |
-| S3 | **Dev/test manuals**: Yamaha Rhino 700 Service Manual (503 p) + two Johnson outboard manuals — the 2002/2003 SN/ST 60° V 2-stroke Service Manual (375 p) and the 2004 90–175 hp PL/PX/CX/GL Operator's Guide (56 p). (These form the digital-only working set; the FJ40 is out of MVP per S1.) |
-| S4 | "Has text layer?" probe still runs at ingest so future scanned uploads are handled safely, but no scanned manual is expected in MVP. |
+| S1 | Scanned-manual and FJ40 spike work is out of the MVP scope. |
+| S2 | The MVP handles digital manuals only. Every manual has a PDF text layer, so the ingestion runs with `do_ocr=False`. |
+| S3 | The dev and test manuals are the Yamaha Rhino 700 Service Manual (503 pages) and two Johnson outboard manuals: the 2002/2003 SN/ST 60° V 2-stroke Service Manual (375 pages) and the 2004 90 to 175 hp PL/PX/CX/GL Operator Guide (56 pages). |
+| S4 | The text-layer probe still runs at ingest, so a future scanned upload is handled safely. No scanned manual is expected in the MVP. |
 
-**Consequence**: the OCR-engine choice (RapidOCR vs. Tesseract/Surya/Paddle) drops out of
-MVP. It stays a *placeholder* default (RapidOCR, `lang=["english"]`) for when the scanned
-path returns — no spike, no config churn, just a deferred note.
+The OCR-engine choice drops out of the MVP scope.
+The OCR engine stays a placeholder default (RapidOCR, `lang=["english"]`) for the day the scanned path returns.
+There is no spike and no configuration churn.
 
----
+## Ratified defaults
 
-## Ratified defaults (all approved; values surfaced to config)
-
-| # | Decision | Default | Config key |
+| ID | Decision | Default | Configuration key |
 |---|---|---|---|
-| D1 | Text-layer probe threshold — gate `do_ocr` per manual (`needs_ocr = chars/page < threshold`) | `50` chars/page | `ingest.ocr_min_chars_per_page` |
-| D2 | Sanitize the hidden OCR text layer **at source** (PyMuPDF suppresses `HiddenHorzOCR`-style ghost fonts) before docling | `true` | `ingest.strip_hidden_ocr_layer` |
-| D3 | Normalization is an **explicit ingest stage** (`docling → normalize → embed`), not a post-hoc fallback | — (always on) | `ingest.normalization_enabled` |
-| D4 | OCR engine (deferred post-MVP; placeholder only) | RapidOCR `lang=["english"]` | `ocr.engine`, `ocr.lang` |
-| D5 | Ingestion worker ships **models baked into the Docker image** (no warm volume) for MVP | baked | `worker.models_in_image` |
-| D6 | Compaction token threshold, as a fraction of context window | `0.60` | `memory.compact_threshold_fraction` |
-| D7 | Rolling-buffer `keep_last` message count | `8` | `memory.keep_last_messages` |
-| D8 | Token counter for compaction | `cl100k_base` (tiktoken proxy) | `memory.tokenizer` |
-| D9 | Chunking strategy: split on section headings and keep each table inside one chunk | `true` | `ingest.chunk_structure_aware` |
+| D1 | Text-layer probe threshold. The ingest sets `needs_ocr` when a manual has fewer characters per page than this value. | `50` chars/page | `ingest.ocr_min_chars_per_page` |
+| D2 | Sanitize the hidden OCR text layer at source before docling. PyMuPDF suppresses ghost fonts such as `HiddenHorzOCR`. | `true` | `ingest.strip_hidden_ocr_layer` |
+| D3 | Normalization is an explicit ingest stage (`docling → normalize → embed`), not a fallback. | always on | `ingest.normalization_enabled` |
+| D4 | OCR engine, deferred to post-MVP as a placeholder | RapidOCR, `lang=["english"]` | `ocr.engine`, `ocr.lang` |
+| D5 | The ingestion worker ships the models baked into the Docker image for the MVP. No warm volume. | baked | `worker.models_in_image` |
+| D6 | Compaction token threshold, as a fraction of the context window | `0.60` | `memory.compact_threshold_fraction` |
+| D7 | Rolling-buffer count of kept messages | `8` | `memory.keep_last_messages` |
+| D8 | Token counter for compaction | `cl100k_base` (the tiktoken proxy) | `memory.tokenizer` |
+| D9 | Chunking splits on section headings and keeps each table inside one chunk | `true` | `ingest.chunk_structure_aware` |
 | D10 | Chunk size in tokens | `512` | `ingest.chunk_tokens` |
 | D11 | Chunk overlap in tokens | `64` | `ingest.chunk_overlap_tokens` |
-| D12 | Citations use the physical PDF page number for every manual. Manuals use different printed numbering systems, so the printed number is not recovered. The interface tells the user that the number is a PDF page number. | `false` | `ingest.use_printed_page_numbers` |
-| D13 | Token counter for chunking | `cl100k_base`, the counter that `memory.tokenizer` already names | `ingest.tokenizer` |
-| D14 | Docker image ships **CPU-only torch/torchvision** (no CUDA) for MVP | CPU | — (build-time) |
+| D12 | Citations use the physical PDF page number. Manuals use different printed numbering, so the printed number is not recovered. The interface tells the user that the number is a PDF page number. | `false` | `ingest.use_printed_page_numbers` |
+| D13 | Token counter for chunking, the counter that `memory.tokenizer` already names | `cl100k_base` | `ingest.tokenizer` |
+| D14 | The Docker image ships CPU-only torch and torchvision (no CUDA) for the MVP | CPU | build-time, no key |
 
-D1–D3 apply defensively to the Rhino + Johnson manuals (the Rhino was produced through an
-Acrobat "Paper Capture" pipeline, so it may carry the ghost OCR layer — sanitize-at-source
-is harmless either way).
+D1 to D3 apply to the Rhino and Johnson manuals.
+The Rhino came from an Acrobat Paper Capture pipeline, so it can carry the ghost OCR layer.
+The sanitize step is harmless either way.
 
-D14 keeps the image CPU-only for MVP. The CPU torch build is pinned in
-`backend/pyproject.toml` through the PyTorch CPU index. GPU acceleration is
-deferred to MVP+1, when the scanned-manual OCR path (S1) returns and a GPU host
-is in play.
+D14 keeps the image CPU-only for the MVP.
+The CPU torch build is pinned in `backend/pyproject.toml` through the PyTorch CPU index.
+GPU acceleration is deferred to MVP+1, when the scanned-manual OCR path (S1) returns and a GPU host is in play.
 
-D9 to D11 and D13 follow common practice. A chunk holds 256 to 1024 tokens, and
-neighbouring chunks share 10 to 20 percent of their text. The prototype runs
-against the 56-page `pl.pdf` operator's guide first, so one ingest pass stays
-short. The `512` and `64` values are a starting point. The eval reports recall
-and citation precision for other sizes, and the numbers move only when the eval
-shows a better value.
+D9 to D11 and D13 follow common practice.
+A chunk holds 256 to 1024 tokens, and neighboring chunks share 10 to 20 percent of their text.
+The prototype runs against the 56-page operator guide first, so one ingest pass stays short.
+The values `512` and `64` are a starting point.
+The eval reports recall and citation precision for other sizes.
+The numbers move only when the eval shows a better value.
 
 Source: https://python.langchain.com/docs/how_to/recursive_text_splitter/ and
 https://docs.llamaindex.ai/en/stable/api_reference/node_parsers/sentence_splitter/
 Last-checked: 2026-10-15
 
----
+## Model selection
 
-## Model selection (single model, UI-selectable)
+| ID | Decision | Value | Configuration key |
+|---|---|---|---|
+| M1 | One active model drives every agent process: planning, synthesis, summarization, and the eval judge | DeepSeek Flash | `models.default` |
+| M2 | The ordered model list for the UI selector | DeepSeek Flash, then DeepSeek Pro | `models.options` |
+| M3 | The UI selection is a runtime override of `models.default`, scoped to the session and held in memory | session override | (none yet) |
 
-> Replaces the earlier "cheap-first tiering" plan. One active model powers **every**
-> process — planning, synthesis, summarization/compaction, and the eval judge. The user
-> picks it via a simple dropdown in the UI; there are no per-role tiers to reason about.
-
-| # | Decision | Config key |
-|---|---|---|
-| M1 | A single active model drives all agent processes (planning, synthesis, summarization, judge) | `models.default` = **DeepSeek Flash** |
-| M2 | The ordered list of models offered in the UI selector | `models.options` = **["DeepSeek Flash", "DeepSeek Pro"]** to start |
-| M3 | The UI selection is a **runtime override** of `models.default`, scoped to the session (in-memory for MVP — no persistence yet) | (session override) |
-
-> **Later improvement**: expand `models.options` with more models — no schema/flow change,
-> it's just a longer list feeding the same dropdown.
->
-> OpenRouter slugs (pinned in config, not code). OpenRouter serves the DeepSeek
-> `-latest` aliases as prerelease, so each slug carries a `~` prefix:
-> - DeepSeek Pro → `~deepseek/deepseek-pro-latest`
-> - DeepSeek Flash → `~deepseek/deepseek-flash-latest`
->
-> Reasoning: both models run with **medium** reasoning effort for now
-> (`models.reasoning_effort = "medium"`).
+The `models.options` list can grow later with no schema or flow change.
+OpenRouter serves the DeepSeek `-latest` aliases as prerelease, so each slug carries a `~` prefix.
+DeepSeek Pro is `~deepseek/deepseek-pro-latest`.
+DeepSeek Flash is `~deepseek/deepseek-flash-latest`.
+Both models run with medium reasoning effort (`models.reasoning_effort = "medium"`).
 
 Source: https://openrouter.ai/docs/quickstart
 Last-checked: 2026-10-15
-
----
 
 ## Cloud region
 
 | Item | Decision |
 |---|---|
-| R1 | Region = **us-east-1** (closest). GCP `us-east1` for Cloud Run/GCS; Qdrant Cloud in us-east-1. |
-| R2 | Redis stays on its existing **AWS us-east-1** Essentials tier — accept the cross-cloud hop; revisit only if latency shows up in eval. |
+| R1 | The region is us-east-1, the closest one. GCP `us-east1` for Cloud Run and GCS. Qdrant Cloud runs in us-east-1. |
+| R2 | Redis stays on its existing AWS us-east-1 Essentials tier. The cross-cloud hop is accepted. Latency results in the eval reopen the question. |
 
-**Prototyping**: everything except OpenRouter stays local on the development
-machine (16 GB RAM). Qdrant, storage, and the models run locally. R1 and R2 hold
-for a production deployment.
+For prototyping, everything except OpenRouter runs on the development machine (16 GB of RAM).
+Qdrant, storage, and the models run locally.
+R1 and R2 hold for a production deployment.
 
----
-
-## Manual upload idempotency
+## Upload idempotency
 
 | Item | Decision |
 |---|---|
-| U1 | **MVP**: assume a smart single-user — each manual is uploaded/processed **once** and must **remain in local storage** in a `manuals/{manual_id}/` subdirectory so the processed result is never re-derived. No dedup check. |
-| U2 | **MVP+1**: add a **file-hash check** (against stored manual hashes) and surface a **warning** to the user on a suspected re-upload. |
-
----
+| U1 | The MVP assumes a smart single user. Each manual is uploaded and processed once. The processed result stays in local storage under `manuals/{manual_id}/`, so it is never derived again. There is no dedup check. |
+| U2 | MVP+1 adds a file-hash check against stored manual hashes and a warning to the user on a suspected re-upload. |
 
 ## Manual enable, disable, and delete
 
 | Item | Decision |
 |---|---|
-| M1 | A manual can be **disabled**. The record, files, and index stay in place; the retrieval search excludes the manual's chunks. A disabled manual can be re-enabled at any time. API: `PATCH /manuals/{manual_id}` with `{"enabled": true/false}`. |
-| M2 | Delete is **permanent**. `DELETE /manuals/{manual_id}` purges the manual's chunks from Qdrant, then removes the record and its directory (PDF, page text, tables). There is no undo, so the UI asks for confirmation. The purge runs first: if the purge fails, the record stays in place and the deletion can be retried. |
+| M1 | A manual can be disabled. The record, the files, and the index stay in place. The retrieval search excludes the chunks of a disabled manual, and the manual can be re-enabled at any time. API: `PATCH /manuals/{manual_id}` with `{"enabled": true/false}`. |
+| M2 | Delete is permanent. `DELETE /manuals/{manual_id}` purges the chunks of the manual from Qdrant, then removes the record and its directory (PDF, page text, tables). There is no undo, so the UI asks for confirmation. The purge runs first. If the purge fails, the record stays in place and the deletion can be retried. |
 | M3 | Manuals cannot be renamed. A manual keeps the display name it was uploaded with. |
-
----
 
 ## Spec ledger storage
 
 | Item | Decision |
 |---|---|
-| L1 | The spec ledger lives in **Qdrant** and is **populated lazily** — only when the agent retrieves a table that answers a spec question. Values are parsed **verbatim from the source table** (never from model prose output) and upserted keyed by `(vehicle_id, manual_id, subject)`. No full-manual preprocessing at ingest. |
-| L2 | **MVP scope = table-derived specs only.** A value buried in prose is answered with citation grounding, not written into the ledger. |
-| L3 | Revisit Postgres **only if** post-MVP multi-manual conflict attribution requires relational joins across manuals. |
+| L1 | The spec ledger lives in Qdrant and is populated lazily, only when the agent retrieves a table that answers a spec question. Values are parsed verbatim from the source table, never from model prose. The ledger keys are `vehicle_id`, `manual_id`, and `subject`. No full-manual preprocessing happens at ingest. |
+| L2 | MVP scope covers table-derived specs only. A value buried in prose is answered with citation grounding and is not written into the ledger. |
+| L3 | Postgres is revisited only if post-MVP multi-manual conflict attribution needs relational joins across manuals. |
 
-The POC keeps the ledger minimal: `extract_specs` does targeted table retrieval
-and returns values without writing a ledger. The lazy Qdrant ledger in L1 is
-future work.
+The POC keeps the ledger minimal.
+`extract_specs` does targeted table retrieval and returns values without writing a ledger.
+The lazy Qdrant ledger in L1 is future work.
 
----
+## Retrieval
 
-## Retrieval (RAG pipeline)
+The ingestion stages and the retrieval models are designed in IMPLEMENTATION §2.2 and Tasks 1 to 4.
+The entries below fix the values that the design left open, and the values that the documents disagreed about.
 
-The ingestion stages and the retrieval models. IMPLEMENTATION §2.2 and Tasks 1 to
-4 hold the design. These entries fix the values that the design left open, and
-the values that the documents disagreed about.
-
-| # | Decision | Default | Config key |
+| ID | Decision | Default | Configuration key |
 |---|---|---|---|
-| R3 | Retrieval backend in development: Qdrant in local mode (a path on disk or in memory), not a `docker-compose.yml` service yet | local mode | `qdrant.url` |
+| R3 | Retrieval backend in development: Qdrant in local mode (a path on disk or in memory), not a docker-compose service yet | local mode | `qdrant.url` |
 | R4 | Qdrant collection name | `manualchat_chunks` | `qdrant.collection` |
-| R5 | Qdrant API key | Empty in development, because the local service needs no key. Production supplies a secret through the environment. The value never enters the repository. | `qdrant.api_key` |
+| R5 | Qdrant API key. Empty in development, because the local service needs no key. Production supplies a secret through the environment. The value never enters the repository. | (empty) | `qdrant.api_key` |
 | R6 | Embedding model for the first pass | `multi-qa-mpnet-base-dot-v1` | `retrieval.embed_model` |
 | R7 | Reranker model for the second pass | `cross-encoder/ms-marco-MiniLM-L-6-v2` | `retrieval.rerank_model` |
 | R8 | Candidate count handed to the reranker | `50` | `retrieval.candidate_k` |
 | R9 | Chunk count returned to the agent | `5` | `retrieval.top_n` |
 
-R3 keeps DECISIONS R1 for production. R1 names Qdrant Cloud in `us-east-1`. The
-local service is a development choice, so an ingest run and a query need no
-network and no credentials.
+R3 keeps R1 for production.
+R1 names Qdrant Cloud in us-east-1.
+The local service is a development choice, so an ingest run and a query need no network and no credentials.
 
 Source: https://qdrant.tech/documentation/ and
 https://huggingface.co/sentence-transformers/multi-qa-mpnet-base-dot-v1 and
 https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2
 Last-checked: 2026-10-15
 
----
-
 ## Agent graph and answer contract
 
-| # | Decision | Value | Config key |
+| ID | Decision | Value | Configuration key |
 |---|---|---|---|
-| A1 | The POC graph stays a flat `chat ↔ tools` loop. The Supervisor plus Synthesizer topology in IMPLEMENTATION §2.3 is future work. | — | — |
-| A2 | The agent answers in markdown text with `[Page N]` citations. The structured `AgentAnswer` in IMPLEMENTATION §4.1 is future work. | — | — |
-| A3 | The system prompt carries the grounding rules: every claim and step names its page, the answer states plainly when the manual holds no answer, and conflicting values show both pages. The prompt text lives in config (field `agent_system_prompt`, env `AGENT_SYSTEM_PROMPT`) so it is tunable, and the graph prepends it before the first chat call. | — | `agent.system_prompt` |
+| A1 | The POC graph stays a flat chat and tools loop. The Supervisor and Synthesizer topology in IMPLEMENTATION §2.3 is future work. | (none) | (none) |
+| A2 | The agent answers in markdown text with `[Page N]` citations. The structured `AgentAnswer` in IMPLEMENTATION §4.1 is future work. | (none) | (none) |
+| A3 | The system prompt carries the grounding rules: every claim and step names its page, the answer states plainly when the manual holds no answer, and conflicting values show both pages. The prompt text lives in the configuration (field `agent_system_prompt`, env `AGENT_SYSTEM_PROMPT`), and the graph prepends it before the first chat call. | (none) | `agent.system_prompt` |
 
-The graph runs as a flat `chat ↔ tools` loop today, and `/chat` returns markdown
-text with `[Page N]` citations. The Supervisor, the Synthesizer, the
-`AgentAnswer`, the hop cap, and the confidence gate are future work (see the
-Deferred section).
-
----
+The graph runs as a flat chat and tools loop today.
+`/chat` returns markdown text with `[Page N]` citations.
+The Supervisor, the Synthesizer, the `AgentAnswer`, the hop cap, and the confidence gate are future work (see the Deferred section).
 
 ## Testing and continuous integration
 
-| # | Decision | Value |
+| ID | Decision | Value |
 |---|---|---|
-| T1 | Unit tests inject a fake embedder, so no test downloads a model | — |
+| T1 | Unit tests inject a fake embedder, so no test downloads a model | (none) |
 | T2 | The end-to-end retrieval test carries a pytest marker and stays out of the default run | `@pytest.mark.heavy` |
-| T3 | The default CI run stays cheap: dependency install, the syntax check, and the marked test excluded | — |
+| T3 | The default CI run stays cheap: dependency install, the syntax check, and the marked test excluded | (none) |
 
-Docling, torch, and sentence-transformers make a full install slow and large. T1
-and T2 keep the default check fast. Tests run against mocks, not the full model
-set, even though the project prefers end-to-end tests. Some behaviour needs a
-mock to stay testable without a download.
+Docling, torch, and sentence-transformers make a full install slow and large.
+T1 and T2 keep the default check fast.
+Tests run against mocks, not the full model set, even though the project prefers end-to-end tests.
+Some behavior needs a mock to stay testable without a download.
 
----
-
-## Manual Viewer (PDF pane)
+## Manual Viewer
 
 | Item | Decision |
 |---|---|
-| V1 | A dedicated **Manual Viewer** mode — a UI toggle that opens the page set the agent deemed relevant (the top-scored `search_manual` chunk page-set, gated by a rerank-score threshold) in a pane beside the chat, rendered with `react-pdf` in `[Page−1, Page+2]` 4-page slices. The window sizes are the `NEXT_PUBLIC_VIEWER_SLICE_BEFORE` and `NEXT_PUBLIC_VIEWER_SLICE_AFTER` config values. The pane opens at the cited page, so the pages held before it scroll out of view. (See SPECIFICATION §2.1 and IMPLEMENTATION Tasks 2/6.) |
-| V2 | The pane can open a manual's whole PDF on demand, so the reader can read the full manual in the app. A `View whole manual` button in the pane fetches `GET /manuals/{id}/pdf`, which streams the stored `source.pdf`. The button carries the tooltip `Whole manual may be slow to load`. The pages mount lazily as the reader scrolls, so a large manual stays responsive. |
-| V3 | The pane carries zoom controls over the pages: a step per click (`NEXT_PUBLIC_VIEWER_ZOOM_STEP`, default `0.25`) inside a range (`NEXT_PUBLIC_VIEWER_ZOOM_MIN` `0.5` to `NEXT_PUBLIC_VIEWER_ZOOM_MAX` `3`). A zoom of `1` fits a page to the pane width. A click on the shown percentage resets the zoom to `1`. |
-| V4 | The reader sets the chat/pane split by dragging the pane's left edge, or with the arrow keys on that edge. While the chat shows, the pane stays between `NEXT_PUBLIC_VIEWER_WIDTH_MIN` (`280`) and `NEXT_PUBLIC_VIEWER_WIDTH_MAX` (`900`) pixels, and leaves the chat at least `NEXT_PUBLIC_CHAT_MIN_WIDTH` (`360`). Dragging past that point hides the chat, so the pane fills the row beside the thread sidebar. A short pull right of `NEXT_PUBLIC_CHAT_RESTORE_TRAVEL` (`24`) pixels brings the chat back at the width it last had, and closing the pane brings it back too. The width survives reloads in `localStorage`; the pane opens with the chat showing. |
-| V5 | The stored page bytes never change after upload (U1), so the page-slice and whole-manual endpoints answer with `Cache-Control: public, max-age=<VIEWER_CACHE_MAX_AGE_SECONDS>, immutable` (default `31536000`) and an `ETag`. A request whose `If-None-Match` matches returns `304`. The slice `ETag` comes from the stored PDF and the page range, not the slice bytes, because PyMuPDF stamps a fresh document id into every re-serialisation. |
-| V6 | The viewer caches PDF bytes, never rendered pages. Page slices live in a module-level `Map` keyed by manual id and page range, capped at `NEXT_PUBLIC_VIEWER_SLICE_CACHE_ENTRIES` (`12`) entries with the least recently used entry dropped first; the map clears on a reload or a tab close, not when the reader switches threads or pane modes. A whole manual is cached once per manual in the Cache API, under `manualchat-manual-pdf`. Both caches hold Blobs, which react-pdf can read more than once, unlike the ArrayBuffer that pdfjs detaches. Deleting a manual drops its cached bytes. |
-
----
+| V1 | The Manual Viewer is a dedicated mode. A UI toggle opens the page set the agent deemed relevant: the top-scored `search_manual` chunk page set, gated by a rerank-score threshold. The set renders in a pane beside the chat with `react-pdf` in four-page slices (one page before the cited page, two after). The window sizes are the `NEXT_PUBLIC_VIEWER_SLICE_BEFORE` and `NEXT_PUBLIC_VIEWER_SLICE_AFTER` configuration values. The pane opens at the cited page, so the pages held before it scroll out of view. (See SPECIFICATION §2.1 and IMPLEMENTATION Tasks 2 and 6.) |
+| V2 | The pane can open the whole PDF of a manual on demand, so the reader can read the full manual in the app. A `View whole manual` button in the pane fetches `GET /manuals/{id}/pdf`, which streams the stored `source.pdf`. The button carries the tooltip `Whole manual may be slow to load`. The pages mount lazily as the reader scrolls, so a large manual stays responsive. |
+| V3 | The pane carries zoom controls over the pages. One click steps the zoom by `NEXT_PUBLIC_VIEWER_ZOOM_STEP` (default `0.25`), inside the range from `NEXT_PUBLIC_VIEWER_ZOOM_MIN` (`0.5`) to `NEXT_PUBLIC_VIEWER_ZOOM_MAX` (`3`). A zoom of `1` fits a page to the pane width. A click on the shown percentage resets the zoom to `1`. |
+| V4 | The reader sets the chat and pane split by dragging the left edge of the pane, or with the arrow keys on that edge. While the chat shows, the pane stays between `NEXT_PUBLIC_VIEWER_WIDTH_MIN` (`280`) and `NEXT_PUBLIC_VIEWER_WIDTH_MAX` (`900`) pixels and leaves the chat at least `NEXT_PUBLIC_CHAT_MIN_WIDTH` (`360`). Dragging past that point hides the chat, so the pane fills the row beside the thread sidebar. A short pull right of `NEXT_PUBLIC_CHAT_RESTORE_TRAVEL` (`24`) pixels brings the chat back at the width it last had. Closing the pane brings the chat back too. The width survives reloads in `localStorage`, and the pane opens with the chat showing. |
+| V5 | The stored page bytes never change after upload (U1). The page-slice and whole-manual endpoints answer with `Cache-Control: public, max-age=<VIEWER_CACHE_MAX_AGE_SECONDS>, immutable` (default `31536000`) and an `ETag`. A request whose `If-None-Match` matches returns `304`. The slice `ETag` comes from the stored PDF and the page range, not from the slice bytes, because PyMuPDF stamps a fresh document id into every re-serialization. |
+| V6 | The viewer caches PDF bytes, never rendered pages. Page slices live in a module-level `Map` keyed by manual id and page range, capped at `NEXT_PUBLIC_VIEWER_SLICE_CACHE_ENTRIES` (`12`) entries with the least recently used entry dropped first. The map clears on a reload or a tab close, not when the reader switches threads or pane modes. A whole manual is cached once per manual in the Cache API under `manualchat-manual-pdf`. Both caches hold Blobs, which react-pdf can read more than once, unlike the ArrayBuffer that pdfjs detaches. Deleting a manual drops its cached bytes. |
 
 ## Frontend appearance
 
 | Item | Decision |
 |---|---|
-| C1 | The UI has a light theme and a dark theme. The first visit follows the operating system's colour scheme. After the visitor chooses, the choice is stored in `localStorage` and wins on later visits. The theme is applied before the first paint, so the page never flashes the wrong theme. |
-| C2 | A top bar carries the vehicle selector, the upload button, the viewer toggle, the model selector, and the theme toggle, over a thin red rule. The manual viewer opens as a right-hand pane beside the chat. The wrench-in-bubble logo (`frontend/assets/manualchat-logo.svg`) replaces the ManualChat wordmark at the top of the thread list. |
+| C1 | The UI has a light theme and a dark theme. The first visit follows the color scheme of the operating system. After the visitor chooses, the choice is stored in `localStorage` and wins on later visits. The theme is applied before the first paint, so the page never flashes the wrong theme. |
+| C2 | A top bar carries the vehicle selector, the upload button, the viewer toggle, the model selector, and the theme toggle over a thin red rule. The manual viewer opens as a right-hand pane beside the chat. The wrench-in-bubble logo (`frontend/assets/manualchat-logo.svg`) replaces the ManualChat wordmark at the top of the thread list. |
 
----
+## Dev tooling
 
-## Dev tooling (coding assistant)
-
-| # | Decision | Notes |
-|---|---|---|
-| W1 | The development assistant is the built-in VS Code Copilot Chat with **OpenRouter Maestro** as the language-provider extension (any OpenRouter model appears in the chat model picker). | Chat model in use: `deepseek/deepseek-v4-pro-0813` (DeepSeek V4 Pro 0813). The API key lives in VS Code SecretStorage, not in the repo. |
-| W2 | Agent customization lives in Copilot formats. The agent files sit in the VS Code workspace `.github/` folder, one level above the repo: `copilot-instructions.md`, `instructions/*.instructions.md` (targeted `applyTo` scopes), and `skills/{simple-english,open-pr}/SKILL.md`. `AGENTS.md` stays tracked in the repo. `.github/workflows/ci.yml` and `.github/PULL_REQUEST_TEMPLATE.md` stay tracked in the repo, because GitHub reads them from the repository. The workspace agent files are local only and tracked by no repository. The `applyTo` globs are relative to the workspace root, so they read `**/backend/**` and `**/frontend/**`. | GitHub Copilot code review reads `.github/copilot-instructions.md` only from the repository root, so it does not read the workspace-level file. |
+| ID | Decision |
+|---|---|
+| W1 | The development assistant is the built-in VS Code Copilot Chat with OpenRouter Maestro as the language-provider extension. Any OpenRouter model then appears in the chat model picker. The chat model in use is `deepseek/deepseek-v4-pro-0813` (DeepSeek V4 Pro 0813). The API key lives in VS Code SecretStorage, not in the repository. |
+| W2 | Agent customization lives in Copilot formats. The agent files sit in the workspace `.github/` folder one level above the repo: `copilot-instructions.md`, `instructions/*.instructions.md` with targeted `applyTo` scopes, and `skills/{simple-english,open-pr}/SKILL.md`. `AGENTS.md` stays tracked in the repo. `.github/workflows/ci.yml` and `.github/PULL_REQUEST_TEMPLATE.md` stay tracked in the repo too, because GitHub reads them from the repository. The workspace agent files are local only and are tracked by no repository. The `applyTo` globs are relative to the workspace root, so they read `**/backend/**` and `**/frontend/**`. GitHub Copilot code review reads `.github/copilot-instructions.md` only from the repository root, so it does not read the workspace-level file. |
 
 Source: https://code.visualstudio.com/docs/agent-customization/custom-instructions and
 https://marketplace.visualstudio.com/items?itemName=husamettinulutas.openrouter-maestro
 Last-checked: 2026-10-13
 
----
+## Deferred and undecided
 
-## Deferred / undecided (no decision now — revisit later)
-
-- **OCR-engine head-to-head** — deferred with the whole scanned/FJ40 path (S1).
-- **Normalization rules catalog** — the *existence* of the stage is decided (D3); the
-  exact unit/header repair rules (`lb`/`Ib`, `m· kg`, `SPECiFiCATIONS`, diagram-symbol
-  junk) should be enumerated as test fixtures when the stage is built.
-- **Supervisor and Synthesizer graph, the `AgentAnswer`, the hop cap, and the
-  confidence gate** — the POC uses a flat loop with markdown answers.
-- **Spec ledger** — the POC returns table values without writing a ledger.
-- **Scanned-manual rejection probe** — not built for the POC. The prototype
-  manual `pl.pdf` is digital, so no scanned manual is expected.
-- **Manual Viewer rerank threshold** — the value that opens the viewer page set.
-- **Docker work** — the Qdrant service in `docker-compose.yml` and the baked
-  ingestion models.
-- **GPU acceleration** — deferred to MVP+1 with the scanned-manual OCR path (S1).
-  The Docker image ships CPU-only torch (D14); revisit when a GPU host is in play.
+- The OCR-engine head-to-head is deferred with the whole scanned and FJ40 path (S1).
+- The normalization rules catalog: the existence of the stage is decided (D3).
+The exact unit and header repair rules (`lb` and `Ib`, `m· kg`, `SPECiFiCATIONS`, diagram-symbol junk) become test fixtures when the stage is built.
+- The Supervisor and Synthesizer graph, the `AgentAnswer`, the hop cap, and the confidence gate: the POC uses a flat loop with markdown answers.
+- The spec ledger: the POC returns table values without writing a ledger.
+- The scanned-manual rejection probe: not built for the POC. The prototype manual `pl.pdf` is digital, so no scanned manual is expected.
+- The manual viewer rerank threshold: the value that opens the viewer page set.
+- Docker work: the Qdrant service in `docker-compose.yml` and the baked ingestion models.
+- GPU acceleration: deferred to MVP+1 with the scanned-manual path (S1). The Docker image ships CPU-only torch (D14). A GPU host in play reopens it.
