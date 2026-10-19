@@ -1,10 +1,12 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+  type MutableRefObject,
   type RefObject,
 } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -105,14 +107,16 @@ function LazyPage({
   width,
   isCited,
   root,
+  citedRef,
 }: {
   pageNumber: number;
   label: number;
   width: number;
   isCited: boolean;
   root: RefObject<HTMLElement>;
+  citedRef?: MutableRefObject<HTMLDivElement | null>;
 }) {
-  const holder = useRef<HTMLDivElement>(null);
+  const holder = useRef<HTMLDivElement | null>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -131,16 +135,12 @@ function LazyPage({
     return () => observer.disconnect();
   }, [root]);
 
-  // The cited page opens the slice, so bring it into view once it renders.
-  useEffect(() => {
-    if (visible && isCited) {
-      holder.current?.scrollIntoView({ block: "start", behavior: "smooth" });
-    }
-  }, [visible, isCited]);
-
   return (
     <div
-      ref={holder}
+      ref={(node) => {
+        holder.current = node;
+        if (isCited && citedRef) citedRef.current = node;
+      }}
       style={visible ? { width } : { width, height: width * PAGE_ASPECT }}
       className={cn(
         "mx-auto mb-3 w-fit rounded-md border",
@@ -169,17 +169,22 @@ function PageList({
   width,
   citedPage,
   root,
+  citedRef,
+  onReady,
 }: {
   doc: PdfWindow;
   width: number;
   citedPage: number | null;
   root: RefObject<HTMLElement>;
+  citedRef?: MutableRefObject<HTMLDivElement | null>;
+  onReady?: () => void;
 }) {
   return (
     <Document
       key={doc.key}
       file={doc.data}
       loading={<Loader label="Rendering…" />}
+      onLoadSuccess={onReady}
     >
       {doc.pages.map((page, index) => (
         <LazyPage
@@ -189,6 +194,7 @@ function PageList({
           width={width}
           isCited={page === citedPage}
           root={root}
+          citedRef={citedRef}
         />
       ))}
     </Document>
@@ -213,6 +219,7 @@ export function ManualViewerPanel() {
   const [wholeError, setWholeError] = useState<string | null>(null);
   const [scrollRef, containerWidth] = useElementWidth<HTMLDivElement>();
   const [zoom, setZoom] = useState(1);
+  const citedRef = useRef<HTMLDivElement | null>(null);
 
   const manual = manuals.find((item) => item.manual_id === manualId) ?? null;
   const manualKey = manual?.manual_id ?? null;
@@ -299,6 +306,17 @@ export function ManualViewerPanel() {
   // Hides the pages of another manual while the replacement window loads.
   const shownSlice = slice && slice.manualId === manualKey ? slice : null;
 
+  // A slice opens at the cited page. The buffer holds pages before it, so the
+  // pane scrolls past them (DECISIONS V1).
+  const alignCited = useCallback(() => {
+    const container = scrollRef.current;
+    const target = citedRef.current;
+    if (!container || !target) return;
+    const delta =
+      target.getBoundingClientRect().top - container.getBoundingClientRect().top;
+    if (delta !== 0) container.scrollTop += delta;
+  }, [scrollRef]);
+
   // The whole manual loads only when the reader asks for it (DECISIONS V2).
   useEffect(() => {
     if (!wholeRequested || !manualKey || pageCount === 0) {
@@ -342,6 +360,26 @@ export function ManualViewerPanel() {
   }, [wholeRequested, manualKey, pageCount]);
 
   const shownWhole = whole && whole.manualId === manualKey ? whole : null;
+
+  // A document that is not the slice opens at its top; the slice moves on to
+  // the cited page.
+  const shownKey = shownSlice?.key ?? shownWhole?.key ?? null;
+
+  useEffect(() => {
+    if (!shownKey) return;
+    const container = scrollRef.current;
+    if (!container) return;
+    container.scrollTop = 0;
+    alignCited();
+    const frame = requestAnimationFrame(alignCited);
+    // The pages above the cited one swap a placeholder for a rendered page,
+    // which shifts the layout, so settle once more.
+    const timer = setTimeout(alignCited, 350);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
+  }, [shownKey, alignCited]);
 
   // A PDF is on screen whenever a citation is showing or the whole manual is
   // open. The floating X dismisses it without closing the pane.
@@ -614,6 +652,8 @@ export function ManualViewerPanel() {
               width={pageWidth}
               citedPage={citedPage}
               root={scrollRef}
+              citedRef={citedRef}
+              onReady={alignCited}
             />
           </>
         )}

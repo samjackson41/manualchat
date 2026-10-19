@@ -95,8 +95,9 @@
 - Manual viewer and citations (Task 6, DECISIONS V1-V4): each `[Page N]` in a
   reply renders as a clickable badge. Clicking one opens the viewer pane beside
   the chat and shows the cited page plus one page before and two after, with
-  selectable text, rendered with react-pdf. While a slice shows, the pane hides
-  the manual selector and names the slice in its place, in the form
+  selectable text, rendered with react-pdf. The pane opens at the cited page,
+  so the page held before it scrolls out of view. While a slice shows, the pane
+  hides the manual selector and names the slice in its place, in the form
   `Manual name, Pg. 15-19`; the selector returns when the reader closes the
   PDF. A floating X closes the PDF without closing the pane. The pane carries
   zoom controls, and the reader sets the chat/pane split by dragging the pane's
