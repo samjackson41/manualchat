@@ -8,6 +8,7 @@ import { BookOpenIcon, LoaderCircleIcon, XIcon } from "lucide-react";
 
 import { useViewer } from "@/app/viewer-runtime";
 import { manualPagesUrl } from "@/lib/api";
+import { SLICE_PAGES_AFTER, SLICE_PAGES_BEFORE } from "@/lib/viewer-config";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,8 +24,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-// The viewer shows the cited page plus two pages on each side (DECISIONS V1).
-const SLICE_RADIUS = 2;
+// The viewer shows the cited page plus a small window around it (DECISIONS V1).
 
 type PdfSlice = {
   // Names one fetched page window. A new key mounts a new <Document>, so a
@@ -60,8 +60,8 @@ export function ManualViewerPanel() {
       setSlice(null);
       return;
     }
-    const start = Math.max(1, citedPage - SLICE_RADIUS);
-    const end = Math.min(pageCount, citedPage + SLICE_RADIUS);
+    const start = Math.max(1, citedPage - SLICE_PAGES_BEFORE);
+    const end = Math.min(pageCount, citedPage + SLICE_PAGES_AFTER);
     if (start > end) {
       setSlice(null);
       return;

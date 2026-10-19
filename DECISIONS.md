@@ -216,7 +216,7 @@ mock to stay testable without a download.
 
 | Item | Decision |
 |---|---|
-| V1 | A dedicated **Manual Viewer** mode — a UI toggle that opens the page set the agent deemed relevant (the top-scored `search_manual` chunk page-set, gated by a rerank-score threshold) in a pane beside the chat, rendered with `react-pdf` in `[Page−2, Page+2]` 5-page slices. (See SPECIFICATION §2.1 and IMPLEMENTATION Tasks 2/6.) |
+| V1 | A dedicated **Manual Viewer** mode — a UI toggle that opens the page set the agent deemed relevant (the top-scored `search_manual` chunk page-set, gated by a rerank-score threshold) in a pane beside the chat, rendered with `react-pdf` in `[Page−1, Page+2]` 4-page slices. The window sizes are the `NEXT_PUBLIC_VIEWER_SLICE_BEFORE` and `NEXT_PUBLIC_VIEWER_SLICE_AFTER` config values. (See SPECIFICATION §2.1 and IMPLEMENTATION Tasks 2/6.) |
 | V2 | The pane can open a manual's whole PDF on demand, so the reader can read the full manual in the app. A `View whole manual` button in the pane fetches `GET /manuals/{id}/pdf`, which streams the stored `source.pdf`. The button carries the tooltip `Whole manual may be slow to load`. |
 
 ---
