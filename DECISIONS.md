@@ -68,18 +68,28 @@ Last-checked: 2026-10-15
 
 | ID | Decision | Value | Configuration key |
 |---|---|---|---|
-| M1 | One active model drives every agent process: planning, synthesis, summarization, and the eval judge | DeepSeek Flash | `models.default` |
+| M1 | The selected model sets the agent's tier. A tier fixes the supervisor model, the supervisor reasoning effort, the retrieval worker model, and the worker reasoning effort. Flash selects `fast`; Pro selects `pro`; a slug that matches neither falls back to `fast`. | see the tier table below | `models.super_sub_tiers`, `models.super_sub_slug_tiers`, `models.super_sub_default_tier` |
 | M2 | The ordered model list for the UI selector | DeepSeek Flash, then DeepSeek Pro | `models.options` |
 | M3 | The UI selection is a runtime override of `models.default`, scoped to the session and held in memory | session override | (none yet) |
+
+| Tier | Trigger slug | Supervisor | Retrieval worker |
+|---|---|---|---|
+| `fast` | `~deepseek/deepseek-flash-latest` | Flash, `reasoning_effort=high` | Flash, `reasoning_effort=low` |
+| `pro` | `~deepseek/deepseek-pro-latest` | Pro, `reasoning_effort=max` | Flash, `reasoning_effort=high` |
+
+The tier table lives in `SUPER_SUB_TIERS` as JSON, with code defaults equal to the table above.
+The slug-to-tier map lives in `SUPER_SUB_SLUG_TIERS`.
+The `fast` tier is "flash high thinking for the supervisor, flash low thinking for the worker".
+The `pro` tier is "pro max thinking for the supervisor, flash high thinking for the worker".
 
 The `models.options` list can grow later with no schema or flow change.
 OpenRouter serves the DeepSeek `-latest` aliases as prerelease, so each slug carries a `~` prefix.
 DeepSeek Pro is `~deepseek/deepseek-pro-latest`.
 DeepSeek Flash is `~deepseek/deepseek-flash-latest`.
-Both models run with medium reasoning effort (`models.reasoning_effort = "medium"`).
+OpenRouter reports the supported efforts of both slugs as `["max", "high", "low", "none"]`, so every tier effort is accepted and no fallback is needed.
 
-Source: https://openrouter.ai/docs/quickstart
-Last-checked: 2026-10-15
+Source: https://openrouter.ai/docs/quickstart and https://openrouter.ai/api/v1/models
+Last-checked: 2026-10-19
 
 ## Cloud region
 
@@ -147,13 +157,15 @@ Last-checked: 2026-10-15
 
 | ID | Decision | Value | Configuration key |
 |---|---|---|---|
-| A1 | The POC graph stays a flat chat and tools loop. The Supervisor and Synthesizer topology in IMPLEMENTATION §2.3 is future work. | (none) | (none) |
+| A1 | The graph is a supervisor, worker, and synthesize topology. The supervisor routes between the retrieval worker and synthesis, capped by a hop limit. The worker runs the tool loop. `synthesize` writes the answer. | see IMPLEMENTATION §2.3 | `agent.max_hops`, `agent.max_tool_steps` |
 | A2 | The agent answers in markdown text with `[Page N]` citations. The structured `AgentAnswer` in IMPLEMENTATION §4.1 is future work. | (none) | (none) |
 | A3 | The system prompt carries the grounding rules: every claim and step names its page, the answer states plainly when the manual holds no answer, and conflicting values show both pages. The prompt text lives in the configuration (field `agent_system_prompt`, env `AGENT_SYSTEM_PROMPT`), and the graph prepends it before the first chat call. | (none) | `agent.system_prompt` |
 
-The graph runs as a flat chat and tools loop today.
+The graph runs as a supervisor, a retrieval worker, and a synthesize node.
+The supervisor plans and decides when to stop; the worker gathers manual evidence with the calculator and the three RAG tools; `synthesize` writes the final answer.
+The supervisor and `synthesize` run on the tier's supervisor model and effort, and the worker runs on the tier's sub model and effort (M1).
 `/chat` returns markdown text with `[Page N]` citations.
-The Supervisor, the Synthesizer, the `AgentAnswer`, the hop cap, and the confidence gate are future work (see the Deferred section).
+The structured `AgentAnswer` and the confidence gate are future work (see the Deferred section).
 
 ## Testing and continuous integration
 
@@ -202,7 +214,7 @@ Last-checked: 2026-10-13
 - The OCR-engine head-to-head is deferred with the whole scanned and FJ40 path (S1).
 - The normalization rules catalog: the existence of the stage is decided (D3).
 The exact unit and header repair rules (`lb` and `Ib`, `m· kg`, `SPECiFiCATIONS`, diagram-symbol junk) become test fixtures when the stage is built.
-- The Supervisor and Synthesizer graph, the `AgentAnswer`, the hop cap, and the confidence gate: the POC uses a flat loop with markdown answers.
+- The structured `AgentAnswer` and the confidence gate: the graph answers in markdown text.
 - The spec ledger: the POC returns table values without writing a ledger.
 - The scanned-manual rejection probe: not built for the POC. The prototype manual `pl.pdf` is digital, so no scanned manual is expected.
 - The manual viewer rerank threshold: the value that opens the viewer page set.

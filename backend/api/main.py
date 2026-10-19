@@ -87,6 +87,9 @@ def chat(req: ChatRequest) -> dict:
         "model": model,
         "vehicle_id": req.vehicle_id,
         "stream": False,
+        "gathered": [],
+        "next": "",
+        "hops": 0,
     }
     try:
         result = graph.invoke(initial_state)
@@ -315,6 +318,9 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
         "model": model,
         "vehicle_id": req.vehicle_id,
         "stream": True,
+        "gathered": [],
+        "next": "",
+        "hops": 0,
     }
 
     def event_stream():

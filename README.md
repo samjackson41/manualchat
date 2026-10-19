@@ -144,9 +144,14 @@ OpenRouter request entirely.
 | OPENROUTER_BASE_URL | `https://openrouter.ai/api/v1` | The OpenRouter API base URL. `backend/llm.py` appends the chat endpoint. |
 | MODEL_DEFAULT | `~deepseek/deepseek-flash-latest` | DECISIONS M1. The model used when the request names none. |
 | MODEL_OPTIONS | `~deepseek/deepseek-flash-latest,~deepseek/deepseek-pro-latest` | DECISIONS M2. Comma-separated slugs. `_MODEL_LABELS` in `backend/config.py` holds the dropdown labels. |
-| MODEL_REASONING_EFFORT | `medium` | DECISIONS M. The reasoning effort sent with every request. |
+| MODEL_REASONING_EFFORT | `medium` | The fallback reasoning effort when a node passes none. The tier sets the per-node effort (DECISIONS M1). |
 | MODEL_TEMPERATURE | _(unset)_ | Pending decision. Omit the variable to use the provider default. |
 | MODEL_MAX_TOKENS | _(unset)_ | Pending decision. Omit the variable to use the provider default. |
+| SUPER_SUB_TIERS | the tier table in `backend/config.py` | DECISIONS M1. JSON. Each tier names the supervisor and worker model and their reasoning effort. |
+| SUPER_SUB_SLUG_TIERS | `~deepseek/deepseek-flash-latest`→`fast`, `~deepseek/deepseek-pro-latest`→`pro` | DECISIONS M1. JSON. Maps a selected model slug to a tier. |
+| SUPER_SUB_DEFAULT_TIER | `fast` | DECISIONS M1. The tier used when the selected slug matches no entry. |
+| AGENT_MAX_HOPS | `4` | DECISIONS A1. The supervisor forces synthesis after this many worker hops. |
+| AGENT_MAX_TOOL_STEPS | `4` | DECISIONS A1. The cap on the worker's tool loop. |
 | AGENT_SYSTEM_PROMPT | the grounding prompt in `backend/config.py` | DECISIONS A3. The grounding rules for the agent. |
 | MANUALS_DIR | `manuals` | DECISIONS U1. One `{manual_id}/` subdirectory per manual, with the PDF and its JSON record. In Docker: `/data/manuals`. |
 | VEHICLES_DIR | `vehicles` | One `{vehicle_id}/` subdirectory per vehicle profile. In Docker: `/data/vehicles`. |
@@ -261,6 +266,6 @@ them.
    `400 "not a valid model ID"` response. Both
    `~deepseek/deepseek-flash-latest` and `~deepseek/deepseek-pro-latest` were
    confirmed live (HTTP 200), and they resolve to `deepseek-v4.1-flash` and
-   `deepseek-v4-pro-0813`. DECISIONS.md records the corrected slugs. The
-   `reasoning_effort=medium` setting is accepted: OpenRouter forwards it, and
-   DeepSeek ignores it, so the ratified `medium` default is safe.
+   `deepseek-v4-pro-0813`. DECISIONS.md records the corrected slugs. OpenRouter
+   reports the supported reasoning efforts of both slugs as
+   `["max", "high", "low", "none"]`, so every tier effort is accepted.
