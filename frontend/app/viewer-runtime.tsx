@@ -23,6 +23,8 @@ type ViewerState = {
   manualId: string | null;
   // The width the reader set for the pane, in pixels (DECISIONS V4).
   paneWidth: number;
+  // True while the pane fills the row and the chat is hidden (DECISIONS V4).
+  chatHidden: boolean;
   // The active vehicle's enabled, fully-ingested manuals, newest first.
   manuals: Manual[];
   loading: boolean;
@@ -30,6 +32,7 @@ type ViewerState = {
   selectManual: (id: string) => void;
   clearCitation: () => void;
   setPaneWidth: (width: number) => void;
+  setChatHidden: (hidden: boolean) => void;
   toggle: () => void;
   close: () => void;
 };
@@ -53,6 +56,7 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
   const [citedPage, setCitedPage] = useState<number | null>(null);
   const [manualId, setManualId] = useState<string | null>(null);
   const [paneWidth, setPaneWidthState] = useState(PANE_WIDTH_DEFAULT);
+  const [chatHidden, setChatHidden] = useState(false);
   const [manuals, setManuals] = useState<Manual[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -122,9 +126,13 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
   const close = useCallback(() => setOpen(false), []);
 
   // Closing the pane ends the cited view, so a slice and a browsed manual
-  // never mix and browsing starts clean on the next open.
+  // never mix and browsing starts clean on the next open. The chat returns,
+  // because a hidden chat with no pane would leave nothing to read.
   useEffect(() => {
-    if (!open) setCitedPage(null);
+    if (!open) {
+      setCitedPage(null);
+      setChatHidden(false);
+    }
   }, [open]);
 
   const value = useMemo<ViewerState>(
@@ -133,12 +141,14 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
       citedPage,
       manualId,
       paneWidth,
+      chatHidden,
       manuals,
       loading,
       openPage,
       selectManual,
       clearCitation,
       setPaneWidth,
+      setChatHidden,
       toggle,
       close,
     }),
@@ -147,12 +157,14 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
       citedPage,
       manualId,
       paneWidth,
+      chatHidden,
       manuals,
       loading,
       openPage,
       selectManual,
       clearCitation,
       setPaneWidth,
+      setChatHidden,
       toggle,
       close,
     ],

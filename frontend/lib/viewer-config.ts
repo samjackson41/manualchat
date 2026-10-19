@@ -45,8 +45,26 @@ export const PANE_WIDTH_MAX = numberFromEnv(
   900,
 );
 
+// The narrowest the chat gets before it hides and the pane fills the row
+// (DECISIONS V4).
+export const CHAT_MIN_WIDTH = numberFromEnv(
+  process.env.NEXT_PUBLIC_CHAT_MIN_WIDTH,
+  360,
+);
+
 export function clampPaneWidth(width: number): number {
   return Math.min(PANE_WIDTH_MAX, Math.max(PANE_WIDTH_MIN, width));
+}
+
+// The widest the pane gets while the chat shows: the configured cap, the room
+// the chat needs, or the pane minimum on a narrow row.
+export function visiblePaneMax(rowWidth: number): number {
+  const roomForChat = rowWidth > 0 ? rowWidth - CHAT_MIN_WIDTH : PANE_WIDTH_MAX;
+  return Math.max(PANE_WIDTH_MIN, Math.min(PANE_WIDTH_MAX, roomForChat));
+}
+
+export function clampVisiblePaneWidth(width: number, rowWidth: number): number {
+  return Math.min(Math.max(PANE_WIDTH_MIN, width), visiblePaneMax(rowWidth));
 }
 
 // How many slice byte windows the viewer keeps in memory (DECISIONS V6).

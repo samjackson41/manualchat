@@ -145,7 +145,8 @@ after a change.
 | `NEXT_PUBLIC_VIEWER_ZOOM_MAX` | `3` | DECISIONS V3 — the largest zoom |
 | `NEXT_PUBLIC_VIEWER_WIDTH_DEFAULT` | `416` | DECISIONS V4 — pane width on first use, in pixels |
 | `NEXT_PUBLIC_VIEWER_WIDTH_MIN` | `280` | DECISIONS V4 — the narrowest the pane drags |
-| `NEXT_PUBLIC_VIEWER_WIDTH_MAX` | `900` | DECISIONS V4 — the widest the pane drags |
+| `NEXT_PUBLIC_VIEWER_WIDTH_MAX` | `900` | DECISIONS V4 — the widest the pane gets while the chat shows |
+| `NEXT_PUBLIC_CHAT_MIN_WIDTH` | `360` | DECISIONS V4 — the narrowest the chat gets before it hides and the pane fills the row |
 | `NEXT_PUBLIC_VIEWER_SLICE_CACHE_ENTRIES` | `12` | DECISIONS V6 — slice byte windows kept in memory |
 
 ## Where the next change goes (documented in code)

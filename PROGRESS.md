@@ -101,7 +101,9 @@
   `Manual name, Pg. 15-19`; the selector returns when the reader closes the
   PDF. A floating X closes the PDF without closing the pane. The pane carries
   zoom controls, and the reader sets the chat/pane split by dragging the pane's
-  left edge or with the arrow keys on it. The slice loads from
+  left edge or with the arrow keys on it. Dragging past the chat's minimum width
+  hides the chat, and the pane fills the row beside the thread sidebar. The
+  slice loads from
   `GET /manuals/{id}/pages/{start}-{end}`, which cuts the pages on demand with
   PyMuPDF (`backend/slicer.py`).
 - Whole-manual view (DECISIONS V2): a `View whole manual` button in the pane

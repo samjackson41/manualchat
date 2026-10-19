@@ -20,6 +20,8 @@ import {
   PAGE_ASPECT,
   SLICE_PAGES_AFTER,
   SLICE_PAGES_BEFORE,
+  clampVisiblePaneWidth,
+  visiblePaneMax,
   ZOOM_MAX,
   ZOOM_MIN,
   ZOOM_STEP,
@@ -96,6 +98,26 @@ function useElementWidth<T extends HTMLElement>(): [RefObject<T>, number] {
   }, []);
 
   return [ref, width];
+}
+
+// Measures the row that holds the chat and the pane, so the pane can grow to
+// the whole row and hide the chat (DECISIONS V4).
+function useRowWidth<T extends HTMLElement>(ref: RefObject<T>): number {
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const row = ref.current?.parentElement;
+    if (!row) return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) setWidth(entry.contentRect.width);
+    });
+    observer.observe(row);
+    setWidth(row.clientWidth);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return width;
 }
 
 // One page in a lazy list: a placeholder holds the page's place until it comes
@@ -211,6 +233,8 @@ export function ManualViewerPanel() {
     close,
     paneWidth,
     setPaneWidth,
+    chatHidden,
+    setChatHidden,
   } = useViewer();
   const [slice, setSlice] = useState<PdfWindow | null>(null);
   const [whole, setWhole] = useState<PdfWindow | null>(null);
@@ -220,6 +244,8 @@ export function ManualViewerPanel() {
   const [scrollRef, containerWidth] = useElementWidth<HTMLDivElement>();
   const [zoom, setZoom] = useState(1);
   const citedRef = useRef<HTMLDivElement | null>(null);
+  const paneRef = useRef<HTMLElement | null>(null);
+  const rowWidth = useRowWidth(paneRef);
 
   const manual = manuals.find((item) => item.manual_id === manualId) ?? null;
   const manualKey = manual?.manual_id ?? null;
@@ -393,19 +419,32 @@ export function ManualViewerPanel() {
     }
   };
 
-  // Dragging the left edge sets the chat/pane split. The keyboard nudges the
-  // same split, so the handle is reachable without a pointer.
+  // Dragging the left edge sets the chat/pane split. The pane grows past the
+  // chat's minimum width by hiding the chat and filling the row (DECISIONS V4).
+  // The keyboard nudges the same split, so the handle needs no pointer.
   const dragStart = useRef<{ x: number; width: number } | null>(null);
+
+  const paneWidthNow = () =>
+    paneRef.current?.getBoundingClientRect().width ?? paneWidth;
+
+  const applyPaneWidth = (wanted: number) => {
+    if (rowWidth > 0 && wanted > visiblePaneMax(rowWidth)) {
+      setChatHidden(true);
+      return;
+    }
+    setChatHidden(false);
+    setPaneWidth(clampVisiblePaneWidth(wanted, rowWidth));
+  };
 
   const onResizePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId);
-    dragStart.current = { x: event.clientX, width: paneWidth };
+    dragStart.current = { x: event.clientX, width: paneWidthNow() };
   };
 
   const onResizePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     const start = dragStart.current;
     if (!start) return;
-    setPaneWidth(start.width - (event.clientX - start.x));
+    applyPaneWidth(start.width - (event.clientX - start.x));
   };
 
   const onResizePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -415,17 +454,23 @@ export function ManualViewerPanel() {
 
   const onResizeKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const step = event.shiftKey ? 96 : 24;
-    if (event.key === "ArrowLeft") setPaneWidth(paneWidth + step);
-    else if (event.key === "ArrowRight") setPaneWidth(paneWidth - step);
+    if (event.key === "ArrowLeft") applyPaneWidth(paneWidthNow() + step);
+    else if (event.key === "ArrowRight") applyPaneWidth(paneWidthNow() - step);
     else return;
     event.preventDefault();
   };
 
   return (
     <aside
+      ref={paneRef}
       aria-label="Manual viewer"
-      style={{ width: paneWidth }}
-      className="bg-card border-border relative flex max-w-[75%] shrink-0 flex-col border-l"
+      style={
+        chatHidden ? undefined : { width: clampVisiblePaneWidth(paneWidth, rowWidth) }
+      }
+      className={cn(
+        "bg-card border-border relative flex flex-col border-l",
+        chatHidden ? "flex-1" : "shrink-0",
+      )}
     >
       <div
         role="separator"

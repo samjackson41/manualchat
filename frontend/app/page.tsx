@@ -4,10 +4,15 @@ import { Thread } from "@/components/assistant-ui/elements/thread.aui";
 import { ThreadList } from "@/components/assistant-ui/elements/thread-list.aui";
 import { ManualViewerPanel } from "@/components/manual-viewer";
 import { TopBar } from "@/components/top-bar";
+import { cn } from "@/lib/utils";
 import { useViewer } from "./viewer-runtime";
 
 export default function Home() {
-  const { open: viewerOpen, toggle: onToggleViewer } = useViewer();
+  const {
+    open: viewerOpen,
+    toggle: onToggleViewer,
+    chatHidden,
+  } = useViewer();
 
   return (
     <main className="flex h-dvh flex-col">
@@ -21,7 +26,7 @@ export default function Home() {
         </aside>
 
         <section className="flex min-h-0 min-w-0 flex-1">
-          <div className="min-h-0 min-w-0 flex-1">
+          <div className={cn("min-h-0 min-w-0 flex-1", chatHidden && "hidden")}>
             <Thread />
           </div>
           {viewerOpen && <ManualViewerPanel />}
