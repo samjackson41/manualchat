@@ -29,7 +29,7 @@ from pathlib import Path
 
 import pymupdf
 
-from backend import storage
+from backend import retrieval, storage
 from backend.config import Settings, get_settings
 from backend.schemas import IngestResult, IngestTable, TextLayerProbe
 
@@ -280,14 +280,17 @@ def ingest_manual(manual_id: str, converter=None) -> IngestResult:
 
 
 def ingest_in_background(manual_id: str) -> None:
-    """Run ingest for a worker thread and record a failure on the manual.
+    """Run ingest for a worker thread, then index the manual.
 
     The upload endpoint schedules this after the response. On success,
-    ``ingest_manual`` writes ``status="ready"``. On any failure this writes
-    ``status="error"`` and re-raises so the server logs the cause.
+    ``ingest_manual`` writes ``status="ready"``, then the manual is chunked and
+    indexed via ``retrieval.index_manual``, which records ``chunk_count``. On
+    any failure this writes ``status="error"`` and re-raises so the server logs
+    the cause.
     """
     try:
         ingest_manual(manual_id)
+        retrieval.index_manual(manual_id)
     except Exception:
         storage.update_manual(manual_id, status="error")
         raise

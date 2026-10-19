@@ -15,9 +15,11 @@
   hidden OCR font (D2), converts with `do_ocr=False` and fast tables,
   normalizes unit and header noise (D3), then writes `page_text/`,
   `tables.json`, and `ingest.json` under the manual's directory and sets
-  `status` to `ready` (or `error`). The same pipeline runs by hand with
-  `python -m backend.ingest <manual_id>`. The real run on `pl.pdf` produced 56
-  pages and 9 tables.
+  `status` to `ready` (or `error`). On upload, once the pipeline reaches
+  `ready` the manual is chunked and indexed (`retrieval.index_manual`) and the
+  `chunk_count` is written back, so a fresh upload is searchable at once. The
+  same pipeline runs by hand with `python -m backend.ingest <manual_id>`. The
+  real run on `pl.pdf` produced 56 pages and 9 tables.
 - Retrieval: `backend/retrieval.py` chunks an ingested manual and indexes it
   into a local Qdrant collection (IMPLEMENTATION Task 3). Chunking splits prose
   on section headings and keeps each table as one chunk. Prose chunks target
@@ -46,8 +48,19 @@
   point ids stay unique across manuals indexed into one collection.
 - Tool calling: the graph runs a `chat -> tools -> chat` loop. The `calculator`
   and three RAG tools (`search_manual`, `extract_specs`, `get_page_text`) are in
-  `backend/tools.py`. The RAG tools are stubs that return sample data. Wiring
-  them to the retrieval backend is left (IMPLEMENTATION Task 4).
+  `backend/tools.py`. The RAG tools now use real retrieval (IMPLEMENTATION
+  Task 4). `search_manual` calls `retrieval.search` and returns reranked chunks
+  with page citations. `get_page_text` reads the full, unchunked text of each
+  requested physical page from `page_text/page_NNNN.txt`. `extract_specs` reads
+  the manual's `tables.json`, matches the subject against table captions and
+  row labels, skips disabled manuals (DECISIONS M1), and returns the matched
+  rows verbatim (an empty list when nothing matches). The `tools` node injects
+  the conversation's `vehicle_id` into every retrieval tool call, overriding
+  any value the model supplied, because the model cannot know it.
+- POC deviation (deliberate): `extract_specs` reads `tables.json` directly
+  instead of doing targeted table retrieval in Qdrant (DECISIONS L1). Reading
+  the file keeps values verbatim (never model prose, L2); it moves to the
+  `is_table` search path when the spec ledger lands.
 - System prompt: the graph prepends the grounding prompt before the first chat
   call. The prompt demands a `[Page N]` citation on every claim and step,
   answers only from the manual, states plainly when the manual holds no answer,
@@ -86,7 +99,9 @@
   defaults to the active vehicle's first enabled manual. The slice loads from
   `GET /manuals/{id}/pages/{start}-{end}`, which cuts the pages on demand with
   PyMuPDF (`backend/slicer.py`).
-- Docker Compose runs the backend and the frontend in two terminals.
+- Docker Compose runs the backend and the frontend in two terminals. The
+  backend bind-mounts `manuals/`, `vehicles/`, and `qdrant/` so uploads,
+  profiles, and the embedded Qdrant index all persist on the host.
 - Git workflow: Conventional Commits, feature branches, squash merges.
 - Repo hygiene: the spike experiments moved out of the repo to
   `/home/sam/dev/spikes/fj40ocr`, and `/spike/` is now git-ignored.
@@ -103,9 +118,9 @@
 
 ## What is left
 
-- The RAG pipeline, in phases. The ingest stage (Task 1) and chunking and
-  indexing (Task 3) are done. Real retrieval behind the tools (Task 4) and the
-  chunk eval are next. The prototype runs against the 56-page `pl.pdf`. The
+- The RAG pipeline, in phases. The ingest stage (Task 1), chunking and
+  indexing (Task 3), and real retrieval behind the tools (Task 4) are done. The
+  chunk eval is next. The prototype runs against the 56-page `pl.pdf`. The
   graph stays a flat `chat ↔ tools` loop and the answer stays markdown text with
   `[Page N]` citations. The ratified values are in `DECISIONS.md` (D9 to D13,
   R3 to R9, A1 to A3, T1 to T3).
@@ -114,9 +129,6 @@
 - Future work (DECISIONS Deferred): the Supervisor and Synthesizer graph, the
   structured `AgentAnswer`, the spec ledger, the scanned-manual OCR path, and
   the Docker work.
-- Real retrieval behind `search_manual`, `extract_specs`, and `get_page_text`.
-  The `backend/retrieval.py` backend is in place (Task 3); the tool stubs still
-  return sample data, and Task 4 wires them to it.
 - Memory: the summary field, the compaction node, and a checkpointer per
   `MEMORY_DESIGN.md`.
 - The scanned-manual OCR path. Deferred past MVP per DECISIONS S1.
