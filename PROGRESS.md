@@ -135,6 +135,29 @@
 - CI linting, formatting, and tests. The current CI checks syntax, types, and the
   build only.
 
+### Manual viewer backlog
+
+Planned work for the Manual viewer pane. None of it is built.
+
+- Make the pane resizable. The reader sets the split between the chat and the
+  pane, at minimum for a side-by-side layout.
+- Add viewer controls, such as zoom.
+- Let the reader open the whole manual in the pane. The pane then acts as a web
+  PDF viewer, so the reader can read the full manual in the app.
+- Review the slice buffer. The candidates are `[Page−1, Page+2]` and
+  `[Page−0, Page+2]`, in place of the ratified `[Page−2, Page+2]`
+  (DECISIONS V1).
+- Open the slice at the cited page. A buffer of `−n` puts the cited page on
+  page `n+1` of the slice. The pane must scroll to that page, and must not open
+  at slice page 1.
+- Cite the manual page that holds the answer. The answer must not name page 1 of
+  the slice.
+- Add a note that the page count follows the PDF page index, not the printed
+  page number on the sheet.
+- MVP+1: add a page-number offset. The reader shifts the page numbers to repair
+  an off-by-n error, so that the numbers match the citations.
+- MVP+1: make the pane reactive, so that it works on a phone.
+
 ## Known problems
 
 - DeepSeek `-latest` slugs need the `~` prefix, or OpenRouter returns 400. This
