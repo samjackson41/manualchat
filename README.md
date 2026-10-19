@@ -22,8 +22,8 @@ manualchat/
     tools.py         # agent tools: OpenAI schemas + executors (calculator, RAG stubs)
     agent/graph.py   # StateGraph: AgentState, chat -> tools -> chat loop (iteration point)
     api/main.py      # FastAPI: /health, /models, /chat, /chat/stream, /manuals
-                     # (upload/read/toggle/delete, page slices, thumbnails),
-                     # /vehicles create/rename/delete
+                     # (upload/read/toggle/delete, page slices, whole manual,
+                     # thumbnails), /vehicles create/rename/delete
     storage.py       # local manual + vehicle storage (DECISIONS U1, SPEC §5)
     slicer.py        # on-demand PDF page slices for the manual viewer (PyMuPDF)
     schemas.py       # shared Pydantic contracts (Vehicle, Manual, RAG models)
@@ -34,11 +34,13 @@ manualchat/
     app/page.tsx     # top bar + thread-list sidebar + chat, side-by-side viewer
     app/chat-runtime.tsx  # thread-list runtime + localStorage adapter -> POST /chat
     app/vehicle-runtime.tsx  # vehicle list + selection context -> /vehicles
-    app/viewer-runtime.tsx  # viewer state: open/close, cited page, manual choice
+    app/viewer-runtime.tsx  # viewer state: open/close, cited page, manual choice, pane width
     app/theme-runtime.tsx  # light/dark theme state; the choice survives reloads
     app/layout.tsx   # provider stack + a pre-paint script that sets the theme
     app/globals.css  # Tailwind v4 theme, light and dark (red, white, gray, black, gold)
     lib/api.ts       # typed client for every backend call
+    lib/viewer-config.ts  # viewer tunables, each from a NEXT_PUBLIC_ env var
+    lib/pdf-cache.ts # viewer byte caches: slice map + whole-manual Cache API
     lib/theme.ts     # theme key, the stored choice, and the pre-paint script
     components/      # assistant-ui elements + shadcn/ui primitives + garage UI
                      # (top bar, vehicle selector, manual upload, PDF viewer)
@@ -101,6 +103,7 @@ in the repo. If it's missing, `POST /chat` fails fast with a clear error while
 | `MANUALS_DIR` | `manuals` | DECISIONS U1 — where each uploaded manual lands as `{manual_id}/`; in Docker this is `/data/manuals` |
 | `VEHICLES_DIR` | `vehicles` | SPEC §5 — where each vehicle profile lands as `{vehicle_id}/`; in Docker this is `/data/vehicles` |
 | `THUMBNAIL_DPI` | `150` | IMPLEMENTATION Task 5 — the PNG page-preview resolution (dots per inch) for the manual viewer's raster fallback |
+| `VIEWER_CACHE_MAX_AGE_SECONDS` | `31536000` | DECISIONS V5 — how long a browser may cache served page bytes; a manual never changes after upload |
 | `INGEST_OCR_MIN_CHARS_PER_PAGE` | `50` | DECISIONS D1 — a manual below this average needs OCR and is refused |
 | `INGEST_STRIP_HIDDEN_OCR_LAYER` | `true` | DECISIONS D2 — remove the ghost OCR font before Docling |
 | `INGEST_NORMALIZATION_ENABLED` | `true` | DECISIONS D3 — repair unit and header noise after Docling |
@@ -126,6 +129,24 @@ in the repo. If it's missing, `POST /chat` fails fast with a clear error while
 Generation params are **under research** and surfaced as `MODEL_*` env vars so
 they can be tuned without code edits. Unset values are omitted from the OpenRouter
 request entirely.
+
+The viewer tunables are **frontend** values. Next.js inlines `NEXT_PUBLIC_` env
+vars when it builds, or when the dev server starts, so restart the frontend
+after a change.
+
+| Env var | Default | Notes |
+|---|---|---|
+| `NEXT_PUBLIC_BACKEND_URL` | `http://localhost:8000` | base URL of the backend API |
+| `NEXT_PUBLIC_VIEWER_SLICE_BEFORE` | `1` | DECISIONS V1 — pages loaded before the cited page |
+| `NEXT_PUBLIC_VIEWER_SLICE_AFTER` | `2` | DECISIONS V1 — pages loaded after the cited page |
+| `NEXT_PUBLIC_VIEWER_PAGE_ASPECT` | `1.294` | height/width that sizes a page before it renders |
+| `NEXT_PUBLIC_VIEWER_ZOOM_STEP` | `0.25` | DECISIONS V3 — the scale a zoom click adds |
+| `NEXT_PUBLIC_VIEWER_ZOOM_MIN` | `0.5` | DECISIONS V3 — the smallest zoom |
+| `NEXT_PUBLIC_VIEWER_ZOOM_MAX` | `3` | DECISIONS V3 — the largest zoom |
+| `NEXT_PUBLIC_VIEWER_WIDTH_DEFAULT` | `416` | DECISIONS V4 — pane width on first use, in pixels |
+| `NEXT_PUBLIC_VIEWER_WIDTH_MIN` | `280` | DECISIONS V4 — the narrowest the pane drags |
+| `NEXT_PUBLIC_VIEWER_WIDTH_MAX` | `900` | DECISIONS V4 — the widest the pane drags |
+| `NEXT_PUBLIC_VIEWER_SLICE_CACHE_ENTRIES` | `12` | DECISIONS V6 — slice byte windows kept in memory |
 
 ## Where the next change goes (documented in code)
 
