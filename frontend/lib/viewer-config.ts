@@ -16,3 +16,10 @@ export const SLICE_PAGES_AFTER = numberFromEnv(
   process.env.NEXT_PUBLIC_VIEWER_SLICE_AFTER,
   2,
 );
+
+// Height/width of a page that has not rendered yet, used to size the
+// placeholders in the lazy page list. The default suits US Letter paper.
+export const PAGE_ASPECT = numberFromEnv(
+  process.env.NEXT_PUBLIC_VIEWER_PAGE_ASPECT,
+  1.294,
+);

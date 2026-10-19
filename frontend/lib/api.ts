@@ -116,6 +116,11 @@ export function manualPagesUrl(
   return `${BACKEND_URL}/manuals/${manualId}/pages/${start}-${end}`;
 }
 
+// The whole stored PDF, for the pane's whole-manual view (DECISIONS V2).
+export function manualPdfUrl(manualId: string): string {
+  return `${BACKEND_URL}/manuals/${manualId}/pdf`;
+}
+
 export async function uploadManual(input: {
   file: File;
   vehicleId: string;
