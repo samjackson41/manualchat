@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse, Response, StreamingResponse
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
-from backend.agent.graph import graph
+from backend.agent.graph import ask, graph
 from backend.config import get_settings, model_label
 from backend.llm import LLMError
 from backend import ingest
@@ -82,21 +82,11 @@ def models() -> dict:
 @app.post("/chat")
 def chat(req: ChatRequest) -> dict:
     model = req.model or get_settings().model_default
-    initial_state: dict = {
-        "messages": [HumanMessage(content=req.query)],
-        "model": model,
-        "vehicle_id": req.vehicle_id,
-        "stream": False,
-        "gathered": [],
-        "next": "",
-        "hops": 0,
-    }
     try:
-        result = graph.invoke(initial_state)
+        reply = ask(req.query, model=req.model, vehicle_id=req.vehicle_id)
     except LLMError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    reply = result["messages"][-1].content
     return {"reply": reply, "model": model}
 
 

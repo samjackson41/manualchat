@@ -226,8 +226,9 @@ Each task is scoped to be executed and verified in a single session:
    - *Done when*: Clicking a `[Page 82]` badge in a chat bubble renders page 82 with selectable text in under 1.5 seconds.
 
 7. **Task 7: Automated Evals & Quality Benchmark**
-   - *Action*: Create synthetic eval suite (15 queries covering specs, procedures, and out-of-scope questions). Run LLM-as-a-judge scoring citation precision and spec correctness.
+   - *Action*: Create synthetic eval suite (16 queries covering specs, procedures, and out-of-scope questions). Run LLM-as-a-judge scoring citation precision and spec correctness.
    - *Done when*: Evaluation run achieves $>90\%$ citation precision and $0\%$ fabricated specifications on out-of-scope queries.
+   - *Status*: **DONE** on the 56-page `pl.pdf` — 16/16 passed, `1.00` citation precision, and `0` fabricated out-of-scope answers. The harness is `backend/eval/` (dataset loader, judge, runner) over `backend/tests/eval_questions.json`. Run it with `EVAL_VEHICLE_ID=<id> uv run --project backend python -m backend.eval.run` from the repo root. The runner reports the pass rate, the citation precision, and the fabricated count, and it gates on all three.
 
 
 

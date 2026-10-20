@@ -90,11 +90,28 @@
   `GET /manuals/{id}/thumbnails/{page}` renders one physical page of the
   stored `source.pdf` to a PNG at `THUMBNAIL_DPI` (default 150) for the
   raster fallback of the viewer.
+- Automated evals (Task 7): `backend/eval/` scores the 16-question set in
+  `backend/tests/eval_questions.json` with an LLM judge (DECISIONS E1 to E6).
+  `backend/eval/dataset.py` loads the set, `backend/eval/judge.py` scores one
+  markdown answer against its category rubric, and `backend/eval/run.py` runs
+  every case through the agent and reports the result. The rubric checks a
+  spec value with its unit and qualifier, a procedure in substance and order,
+  and an out-of-scope answer that must invent nothing. Citation precision is
+  counted in code from the `[Page N]` markers, not by the judge. The judge
+  model is distinct from the model under test (E1). The runner prints the
+  pass rate overall and per category, the citation precision, and the
+  fabricated count, and it gates on the pass rate, the citation precision,
+  and a zero fabricated count. It is a live-LLM run, so it stays out of the
+  default CI (T4). Run it from the repo root, against an ingested manual:
+  `EVAL_VEHICLE_ID=<id> uv run --project backend python -m backend.eval.run`.
+- Eval result on the 56-page `pl.pdf` (vehicle `demo_vehicle`): 16/16 passed
+  (100%), citation precision 1.00, and 0 fabricated out-of-scope answers. The
+  bar is more than 90% precision and 0% fabricated (Task 7).
 - Tests: `backend/tests/` holds unit tests for the API, the configuration,
   ingest,
   retrieval, the slicer, the manual PDF endpoint, the thumbnails, the tools,
-  and the stream. The tests inject fakes per DECISIONS T1, so the default run
-  downloads no model.
+  the stream, and the eval. The tests inject fakes per DECISIONS T1, so the
+  default run downloads no model.
 - Frontend: Next.js chat built on assistant-ui. The styled Thread shows
   messages, markdown, streaming, and regeneration. A thread-list sidebar keeps
   chat history in localStorage across reloads. The chat adapter in
@@ -155,16 +172,15 @@
 ## What is left
 
 - The RAG pipeline, in phases. The ingest stage (Task 1), chunking and
-  indexing (Task 3), and real retrieval behind the tools (Task 4) are done.
-  The chunk eval is next. The prototype runs against the 56-page `pl.pdf`.
-  The graph runs the supervisor, worker, and synthesize topology, and the
-  answer stays markdown text with `[Page N]` citations. The ratified
-  values are in `DECISIONS.md` (D9 to D13, R3 to R9, A1 to A3, T1 to T3).
-- The chunk eval: 16 questions live in `backend/tests/eval_questions.json`.
-  Each question names a known answer page and the expected answer, from the
-  56-page `pl.pdf`. Nothing runs or scores the set yet. Run and score the
-  set. The scores test recall, citation precision, the chunk size (DECISIONS
-  D10), and the overlap (D11).
+  indexing (Task 3), real retrieval behind the tools (Task 4), and the
+  automated eval (Task 7) are done. The prototype runs against the 56-page
+  `pl.pdf`. The graph runs the supervisor, worker, and synthesize topology,
+  and the answer stays markdown text with `[Page N]` citations. The ratified
+  values are in `DECISIONS.md` (D9 to D13, R3 to R9, A1 to A3, E1 to E6,
+  T1 to T4).
+- The chunk-size and overlap sweep: the eval scores one chunk configuration.
+  A later run scores other sizes (DECISIONS D10) and overlaps (D11) and
+  compares them.
 - Future work (DECISIONS Deferred): the structured `AgentAnswer`, the
   spec ledger, the scanned-manual OCR path, and the Docker work.
 - Memory: the summary field, the compaction node, and a checkpointer per

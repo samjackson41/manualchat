@@ -21,6 +21,10 @@ env vars case-insensitively, so:
     ingest_chunk_tokens     <- INGEST_CHUNK_TOKENS
     qdrant_url              <- QDRANT_URL      (empty = local mode)
     retrieval_embed_model   <- RETRIEVAL_EMBED_MODEL
+    eval_judge_model        <- EVAL_JUDGE_MODEL
+    eval_vehicle_id         <- EVAL_VEHICLE_ID   (the eval manual's vehicle)
+    eval_min_pass_rate      <- EVAL_MIN_PASS_RATE
+    eval_citation_precision_min <- EVAL_CITATION_PRECISION_MIN
 """
 
 from functools import lru_cache
@@ -201,6 +205,23 @@ class Settings(BaseSettings):
     retrieval_rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"  # R7
     retrieval_candidate_k: int = 50  # R8, first-pass candidates for the reranker
     retrieval_top_n: int = 5  # R9, chunks returned to the agent
+
+    # --- Automated evals (IMPLEMENTATION Task 7) ---
+    # The judge model stays distinct from the model under test: the eval runs
+    # the agent on Flash, so Pro judges and self-preference bias stays low.
+    eval_judge_model: str = _PRO
+    # Reasoning effort for the judge call. OpenRouter lists `high` for both
+    # DeepSeek slugs, so no fallback is needed (DECISIONS M1).
+    eval_judge_reasoning_effort: str = "high"
+    # A score at or above this passes a case when the judge omits `passed`.
+    eval_pass_threshold: float = 0.7
+    # CI gate on the overall pass rate (Task 7).
+    eval_min_pass_rate: float = 0.8
+    # The vehicle that owns the eval manual. Supplied at run time, because the
+    # vehicle id is generated per upload; the runner reads `EVAL_VEHICLE_ID`.
+    eval_vehicle_id: str = ""
+    # CI gate on citation precision (Task 7 needs more than 0.9).
+    eval_citation_precision_min: float = 0.9
 
     @field_validator("model_options", mode="before")
     @classmethod

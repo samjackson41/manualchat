@@ -316,3 +316,27 @@ def build_graph():
 
 # Compiled at import so the API layer shares one instance.
 graph = build_graph()
+
+
+def ask(
+    question: str,
+    *,
+    model: str | None = None,
+    vehicle_id: str | None = None,
+) -> str:
+    """Run one question through the graph and return the final answer text.
+
+    The state is built here once, so the `/chat` handler and the eval runner
+    share one entrypoint instead of each assembling the dict.
+    """
+    initial_state: dict = {
+        "messages": [HumanMessage(content=question)],
+        "model": model or get_settings().model_default,
+        "vehicle_id": vehicle_id,
+        "stream": False,
+        "gathered": [],
+        "next": "",
+        "hops": 0,
+    }
+    result = graph.invoke(initial_state)
+    return result["messages"][-1].content

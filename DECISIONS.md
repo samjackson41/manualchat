@@ -167,6 +167,34 @@ The supervisor and `synthesize` run on the tier's supervisor model and effort, a
 `/chat` returns markdown text with `[Page N]` citations.
 The structured `AgentAnswer` and the confidence gate are future work (see the Deferred section).
 
+## Automated evals
+
+| ID | Decision | Default | Configuration key |
+|---|---|---|---|
+| E1 | The eval scores the 16-question accuracy set with an LLM judge. The judge model stays distinct from the model under test, so self-preference bias stays low: the run drives the agent with Flash, so Pro judges. | `~deepseek/deepseek-pro-latest` | `eval.judge_model` |
+| E2 | The reasoning effort for the judge call. | `high` | `eval.judge_reasoning_effort` |
+| E3 | A case passes at or above this score when the judge omits an explicit `passed`. | `0.7` | `eval.pass_threshold` |
+| E4 | The CI gate on the overall pass rate. | `0.8` | `eval.min_pass_rate` |
+| E5 | The CI gate on citation precision. Task 7 asks for more than `0.9`. | `0.9` | `eval.citation_precision_min` |
+| E6 | The vehicle that owns the eval manual. The run supplies it, because the vehicle id is generated when the manual is uploaded. | from the environment | `eval.vehicle_id` |
+
+The set has three categories, and each category has one rubric.
+A `spec` answer scores against the gold value, with the correct unit and qualifier (model range, U.S. versus non-U.S., torque units).
+A `procedure` answer scores against the gold steps in substance and order, with every key number correct.
+An `out-of-scope` question has no answer in the manual: a pass says so and invents nothing, and a fluent invention scores `0`.
+
+The gold `expected` text and the `answer_pages` list are the authoritative reference, and the judge prompt tells the judge to trust them over the agent.
+The judge writes its reason before its score, and it returns one JSON object, so the run aggregates without reading prose.
+Citation precision is computed in code, not by the judge: the `[Page N]` set is exact, so a count beats a model.
+
+The agent answers in markdown text (A2), so the judge reads that text directly and no structured answer is added.
+The judge shares no model with the agent in the default run.
+A judge from another vendor would add independence; it stays a later improvement.
+OpenRouter reports `high` for both DeepSeek slugs, so the judge effort needs no fallback (M1).
+
+Source: https://openrouter.ai/api/v1/models
+Last-checked: 2026-10-19
+
 ## Testing and continuous integration
 
 | ID | Decision | Value |
@@ -174,11 +202,13 @@ The structured `AgentAnswer` and the confidence gate are future work (see the De
 | T1 | Unit tests inject a fake embedder, so no test downloads a model | (none) |
 | T2 | The end-to-end retrieval test carries a pytest marker and stays out of the default run | `@pytest.mark.heavy` |
 | T3 | The default CI run stays cheap: dependency install, the syntax check, and the marked test excluded | (none) |
+| T4 | The eval runner is a live-LLM run, so it stays out of the default cheap CI, the same way the marked heavy test does. It needs `OPENROUTER_API_KEY` and an ingested manual, and it runs by hand with `python -m backend.eval.run`. | (none) |
 
 Docling, torch, and sentence-transformers make a full install slow and large.
 T1 and T2 keep the default check fast.
 Tests run against mocks, not the full model set, even though the project prefers end-to-end tests.
 Some behavior needs a mock to stay testable without a download.
+T4 keeps the default run offline: the eval calls OpenRouter and reads an indexed manual, so it needs a key and a live index.
 
 ## Manual Viewer
 
