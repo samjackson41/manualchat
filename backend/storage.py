@@ -51,6 +51,7 @@ def store_manual(
     display_name: str,
     source_filename: str,
     description: str | None = None,
+    content_hash: str | None = None,
 ) -> Manual:
     """Write an uploaded manual and return its record.
 
@@ -69,12 +70,26 @@ def store_manual(
         display_name=display_name,
         source_filename=source_filename,
         description=description,
+        content_hash=content_hash,
         status="processing",
     )
     (manual_dir / "manual.json").write_text(
         json.dumps(manual.model_dump(mode="json"), indent=2)
     )
     return manual
+
+
+def find_duplicate(vehicle_id: str, content_hash: str) -> Manual | None:
+    """Return the manual of `vehicle_id` whose bytes hash to `content_hash`.
+
+    The digest is the SHA-256 of the uploaded PDF. A match means the same PDF
+    was already stored under this vehicle, so the new upload is a re-upload
+    (DECISIONS U2). Returns None when no stored manual matches.
+    """
+    for manual in list_manuals():
+        if manual.vehicle_id == vehicle_id and manual.content_hash == content_hash:
+            return manual
+    return None
 
 
 def manual_dir(manual_id: str) -> Path:

@@ -211,6 +211,49 @@ def test_upload_rejects_non_pdf(manuals_dir):
     assert "not a PDF" in resp.json()["detail"]
 
 
+def test_upload_rejects_duplicate_manual_for_same_vehicle(manuals_dir, no_ingest):
+    client = TestClient(app)
+    first = client.post(
+        "/manuals",
+        files=_pdf(body=b"%PDF-1.4 same bytes"),
+        data={"vehicle_id": "v1", "display_name": "Rhino 700"},
+    )
+    assert first.status_code == 200
+
+    resp = client.post(
+        "/manuals",
+        files=_pdf(name="rhino-copy.pdf", body=b"%PDF-1.4 same bytes"),
+        data={"vehicle_id": "v1", "display_name": "Rhino 700 again"},
+    )
+    assert resp.status_code == 409
+    # The reply names the already-stored manual.
+    assert "already uploaded" in resp.json()["detail"]
+
+    # Only one manual was stored, regardless of the file name difference.
+    assert len(no_ingest) == 1
+    assert [m["manual_id"] for m in client.get("/manuals").json()] == [
+        first.json()["manual_id"]
+    ]
+
+
+def test_upload_allows_same_pdf_for_different_vehicle(manuals_dir, no_ingest):
+    client = TestClient(app)
+    first = client.post(
+        "/manuals",
+        files=_pdf(body=b"%PDF-1.4 shared bytes"),
+        data={"vehicle_id": "v1", "display_name": "Rhino 700"},
+    )
+    assert first.status_code == 200
+
+    resp = client.post(
+        "/manuals",
+        files=_pdf(body=b"%PDF-1.4 shared bytes"),
+        data={"vehicle_id": "v2", "display_name": "Same manual, other car"},
+    )
+    assert resp.status_code == 200
+    assert len(no_ingest) == 2
+
+
 def test_upload_description_is_optional(manuals_dir, no_ingest):
     client = TestClient(app)
     resp = client.post(

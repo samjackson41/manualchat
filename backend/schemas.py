@@ -44,6 +44,10 @@ class Manual(BaseModel):
 
     `enabled` gates retrieval only (DECISIONS M1): a disabled manual stays
     stored and listed, but its chunks never come back from search.
+
+    `content_hash` is the SHA-256 of the uploaded PDF bytes. The upload path
+    compares it against the stored hashes of the same vehicle so a duplicate
+    manual is refused instead of ingested twice (DECISIONS U2).
     """
 
     manual_id: str
@@ -51,6 +55,7 @@ class Manual(BaseModel):
     display_name: str
     source_filename: str
     description: Optional[str] = None
+    content_hash: Optional[str] = None
     status: Literal["processing", "ready", "error"] = "processing"
     enabled: bool = True
     page_count: int = 0
