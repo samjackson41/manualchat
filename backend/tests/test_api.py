@@ -169,7 +169,7 @@ def test_chat_tool_loop(monkeypatch):
 
 
 def test_chat_fast_tier_models_and_effort(monkeypatch):
-    """Flash: supervisor Flash @ high, worker Flash @ low (DECISIONS M1)."""
+    """Flash: routing and worker on Flash @ low, answer on Flash @ high."""
     fake, calls = _fake_llm("ok")
     monkeypatch.setattr(llm, "chat", fake)
 
@@ -180,13 +180,13 @@ def test_chat_fast_tier_models_and_effort(monkeypatch):
     assert worker[0]["model"] == "~deepseek/deepseek-flash-latest"
     assert worker[0]["params"] == {"reasoning_effort": "low"}
     assert supervisor[0]["model"] == "~deepseek/deepseek-flash-latest"
-    assert supervisor[0]["params"] == {"reasoning_effort": "high"}
+    assert supervisor[0]["params"] == {"reasoning_effort": "low"}
     assert synthesize[0]["model"] == "~deepseek/deepseek-flash-latest"
     assert synthesize[0]["params"] == {"reasoning_effort": "high"}
 
 
 def test_chat_pro_tier_models_and_effort(monkeypatch):
-    """Pro: supervisor Pro @ max, worker Flash @ high (DECISIONS M1)."""
+    """Pro spends Pro only on the answer; routing and worker stay on Flash."""
     fake, calls = _fake_llm("ok")
     monkeypatch.setattr(llm, "chat", fake)
 
@@ -199,12 +199,12 @@ def test_chat_pro_tier_models_and_effort(monkeypatch):
     assert resp.json()["model"] == "~deepseek/deepseek-pro-latest"
 
     worker, supervisor, synthesize = _node_calls(calls)
-    assert supervisor[0]["model"] == "~deepseek/deepseek-pro-latest"
-    assert supervisor[0]["params"] == {"reasoning_effort": "max"}
+    assert supervisor[0]["model"] == "~deepseek/deepseek-flash-latest"
+    assert supervisor[0]["params"] == {"reasoning_effort": "low"}
     assert worker[0]["model"] == "~deepseek/deepseek-flash-latest"
-    assert worker[0]["params"] == {"reasoning_effort": "high"}
+    assert worker[0]["params"] == {"reasoning_effort": "low"}
     assert synthesize[0]["model"] == "~deepseek/deepseek-pro-latest"
-    assert synthesize[0]["params"] == {"reasoning_effort": "max"}
+    assert synthesize[0]["params"] == {"reasoning_effort": "high"}
 
 
 def test_chat_without_api_key_returns_400(monkeypatch):

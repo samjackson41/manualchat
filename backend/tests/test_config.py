@@ -19,7 +19,7 @@ def test_model_options_accept_comma_separated_string():
 
 
 def test_flash_selects_the_fast_tier():
-    """Flash: supervisor Flash @ high, worker Flash @ low (DECISIONS M1)."""
+    """Flash: author Flash @ high, working model Flash @ low (DECISIONS M1)."""
     tier = Settings().tier_for_model("~deepseek/deepseek-flash-latest")
     assert tier == SuperSubTier(
         supervisor_model="~deepseek/deepseek-flash-latest",
@@ -30,13 +30,13 @@ def test_flash_selects_the_fast_tier():
 
 
 def test_pro_selects_the_pro_tier():
-    """Pro: supervisor Pro @ max, worker Flash @ high (DECISIONS M1)."""
+    """Pro: author Pro @ high, working model Flash @ low (DECISIONS M1)."""
     tier = Settings().tier_for_model("~deepseek/deepseek-pro-latest")
     assert tier == SuperSubTier(
         supervisor_model="~deepseek/deepseek-pro-latest",
-        supervisor_effort="max",
+        supervisor_effort="high",
         sub_model="~deepseek/deepseek-flash-latest",
-        sub_effort="high",
+        sub_effort="low",
     )
 
 

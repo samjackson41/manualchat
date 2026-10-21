@@ -6,10 +6,12 @@ The worker runs the tool loop (calculator plus the three RAG tools). The
 synthesize node writes the final markdown answer with `[Page N]` citations.
 
 The model the user picked (`state["model"]`, DECISIONS M1/M3) selects a tier.
-A tier fixes the supervisor and worker models and their reasoning effort:
+A tier fixes two models. The cheap working model (`sub_model`) runs the tool
+loop and the supervisor's routing check. The strong model (`supervisor_model`)
+writes the final answer, so the expensive model is spent only on the answer:
 
-    fast -> supervisor Flash @ high, worker Flash @ low
-    pro  -> supervisor Pro   @ max,  worker Flash @ high
+    fast -> working Flash @ low, author Flash @ high
+    pro  -> working Flash @ low, author Pro   @ high
 
 The shape mirrors the cohort supervisor/specialist graph, adapted to one
 retrieval worker:
@@ -163,8 +165,9 @@ def _execute_tool_calls(
     return tool_messages
 
 
-# The supervisor plans and writes the final answer; this prompt is its routing
-# instruction. The worker and synthesize nodes keep the grounding system prompt.
+# The routing instruction for the supervisor node. The routing check is a cheap
+# two-way decision, so it runs on the tier's working model; `synthesize` authors
+# the answer on the strong model.
 _SUPERVISOR_SYSTEM = (
     "You are the supervisor of a grounded repair-manual assistant. Read the "
     "question and the worker's findings, then decide the next step. Reply with "
@@ -199,8 +202,8 @@ def supervisor_node(state: AgentState) -> dict:
                 ),
             },
         ],
-        tier.supervisor_model,
-        params={"reasoning_effort": tier.supervisor_effort},
+        tier.sub_model,
+        params={"reasoning_effort": tier.sub_effort},
     )
     choice = (reply.get("content") or "").strip().lower()
     return {"next": "worker" if choice.startswith("worker") else "synthesize", "hops": hops}

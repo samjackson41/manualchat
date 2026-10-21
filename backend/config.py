@@ -49,10 +49,11 @@ _MODEL_LABELS: dict[str, str] = {
 
 
 class SuperSubTier(BaseModel):
-    """One model tier: the supervisor and the retrieval worker, with effort.
+    """One model tier: a cheap working model and a strong authoring model.
 
-    The supervisor plans and writes the final answer; the sub-agent is the
-    retrieval worker that runs the tool loop (DECISIONS M1).
+    The working model (`sub_model`) runs the tool loop and the supervisor's
+    routing check. The authoring model (`supervisor_model`) writes the final
+    answer, so the expensive model is spent only on the answer (DECISIONS M1).
     """
 
     supervisor_model: str
@@ -72,9 +73,9 @@ def _default_tiers() -> dict[str, SuperSubTier]:
         ),
         "pro": SuperSubTier(
             supervisor_model=_PRO,
-            supervisor_effort="max",
+            supervisor_effort="high",
             sub_model=_FLASH,
-            sub_effort="high",
+            sub_effort="low",
         ),
     }
 
@@ -99,8 +100,9 @@ class Settings(BaseSettings):
     model_max_tokens: int | None = None            # TBD
 
     # --- Supervisor and sub-agent tiers (DECISIONS M1) ---
-    # Keyed by tier name (`fast`, `pro`); each entry fixes the supervisor and
-    # the worker model and reasoning effort. Load with JSON, e.g.
+    # Keyed by tier name (`fast`, `pro`); each entry fixes a cheap working model
+    # (`sub_*`, runs the tool loop and the routing check) and a strong authoring
+    # model (`supervisor_*`, writes the answer). Load with JSON, e.g.
     # SUPER_SUB_TIERS='{"fast": {"supervisor_model": "...", ...}, "pro": {...}}'.
     super_sub_tiers: dict[str, SuperSubTier] = Field(default_factory=_default_tiers)
     # The selected slug picks a tier; an unknown slug falls back to the default.
