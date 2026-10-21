@@ -16,6 +16,7 @@ env vars case-insensitively, so:
     ingest_chunk_tokens     <- INGEST_CHUNK_TOKENS
     qdrant_url              <- QDRANT_URL      (empty = local mode)
     retrieval_embed_model   <- RETRIEVAL_EMBED_MODEL
+    retrieval_embed_batch_size <- RETRIEVAL_EMBED_BATCH_SIZE
 """
 
 from functools import lru_cache
@@ -148,6 +149,9 @@ class Settings(BaseSettings):
     qdrant_collection: str = "manualchat_chunks"  # R4
     qdrant_api_key: str = ""  # R5 (empty in dev; production sets it via env)
     retrieval_embed_model: str = "multi-qa-mpnet-base-dot-v1"  # R6
+    # Chunks embedded per call while indexing. Batches keep peak memory low on
+    # a large manual and carry the upload dialog's indexing progress (U3).
+    retrieval_embed_batch_size: int = 64
     retrieval_rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"  # R7
     retrieval_candidate_k: int = 50  # R8, first-pass candidates for the reranker
     retrieval_top_n: int = 5  # R9, chunks returned to the agent

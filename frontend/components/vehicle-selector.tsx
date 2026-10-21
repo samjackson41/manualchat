@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useVehicles } from "@/app/vehicle-runtime";
 import { VehiclePicker } from "@/components/vehicle-picker";
 import { forgetManualBytes } from "@/lib/pdf-cache";
+import { ingestStatusText } from "@/lib/ingest-progress";
 import {
   deleteManual,
   listManuals,
@@ -25,7 +26,8 @@ import {
 const POLL_MS = 3000;
 
 function manualStatusText(manual: Manual): string {
-  if (manual.status === "processing") return "Processing…";
+  if (manual.status === "processing")
+    return ingestStatusText(manual.progress);
   if (manual.status === "ready")
     return `Ready, ${manual.page_count} pages, ${manual.chunk_count} chunks`;
   return "Ingest failed";

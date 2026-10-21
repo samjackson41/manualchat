@@ -74,9 +74,7 @@ def store_manual(
         content_hash=content_hash,
         status="processing",
     )
-    (manual_dir / "manual.json").write_text(
-        json.dumps(manual.model_dump(mode="json"), indent=2)
-    )
+    _write_manual(manual)
     return manual
 
 
@@ -117,19 +115,30 @@ def manual_dir(manual_id: str) -> Path:
     return manuals_root() / manual_id
 
 
+def _write_manual(manual: Manual) -> None:
+    """Write one manual record, replacing the file in a single step.
+
+    Ingest rewrites the record while it runs so the upload dialog can poll its
+    progress. A reader must never catch a half-written file.
+    """
+    record_path = manual_dir(manual.manual_id) / "manual.json"
+    temp_path = record_path.with_name(record_path.name + ".tmp")
+    temp_path.write_text(json.dumps(manual.model_dump(mode="json"), indent=2))
+    temp_path.replace(record_path)
+
+
 def update_manual(manual_id: str, **updates) -> Manual | None:
     """Patch a manual's record fields and persist it, or return None when unknown.
 
-    The ingest pipeline uses this to fill in ``page_count`` and ``status`` after
-    a successful run without replacing the ``Manual`` identity.
+    The ingest pipeline uses this to fill in ``page_count``, ``status``, and
+    ``progress`` after a successful run without replacing the ``Manual``
+    identity.
     """
     manual = get_manual(manual_id)
     if manual is None:
         return None
     updated = manual.model_copy(update=updates)
-    (manual_dir(manual_id) / "manual.json").write_text(
-        json.dumps(updated.model_dump(mode="json"), indent=2)
-    )
+    _write_manual(updated)
     return updated
 
 

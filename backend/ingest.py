@@ -18,6 +18,11 @@ normalized text and tables that later stages chunk and index. Stages, in order:
 Run it with ``python -m backend.ingest <manual_id>``. On upload, the API calls
 ``ingest_in_background`` instead so the pipeline runs in a worker thread after
 the response.
+
+The run records how far it has come on the manual record (DECISIONS U3), so the
+upload dialog can show a progress bar instead of an unexplained wait. Docling
+reports every converted page through its own progress callback, and indexing
+reports every embedded batch.
 """
 
 from __future__ import annotations
@@ -31,11 +36,46 @@ import pymupdf
 
 from backend import retrieval, storage
 from backend.config import Settings, get_settings
-from backend.schemas import IngestResult, IngestTable, TextLayerProbe
+from backend.schemas import IngestProgress, IngestResult, IngestTable, TextLayerProbe
 
 
 class IngestError(RuntimeError):
     """The pipeline refused or failed to ingest a manual."""
+
+
+def _report(manual_id: str, **progress) -> None:
+    """Record the pipeline's position on the manual, for the upload dialog."""
+    storage.update_manual(manual_id, progress=IngestProgress(**progress))
+
+
+def _page_progress_callback(manual_id: str):
+    """Report Docling's per-page events as the manual's stored progress.
+
+    Conversion runs the layout and table models over every page, so it is the
+    one stage long enough to need a bar.
+    """
+    from docling.datamodel.progress import ConversionProgressKind
+
+    def on_event(event) -> None:
+        if event.kind != ConversionProgressKind.PAGE_COMPLETED:
+            return
+        _report(
+            manual_id,
+            stage="convert",
+            completed=event.completed_pages,
+            total=event.total_pages,
+        )
+
+    return on_event
+
+
+def _index_progress_callback(manual_id: str):
+    """Report embedded-chunk counts while the manual is indexed."""
+
+    def on_progress(completed: int, total: int) -> None:
+        _report(manual_id, stage="index", completed=completed, total=total)
+
+    return on_progress
 
 
 # Unit and header repair rules (DECISIONS D3). The longer, more specific pattern
@@ -187,9 +227,13 @@ def build_converter(settings: Settings) -> object:
     )
 
 
-def convert_document(converter, pdf_path: Path):
-    """Run Docling on one PDF and return its document."""
-    return converter.convert(pdf_path).document
+def convert_document(converter, pdf_path: Path, on_progress=None):
+    """Run Docling on one PDF and return its document.
+
+    ``on_progress`` receives Docling's own progress events, one per converted
+    page, which is how the upload dialog follows a long conversion.
+    """
+    return converter.convert(pdf_path, progress_callback=on_progress).document
 
 
 def _pages_text(document, page_count: int) -> dict[int, str]:
@@ -230,6 +274,7 @@ def ingest_manual(manual_id: str, converter=None) -> IngestResult:
     if not source.is_file():
         raise IngestError(f"source.pdf is missing for manual {manual_id}")
 
+    _report(manual_id, stage="probe")
     probe = probe_text_layer(source, settings.ingest_ocr_min_chars_per_page)
     if probe.needs_ocr:
         storage.update_manual(manual_id, status="error")
@@ -242,8 +287,15 @@ def ingest_manual(manual_id: str, converter=None) -> IngestResult:
     working_pdf, stripped = prepare_pdf(
         source, settings.ingest_strip_hidden_ocr_layer
     )
+    # Reported before the first page event: Docling loads its models first, and
+    # the dialog needs the page total during that wait.
+    _report(manual_id, stage="convert", total=probe.page_count)
     try:
-        document = convert_document(converter or build_converter(settings), working_pdf)
+        document = convert_document(
+            converter or build_converter(settings),
+            working_pdf,
+            _page_progress_callback(manual_id),
+        )
     finally:
         if stripped:
             working_pdf.unlink(missing_ok=True)
@@ -275,7 +327,14 @@ def ingest_manual(manual_id: str, converter=None) -> IngestResult:
     (storage.manual_dir(manual_id) / "ingest.json").write_text(
         json.dumps(result.model_dump(mode="json"), indent=2)
     )
-    storage.update_manual(manual_id, page_count=probe.page_count, status="ready")
+    storage.update_manual(
+        manual_id,
+        page_count=probe.page_count,
+        status="ready",
+        progress=IngestProgress(
+            stage="done", completed=probe.page_count, total=probe.page_count
+        ),
+    )
     return result
 
 
@@ -290,7 +349,11 @@ def ingest_in_background(manual_id: str) -> None:
     """
     try:
         ingest_manual(manual_id)
-        retrieval.index_manual(manual_id)
+        _report(manual_id, stage="index")
+        chunks = retrieval.index_manual(
+            manual_id, on_progress=_index_progress_callback(manual_id)
+        )
+        _report(manual_id, stage="done", completed=chunks, total=chunks)
     except Exception:
         storage.update_manual(manual_id, status="error")
         raise

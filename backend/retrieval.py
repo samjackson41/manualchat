@@ -316,11 +316,13 @@ def delete_manual_index(manual_id: str) -> None:
     _delete_manual_points(client, manual_id)
 
 
-def index_manual(manual_id: str, *, embed=None) -> int:
+def index_manual(manual_id: str, *, embed=None, on_progress=None) -> int:
     """Chunk one ingested manual, embed the chunks, and upsert them into Qdrant.
 
     Returns the number of chunks stored and records it on the manual. ``embed``
-    is injectable so tests never download a model (DECISIONS T1).
+    is injectable so tests never download a model (DECISIONS T1). ``on_progress``
+    receives ``(completed, total)`` chunk counts as the batches embed, which is
+    how the upload dialog follows a large manual (DECISIONS U3).
     """
     manual = storage.get_manual(manual_id)
     if manual is None:
@@ -334,7 +336,13 @@ def index_manual(manual_id: str, *, embed=None) -> int:
         return 0
 
     embed_fn = embed or embed_texts
-    vectors = embed_fn([c.text for c in chunks])
+    vectors: list[list[float]] = []
+    batch = get_settings().retrieval_embed_batch_size
+    for start in range(0, len(chunks), batch):
+        texts = [c.text for c in chunks[start : start + batch]]
+        vectors.extend(embed_fn(texts))
+        if on_progress is not None:
+            on_progress(min(start + batch, len(chunks)), len(chunks))
     dim = len(vectors[0])
 
     client = _client()

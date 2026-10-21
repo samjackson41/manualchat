@@ -178,6 +178,8 @@ def test_upload_list_and_get_manual(manuals_dir, no_ingest):
     assert manual["source_filename"] == "rhino.pdf"
     assert manual["description"] == "Full service manual"
     assert manual["status"] == "processing"
+    # The dialog reads this straight after the upload, before ingest reports.
+    assert manual["progress"] == {"stage": "probe", "completed": 0, "total": 0}
 
     # Upload schedules the ingest pipeline for the new manual.
     assert no_ingest == [manual["manual_id"]]

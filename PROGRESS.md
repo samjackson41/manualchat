@@ -22,8 +22,11 @@
   `status` to `ready` (or `error`). On upload, once the pipeline reaches
   `ready` the manual is chunked and indexed (`retrieval.index_manual`) and the
   `chunk_count` is written back, so a fresh upload is searchable at once. The
-  same pipeline runs by hand with `python -m backend.ingest <manual_id>`. The
-  real run on `pl.pdf` produced 56 pages and 9 tables.
+  run records its position on the manual's `progress` field as it works. It
+  writes one update per converted page, then one per embedded batch. The upload
+  dialog reads that field and shows a bar with a time estimate (DECISIONS U3).
+  The same pipeline runs by hand with `python -m backend.ingest <manual_id>`.
+  The real run on `pl.pdf` produced 56 pages and 9 tables.
 - Retrieval: `backend/retrieval.py` chunks an ingested manual and indexes it
   into a local Qdrant collection (IMPLEMENTATION Task 3). Chunking splits prose
   on section headings and keeps each table as one chunk. Prose chunks target
@@ -89,10 +92,14 @@
   vehicle entry) aims the manual at a vehicle from the form. It lists the
   chosen vehicle's manuals with their ingest status and polls `GET /manuals`
   until the ingest finishes. The file picker is a Browse button that shows a
-  truncated file name, so a long name never stretches the dialog; while the
-  upload runs the dialog swaps to a loading bar and a guard blocks a quick
-  double or triple click from starting the pipeline twice (a 409 from the
-  backend also stops a duplicate).
+  truncated file name, so a long name never stretches the dialog. While a
+  manual uploads or ingests, the form gives way to a progress panel and the
+  Upload button stays disabled. The panel names the stage and fills a bar over
+  the units of that stage. The units are pages while converting and chunks
+  while indexing. A time estimate comes from the rate the run has kept
+  (DECISIONS U3). A guard
+  blocks a quick double or triple click from starting the pipeline twice (a 409
+  from the backend also stops a duplicate).
   A typed client in `frontend/lib/api.ts` wraps every backend call. Tailwind is
   v4, themed in red, white, gray, black, and gold. A light/dark theme toggle
   sits in a top bar that also holds the selector, upload, viewer, and model

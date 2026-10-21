@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { LoaderCircleIcon, UploadIcon } from "lucide-react";
+import { UploadIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { VehiclePicker } from "@/components/vehicle-picker";
 import { listManuals, uploadManual, type Manual } from "@/lib/api";
+import {
+  formatRemaining,
+  ingestRemainingMs,
+  ingestStageFraction,
+  ingestStageLabel,
+  ingestStatusText,
+} from "@/lib/ingest-progress";
 import { useVehicles } from "@/app/vehicle-runtime";
 
 // Ingest runs in the background after the upload, so the list below refreshes
@@ -21,9 +28,25 @@ import { useVehicles } from "@/app/vehicle-runtime";
 const POLL_MS = 3000;
 
 function statusText(manual: Manual): string {
-  if (manual.status === "processing") return "Processing…";
+  if (manual.status === "processing") return ingestStatusText(manual.progress);
   if (manual.status === "ready") return `Ready, ${manual.page_count} pages`;
   return "Ingest failed";
+}
+
+/** A determinate bar for a stage with countable work, a moving one without. */
+function IngestBar({ fraction }: { fraction: number | null }) {
+  return (
+    <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
+      {fraction === null ? (
+        <div className="bg-primary h-full w-1/2 animate-pulse rounded-full" />
+      ) : (
+        <div
+          className="bg-primary h-full rounded-full transition-[width] duration-700 ease-out"
+          style={{ width: `${fraction * 100}%` }}
+        />
+      )}
+    </div>
+  );
 }
 
 export function ManualUpload() {
@@ -35,11 +58,27 @@ export function ManualUpload() {
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<Manual | null>(null);
+  const [uploaded, setUploaded] = useState<Manual | null>(null);
   const [manuals, setManuals] = useState<Manual[]>([]);
+  const [stageStartedAt, setStageStartedAt] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const submittingRef = useRef(false);
   const anyProcessing = manuals.some((manual) => manual.status === "processing");
+
+  // The upload response until the first refresh lands, the polled record after
+  // that, so the panel follows the run without a second poller.
+  const watched = uploaded
+    ? (manuals.find((item) => item.manual_id === uploaded.manual_id) ?? uploaded)
+    : null;
+  const watching = watched?.status === "processing";
+  const locked = busy || watching;
+
+  const stage = watched?.progress.stage ?? null;
+  const remaining =
+    watched && stageStartedAt !== null
+      ? ingestRemainingMs(watched.progress, Date.now() - stageStartedAt)
+      : null;
 
   useEffect(() => {
     if (!open || !vehicleId) {
@@ -79,6 +118,24 @@ export function ManualUpload() {
     return () => clearInterval(timer);
   }, [open, vehicleId, anyProcessing]);
 
+  // The estimate measures one stage at a time, so it restarts on each change.
+  useEffect(() => {
+    setStageStartedAt(stage === null ? null : Date.now());
+  }, [stage]);
+
+  useEffect(() => {
+    if (!watched || watched.status === "processing") return;
+    if (watched.status === "ready") {
+      setDone(watched);
+      setFile(null);
+      setDisplayName("");
+      setDescription("");
+    } else {
+      setError("The ingest of this manual failed. Read the backend log.");
+    }
+    setUploaded(null);
+  }, [watched, watched?.status]);
+
   function reset() {
     setVehicleId(activeVehicleId);
     setFile(null);
@@ -86,7 +143,8 @@ export function ManualUpload() {
     setDescription("");
     setBusy(false);
     setError(null);
-    setDone(false);
+    setDone(null);
+    setUploaded(null);
   }
 
   async function submit(event: FormEvent) {
@@ -97,6 +155,7 @@ export function ManualUpload() {
     submittingRef.current = true;
     setBusy(true);
     setError(null);
+    setDone(null);
     try {
       const manual = await uploadManual({
         file,
@@ -108,7 +167,7 @@ export function ManualUpload() {
         manual,
         ...previous.filter((item) => item.manual_id !== manual.manual_id),
       ]);
-      setDone(true);
+      setUploaded(manual);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -142,74 +201,90 @@ export function ManualUpload() {
             <DialogTitle>Upload a manual</DialogTitle>
           </DialogHeader>
 
-          {busy ? (
-            <div className="flex flex-col items-center gap-3 py-6">
-              <LoaderCircleIcon className="text-primary size-6 animate-spin" />
-              <p className="text-sm">
-                Uploading {file?.name ?? "manual"}…
-              </p>
-              <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
-                <div className="bg-primary h-full w-1/2 animate-pulse rounded-full" />
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={submit} className="flex flex-col gap-3">
-              <VehiclePicker
-                value={vehicleId}
-                onValueChange={(id) => setVehicleId(id)}
-                triggerClassName="w-full text-xs"
-              />
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              />
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  Browse…
-                </Button>
-                <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs">
-                  {file ? file.name : "No file selected"}
-                </span>
-              </div>
-              <Input
-                value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
-                placeholder="Manual name, e.g. Rhino 700 service manual"
-              />
-              <Textarea
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                placeholder="Description (optional)"
-                className="min-h-12"
-              />
-
-              {error && <p className="text-destructive text-sm">{error}</p>}
-              {done && (
-                <p className="text-muted-foreground text-sm">
-                  Manual uploaded.
+          <form onSubmit={submit} className="flex flex-col gap-3">
+            {locked ? (
+              <div className="flex flex-col gap-3 py-2">
+                <p className="truncate text-sm font-medium">
+                  {watched?.source_filename ?? file?.name ?? "Manual"}
                 </p>
-              )}
+                <p className="text-sm">
+                  {watched
+                    ? `${ingestStageLabel(watched.progress)}…`
+                    : "Uploading…"}
+                </p>
+                <IngestBar
+                  fraction={
+                    watched ? ingestStageFraction(watched.progress) : null
+                  }
+                />
+                {remaining !== null && (
+                  <p className="text-muted-foreground text-xs">
+                    {formatRemaining(remaining)}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <>
+                <VehiclePicker
+                  value={vehicleId}
+                  onValueChange={(id) => setVehicleId(id)}
+                  triggerClassName="w-full text-xs"
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(event) =>
+                    setFile(event.target.files?.[0] ?? null)
+                  }
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Browse…
+                  </Button>
+                  <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs">
+                    {file ? file.name : "No file selected"}
+                  </span>
+                </div>
+                <Input
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder="Manual name, e.g. Rhino 700 service manual"
+                />
+                <Textarea
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder="Description (optional)"
+                  className="min-h-12"
+                />
 
-              <DialogFooter>
-                <Button
-                  type="submit"
-                  disabled={!vehicleId || !file || !displayName.trim()}
-                >
-                  Upload
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
+                {error && <p className="text-destructive text-sm">{error}</p>}
+                {done && (
+                  <p className="text-muted-foreground text-sm">
+                    {done.display_name} is ready: {done.page_count} pages,{" "}
+                    {done.chunk_count} chunks.
+                  </p>
+                )}
+              </>
+            )}
 
-          {!busy && manuals.length > 0 && (
+            <DialogFooter>
+              <Button
+                type="submit"
+                disabled={locked || !vehicleId || !file || !displayName.trim()}
+              >
+                {busy ? "Uploading…" : watching ? "Processing…" : "Upload"}
+              </Button>
+            </DialogFooter>
+          </form>
+
+          {!locked && manuals.length > 0 && (
             <div className="flex flex-col gap-1.5">
               <p className="text-muted-foreground text-xs font-medium">
                 Manuals for this vehicle
