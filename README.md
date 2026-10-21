@@ -149,7 +149,7 @@ OpenRouter request entirely.
 | MODEL_REASONING_EFFORT | `medium` | The fallback reasoning effort when a node passes none. The tier sets the per-node effort (DECISIONS M1). |
 | MODEL_TEMPERATURE | _(unset)_ | Pending decision. Omit the variable to use the provider default. |
 | MODEL_MAX_TOKENS | _(unset)_ | Pending decision. Omit the variable to use the provider default. |
-| SUPER_SUB_TIERS | the tier table in `backend/config.py` | DECISIONS M1. JSON. Each tier names the supervisor and worker model and their reasoning effort. |
+| SUPER_SUB_TIERS | the tier table in `backend/config.py` | DECISIONS M1. JSON. Each tier names a cheap working model (the routing check and the tool loop) and a strong authoring model (the answer), with their reasoning effort. |
 | SUPER_SUB_SLUG_TIERS | `~deepseek/deepseek-flash-latest`→`fast`, `~deepseek/deepseek-pro-latest`→`pro` | DECISIONS M1. JSON. Maps a selected model slug to a tier. |
 | SUPER_SUB_DEFAULT_TIER | `fast` | DECISIONS M1. The tier used when the selected slug matches no entry. |
 | AGENT_MAX_HOPS | `4` | DECISIONS A1. The supervisor forces synthesis after this many worker hops. |

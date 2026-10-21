@@ -102,13 +102,13 @@ Implemented. The agent uses a supervisor-directed topology to keep grounded reas
 The graph has three nodes: `supervisor`, `worker`, and `synthesize`.
 The `supervisor` decides whether the worker keeps searching or the graph synthesizes, and a hop cap (`AGENT_MAX_HOPS`) forces synthesis when it has not stopped.
 The `worker` runs the tool loop over `search_manual`, `extract_specs`, `get_page_text`, and `calculator`.
-The selected model picks the tier (DECISIONS M1): Flash selects `fast` (supervisor and synthesize on Flash at high effort, worker on Flash at low effort), and Pro selects `pro` (supervisor and synthesize on Pro at max effort, worker on Flash at high effort).
+The selected model picks the tier (DECISIONS M1): Flash selects `fast` (Flash at low effort for the routing check and the tool loop, Flash at high effort for the answer), and Pro selects `pro` (Flash at low effort for the routing check and the tool loop, Pro at high effort for the answer). The two tiers differ only in the authoring model, so the expensive model is spent only on the answer.
 
-1. **Supervisor**: Analyzes the request and the worker's findings, then routes to the worker for more search, or to synthesis. It runs on the tier's supervisor model.
+1. **Supervisor**: Analyzes the request and the worker's findings, then routes to the worker for more search, or to synthesis. It runs on the tier's working model.
 2. **`search_manual`**: Executes filtered Qdrant vector retrieval scoped to `vehicle_id` (and optional `manual_id`), reranked via `cross-encoder/ms-marco-MiniLM-L-6-v2`.
 3. **`extract_specs`**: Targeted retrieval over extracted `TableItem` structured data to extract exact key/value parameters.
 4. **`get_page_text`**: Retrieves the complete unchunked text for a target page when a procedure spans consecutive paragraphs.
-5. **Synthesize**: Compiles the final response: Markdown steps and inline `[Page X]` citations. Enforces the strict rule: "If unmentioned in context, state not found." It runs on the tier's supervisor model.
+5. **Synthesize**: Compiles the final response: Markdown steps and inline `[Page X]` citations. Enforces the strict rule: "If unmentioned in context, state not found." It runs on the tier's authoring model.
 
 
 

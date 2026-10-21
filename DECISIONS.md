@@ -68,19 +68,30 @@ Last-checked: 2026-10-15
 
 | ID | Decision | Value | Configuration key |
 |---|---|---|---|
-| M1 | The selected model sets the agent's tier. A tier fixes the supervisor model, the supervisor reasoning effort, the retrieval worker model, and the worker reasoning effort. Flash selects `fast`; Pro selects `pro`; a slug that matches neither falls back to `fast`. | see the tier table below | `models.super_sub_tiers`, `models.super_sub_slug_tiers`, `models.super_sub_default_tier` |
+| M1 | The selected model sets the agent's tier. A tier fixes a cheap working model that runs the tool loop and the supervisor's routing check, and a strong authoring model that writes the final answer. Flash selects `fast`; Pro selects `pro`; a slug that matches neither falls back to `fast`. | see the tier table below | `models.super_sub_tiers`, `models.super_sub_slug_tiers`, `models.super_sub_default_tier` |
 | M2 | The ordered model list for the UI selector | DeepSeek Flash, then DeepSeek Pro | `models.options` |
 | M3 | The UI selection is a runtime override of `models.default`, scoped to the session and held in memory | session override | (none yet) |
 
-| Tier | Trigger slug | Supervisor | Retrieval worker |
+| Tier | Trigger slug | Working model (`sub_model`): routing and tools | Authoring model (`supervisor_model`): the answer |
 |---|---|---|---|
-| `fast` | `~deepseek/deepseek-flash-latest` | Flash, `reasoning_effort=high` | Flash, `reasoning_effort=low` |
-| `pro` | `~deepseek/deepseek-pro-latest` | Pro, `reasoning_effort=max` | Flash, `reasoning_effort=high` |
+| `fast` | `~deepseek/deepseek-flash-latest` | Flash, `reasoning_effort=low` | Flash, `reasoning_effort=high` |
+| `pro` | `~deepseek/deepseek-pro-latest` | Flash, `reasoning_effort=low` | Pro, `reasoning_effort=high` |
 
 The tier table lives in `SUPER_SUB_TIERS` as JSON, with code defaults equal to the table above.
 The slug-to-tier map lives in `SUPER_SUB_SLUG_TIERS`.
-The `fast` tier is "flash high thinking for the supervisor, flash low thinking for the worker".
-The `pro` tier is "pro max thinking for the supervisor, flash high thinking for the worker".
+The `fast` tier is "flash low thinking for the working model, flash high thinking for the answer".
+The `pro` tier is "flash low thinking for the working model, pro high thinking for the answer".
+The two tiers differ only in the authoring model, so the expensive model is spent only on the answer.
+
+A routing check is a two-way decision, so it runs on the working model.
+Measured against OpenRouter, Pro at `max` cost $0.00062 to $0.00087 and took 3.4 to 7.7 seconds per routing call.
+Flash at `low` cost $0.00002 to $0.00005 and took 0.3 to 1.4 seconds, and chose the same route.
+Pro output costs $8.00 per million tokens against Flash at $0.50, so the authoring model is reserved for the answer.
+`max` did not produce more reasoning tokens than `high`; it is a budget cap, not a guarantee of more thinking.
+
+The working model keeps `low` effort, never `none`.
+At `none` the model skipped the calculator and answered arithmetic from its own knowledge, and returned a wrong result once in four runs.
+`none` also overrides the model's own default: OpenRouter reports Flash as `default_enabled: true` with `default_effort: "high"`.
 
 The `models.options` list can grow later with no schema or flow change.
 OpenRouter serves the DeepSeek `-latest` aliases as prerelease, so each slug carries a `~` prefix.
@@ -89,7 +100,7 @@ DeepSeek Flash is `~deepseek/deepseek-flash-latest`.
 OpenRouter reports the supported efforts of both slugs as `["max", "high", "low", "none"]`, so every tier effort is accepted and no fallback is needed.
 
 Source: https://openrouter.ai/docs/quickstart and https://openrouter.ai/api/v1/models
-Last-checked: 2026-10-19
+Last-checked: 2026-10-20
 
 ## Cloud region
 
@@ -163,7 +174,8 @@ Last-checked: 2026-10-15
 
 The graph runs as a supervisor, a retrieval worker, and a synthesize node.
 The supervisor plans and decides when to stop; the worker gathers manual evidence with the calculator and the three RAG tools; `synthesize` writes the final answer.
-The supervisor and `synthesize` run on the tier's supervisor model and effort, and the worker runs on the tier's sub model and effort (M1).
+The routing check in the supervisor and the tool loop in the worker run on the tier's working model and effort.
+`Synthesize` writes the answer on the tier's authoring model and effort, so the expensive model is spent only on the answer (M1).
 `/chat` returns markdown text with `[Page N]` citations.
 The structured `AgentAnswer` and the confidence gate are future work (see the Deferred section).
 

@@ -55,9 +55,12 @@
   (`AGENT_MAX_HOPS`, default 4) forces synthesis when the supervisor has not
   stopped; a second cap (`AGENT_MAX_TOOL_STEPS`, default 4) bounds the worker's
   tool loop. The model the user picked selects a tier (DECISIONS M1). Flash
-  picks `fast`: the supervisor runs Flash at high reasoning effort, the worker
-  runs Flash at low. Pro picks `pro`: the supervisor runs Pro at max reasoning
-  effort, the worker runs Flash at high. The tier table is `SUPER_SUB_TIERS`
+  picks `fast`: the working model runs Flash at low reasoning effort for the
+  routing check and the tool loop, and the answer is written by Flash at high
+  effort. Pro picks `pro`: the working model stays Flash at low effort, and the
+  answer is written by Pro at high effort. The two tiers differ only in the
+  authoring model, so the expensive model is spent only on the answer. The tier
+  table is `SUPER_SUB_TIERS`
   (JSON), and the slug-to-tier map is `SUPER_SUB_SLUG_TIERS`.
 - Tool calling: the `worker` node runs a tool loop. The
   `calculator` and three RAG tools (`search_manual`, `extract_specs`,
