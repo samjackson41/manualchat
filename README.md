@@ -180,6 +180,12 @@ OpenRouter request entirely.
 | RETRIEVAL_RERANK_MODEL | `cross-encoder/ms-marco-MiniLM-L-6-v2` | DECISIONS R7. The reranker. |
 | RETRIEVAL_CANDIDATE_K | `50` | DECISIONS R8. Chunks fetched before the rerank. |
 | RETRIEVAL_TOP_N | `5` | DECISIONS R9. Chunks returned to the agent. |
+| EVAL_JUDGE_MODEL | `~deepseek/deepseek-pro-latest` | DECISIONS E1. The judge model, kept distinct from the model under test. |
+| EVAL_JUDGE_REASONING_EFFORT | `high` | DECISIONS E2. The reasoning effort for the judge call. |
+| EVAL_PASS_THRESHOLD | `0.7` | DECISIONS E3. A score at or above this passes a case when the judge omits `passed`. |
+| EVAL_MIN_PASS_RATE | `0.8` | DECISIONS E4. The eval gate on the overall pass rate. |
+| EVAL_CITATION_PRECISION_MIN | `0.9` | DECISIONS E5. The eval gate on citation precision. |
+| EVAL_VEHICLE_ID | _(empty)_ | DECISIONS E6. The vehicle that owns the eval manual. Supplied at run time. |
 | LANGSMITH_TRACING | `false` | DECISIONS O1. Set `true` with `LANGSMITH_API_KEY` to record one LangSmith `llm` run per OpenRouter call. |
 | LANGSMITH_API_KEY | _(empty)_ | DECISIONS O1. The LangSmith API key. A secret; never commit it. |
 | LANGSMITH_PROJECT | `manualchat` | DECISIONS O1. The LangSmith project that receives the runs. |
@@ -208,18 +214,19 @@ starts. Restart the frontend after a change to these variables.
 
 ## Where the next change goes
 
-- Chunk eval: 16 questions with known answer pages and expected answers, from
-  the 56-page `pl.pdf`, live in `backend/tests/eval_questions.json`. Nothing
-  runs or scores the set yet. Run and score the set. The scores give recall
-  and citation precision, and they test the chunk size (DECISIONS D10) and
-  the overlap (D11).
+- Eval: the harness in `backend/eval/` runs the 16 questions in
+  `backend/tests/eval_questions.json` through the agent and scores each answer
+  with an LLM judge (DECISIONS E1 to E6). Run it from the repo root with
+  `EVAL_VEHICLE_ID=<id> uv run --project backend python -m backend.eval.run`.
+  It reports the pass rate, the citation precision, and the fabricated count.
+  The chunk-size and overlap sweep (DECISIONS D10, D11) comes next.
 - Memory: add the `summary` state field, a compaction node, and a checkpointer
   (MEMORY_DESIGN §4-5).
-- Later graph: the Supervisor and Synthesizer topology, the structured
-  `AgentAnswer`, and the spec ledger are future work (DECISIONS, Deferred).
+- Later graph: the structured `AgentAnswer` and the spec ledger are future work
+  (DECISIONS, Deferred).
 - File locations: the graph is `backend/agent/graph.py`, the tools are
-  `backend/tools.py`, retrieval is `backend/retrieval.py`, and the routes are
-  `backend/api/main.py`.
+  `backend/tools.py`, retrieval is `backend/retrieval.py`, the eval is
+  `backend/eval/`, and the routes are `backend/api/main.py`.
 
 ## Git workflow
 
