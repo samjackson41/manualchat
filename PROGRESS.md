@@ -52,7 +52,9 @@
   delete sit behind a pencil icon. The upload dialog takes an optional
   description and its own vehicle picker. It lists the chosen vehicle's manuals
   with their ingest status, and a guard stops a quick double click from starting
-  an ingest twice.
+  an ingest twice. Closing the dialog during an ingest keeps the run in view:
+  the Upload manual button reopens the progress panel, and a toast below the top
+  bar does the same.
 
 - Manual viewer: each `[Page N]` in a reply is a clickable badge. Clicking one
   opens the viewer beside the chat at the cited page, with selectable text and

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { UploadIcon } from "lucide-react";
+import { LoaderCircleIcon, UploadIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,7 +13,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { VehiclePicker } from "@/components/vehicle-picker";
-import { listManuals, uploadManual, type Manual } from "@/lib/api";
+import {
+  getManual,
+  listManuals,
+  uploadManual,
+  type Manual,
+} from "@/lib/api";
 import {
   formatRemaining,
   ingestRemainingMs,
@@ -59,18 +64,14 @@ export function ManualUpload() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Manual | null>(null);
-  const [uploaded, setUploaded] = useState<Manual | null>(null);
+  const [uploadedId, setUploadedId] = useState<string | null>(null);
+  const [watched, setWatched] = useState<Manual | null>(null);
   const [manuals, setManuals] = useState<Manual[]>([]);
   const [stageStartedAt, setStageStartedAt] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const submittingRef = useRef(false);
   const anyProcessing = manuals.some((manual) => manual.status === "processing");
 
-  // The upload response until the first refresh lands, the polled record after
-  // that, so the panel follows the run without a second poller.
-  const watched = uploaded
-    ? (manuals.find((item) => item.manual_id === uploaded.manual_id) ?? uploaded)
-    : null;
   const watching = watched?.status === "processing";
   const locked = busy || watching;
 
@@ -123,6 +124,28 @@ export function ManualUpload() {
     setStageStartedAt(stage === null ? null : Date.now());
   }, [stage]);
 
+  // The watched manual is polled on its own, so the toast and the panel keep up
+  // while the dialog is closed.
+  useEffect(() => {
+    if (!uploadedId) return;
+    let cancelled = false;
+    const refresh = () => {
+      getManual(uploadedId)
+        .then((record) => {
+          if (!cancelled) setWatched(record);
+        })
+        .catch(() => {
+          // Keep the last known record when a refresh fails.
+        });
+    };
+    refresh();
+    const timer = setInterval(refresh, POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [uploadedId]);
+
   useEffect(() => {
     if (!watched || watched.status === "processing") return;
     if (watched.status === "ready") {
@@ -133,8 +156,9 @@ export function ManualUpload() {
     } else {
       setError("The ingest of this manual failed. Read the backend log.");
     }
-    setUploaded(null);
-  }, [watched, watched?.status]);
+    setUploadedId(null);
+    setWatched(null);
+  }, [watched]);
 
   function reset() {
     setVehicleId(activeVehicleId);
@@ -144,7 +168,6 @@ export function ManualUpload() {
     setBusy(false);
     setError(null);
     setDone(null);
-    setUploaded(null);
   }
 
   async function submit(event: FormEvent) {
@@ -167,7 +190,8 @@ export function ManualUpload() {
         manual,
         ...previous.filter((item) => item.manual_id !== manual.manual_id),
       ]);
-      setUploaded(manual);
+      setUploadedId(manual.manual_id);
+      setWatched(manual);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -306,6 +330,17 @@ export function ManualUpload() {
           )}
         </DialogContent>
       </Dialog>
+
+      {!open && watching && (
+        <Button
+          variant="outline"
+          onClick={() => setOpen(true)}
+          className="fixed top-16 left-1/2 z-50 -translate-x-1/2 shadow-lg"
+        >
+          <LoaderCircleIcon className="text-primary animate-spin" />
+          Manual upload in progress…
+        </Button>
+      )}
     </>
   );
 }

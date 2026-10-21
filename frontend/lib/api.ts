@@ -97,6 +97,12 @@ export async function listManuals(): Promise<Manual[]> {
   return res.json();
 }
 
+export async function getManual(manual_id: string): Promise<Manual> {
+  const res = await fetch(`${BACKEND_URL}/manuals/${manual_id}`);
+  if (!res.ok) throw new Error(await errorDetail(res));
+  return res.json();
+}
+
 export async function setManualEnabled(
   manual_id: string,
   enabled: boolean,
