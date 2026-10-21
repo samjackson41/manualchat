@@ -46,6 +46,17 @@ def test_unknown_slug_falls_back_to_the_fast_tier():
     assert tier.sub_model == "~deepseek/deepseek-flash-latest"
 
 
+def test_langsmith_tracing_empty_env_means_off(monkeypatch):
+    """Compose sends `LANGSMITH_TRACING=` when the host shell leaves it unset."""
+    monkeypatch.setenv("LANGSMITH_TRACING", "")
+    assert Settings().langsmith_tracing is False
+
+
+def test_langsmith_tracing_true_env_enables(monkeypatch):
+    monkeypatch.setenv("LANGSMITH_TRACING", "true")
+    assert Settings().langsmith_tracing is True
+
+
 def test_tier_table_loads_from_a_json_env_value(monkeypatch):
     """`SUPER_SUB_TIERS` overrides the table, following the env-only rule (P1)."""
     monkeypatch.setenv(

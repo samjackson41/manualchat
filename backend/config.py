@@ -253,6 +253,15 @@ class Settings(BaseSettings):
             return json.loads(value)
         return value
 
+    @field_validator("langsmith_tracing", mode="before")
+    @classmethod
+    def _empty_string_means_off(cls, value):
+        # Compose passes `LANGSMITH_TRACING=${LANGSMITH_TRACING:-}`, which is an
+        # empty string when the host shell leaves it unset; that means off.
+        if value == "":
+            return False
+        return value
+
     def tier_for_model(self, model: str) -> SuperSubTier:
         """Resolve a selected model slug to its supervisor/worker tier.
 
