@@ -295,26 +295,36 @@ def test_graph_state_vehicle_id_overrides_model_argument(monkeypatch):
     ]
     _store_manual_with_pages({}, tables)  # owned by demo_vehicle
 
-    replies = [
-        {
-            "content": None,
-            "tool_calls": [
-                {
-                    "id": "call_1",
-                    "function": {
-                        "name": "extract_specs",
-                        "arguments": json.dumps(
-                            {"subject": "displacement", "vehicle_id": "evil_vehicle"}
-                        ),
-                    },
-                }
-            ],
-        },
-        {"content": "Displacement is 105.4 cu. in.", "tool_calls": None},
-    ]
+    grounding = get_settings().agent_system_prompt
+    calls: list[list[dict]] = []
+    worker_turns = iter(
+        [
+            {
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "function": {
+                            "name": "extract_specs",
+                            "arguments": json.dumps(
+                                {"subject": "displacement", "vehicle_id": "evil_vehicle"}
+                            ),
+                        },
+                    }
+                ],
+            },
+            {"content": "Displacement is 105.4 cu. in.", "tool_calls": None},
+        ]
+    )
 
-    def fake_chat(messages, model=None, tools=None):
-        return replies.pop(0)
+    def fake_chat(messages, model=None, params=None, tools=None):
+        # Only the worker records messages that carry a tool result.
+        calls.append(messages)
+        if messages[0]["content"] != grounding:
+            return {"content": "synthesize", "tool_calls": None}
+        if "Write the final answer" in messages[-1]["content"]:
+            return {"content": "Displacement is 105.4 cu. in.", "tool_calls": None}
+        return next(worker_turns)
 
     monkeypatch.setattr(llm, "chat", fake_chat)
 
@@ -323,9 +333,15 @@ def test_graph_state_vehicle_id_overrides_model_argument(monkeypatch):
             "messages": [HumanMessage(content="what is the displacement?")],
             "model": "test-model",
             "vehicle_id": "demo_vehicle",
+            "stream": False,
+            "gathered": [],
+            "next": "",
+            "hops": 0,
         }
     )
 
-    tool_message = next(m for m in result["messages"] if m.type == "tool")
-    specs = ExtractSpecsResult.model_validate_json(tool_message.content)
+    # The worker's second call carried the tool result of the extract_specs call.
+    worker_call = next(m for m in calls if any(x["role"] == "tool" for x in m))
+    tool_message = next(x for x in worker_call if x["role"] == "tool")
+    specs = ExtractSpecsResult.model_validate_json(tool_message["content"])
     assert specs.specs[0].value == "105.4 cu. in. (1726 cc)"

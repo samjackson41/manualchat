@@ -1,48 +1,64 @@
-"""LangGraph agent — the iteration point for ManualChat.
+"""LangGraph agent — a supervisor, worker, and synthesize topology.
 
-A `chat -> tools -> chat` loop: the model may ask to run a tool, the `tools`
-node executes it and feeds the result back as ToolMessages, and the loop repeats
-until the model answers without a tool call. AgentState is unchanged from the
-skeleton, so later work (RAG tools, memory) slots in without rework.
+The supervisor reads the question and what the worker has found, and decides
+whether the worker keeps searching the manual or the graph moves to synthesis.
+The worker runs the tool loop (calculator plus the three RAG tools). The
+synthesize node writes the final markdown answer with `[Page N]` citations.
 
-WHERE THE NEXT CHANGES GO (documented so the structure is obviously extensible):
+The model the user picked (`state["model"]`, DECISIONS M1/M3) selects a tier.
+A tier fixes the supervisor and worker models and their reasoning effort:
 
-  1. RAG             -> add `search_manual` / `extract_specs` / `get_page_text`
-     tools per IMPLEMENTATION Task 4. They land in the SAME TOOL_SCHEMAS /
-     TOOL_REGISTRY (backend.tools) — no graph change.
+    fast -> supervisor Flash @ high, worker Flash @ low
+    pro  -> supervisor Pro   @ max,  worker Flash @ high
 
-  2. Memory          -> add a `summary` field + compaction node (MEMORY_DESIGN
-     §4-5) and a checkpointer (InMemorySaver, later RedisSaver).
+The shape mirrors the cohort supervisor/specialist graph, adapted to one
+retrieval worker:
+
+    supervisor --(route)--> worker --> supervisor --> ... --> synthesize
+
+One node does one job, and every model call goes through `backend.llm`.
 """
 
 import inspect
 import json
+import operator
 from typing import Annotated, TypedDict
 
-from langchain_core.messages import AIMessage, BaseMessage, SystemMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
 from langgraph.config import get_stream_writer
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 
 from backend import llm
-from backend.config import get_settings
+from backend.config import SuperSubTier, get_settings
 from backend.tools import TOOL_REGISTRY, TOOL_SCHEMAS
 
 
 class AgentState(TypedDict):
     """Graph state.
 
-    `messages` is the conversation (an Annotated list so LangGraph merges
-    node outputs with `add_messages`). `model` is a per-request override of the
-    config default — DECISIONS M3 (session-scoped runtime override).
-    `vehicle_id` scopes the conversation to one vehicle (SPECIFICATION §6);
-    retrieval reads it once real Qdrant search lands (Task 4).
+    `messages` is the conversation (an Annotated list so LangGraph merges node
+    outputs with `add_messages`). `model` is a per-request override of the
+    config default — DECISIONS M3 (session-scoped runtime override); it selects
+    the tier. `gathered` holds one findings block per worker hop, so the
+    supervisor sees what the worker has found. `next` is the supervisor's
+    routing decision, and `hops` counts worker runs (the hop cap guard).
+    `vehicle_id` scopes the conversation to one vehicle (SPECIFICATION §6).
     """
 
     messages: Annotated[list[BaseMessage], add_messages]
     model: str
     vehicle_id: str | None
     stream: bool
+    gathered: Annotated[list[str], operator.add]
+    next: str
+    hops: int
 
 
 _ROLE_MAP = {
@@ -104,86 +120,32 @@ def _tool_calls_from_reply(reply: dict) -> list[dict]:
     return tool_calls
 
 
-def chat_node(state: AgentState) -> dict:
-    """Call OpenRouter (with tool schemas) and append the assistant's reply."""
-    if state.get("stream"):
-        return _streamed_chat_node(state)
-
-    reply = llm.chat(
-        _serialize(_with_system_prompt(state["messages"])),
-        state["model"],
-        tools=TOOL_SCHEMAS,
-    )
-    return {
-        "messages": [
-            AIMessage(
-                content=reply.get("content") or "",
-                tool_calls=_tool_calls_from_reply(reply),
+def _question(state: AgentState) -> str:
+    """The user's question — the first human message."""
+    for message in state["messages"]:
+        if getattr(message, "type", None) != "human":
+            continue
+        content = message.content
+        if isinstance(content, list):
+            return "".join(
+                block.get("text", "") if isinstance(block, dict) else str(block)
+                for block in content
             )
-        ]
-    }
+        return content
+    return ""
 
 
-def _streamed_chat_node(state: AgentState) -> dict:
-    """Stream the assistant reply to the client and append the full message.
-
-    Content deltas are emitted through the stream writer (consumed by
-    ``POST /chat/stream`` via ``stream_mode="custom"``). Tool-call fragments
-    stream across several deltas, so they are reassembled index by index.
-    """
-    writer = get_stream_writer()
-    content_parts: list[str] = []
-    tool_slots: dict[int, dict] = {}
-
-    for delta in llm.stream_chat(
-        _serialize(_with_system_prompt(state["messages"])),
-        state["model"],
-        tools=TOOL_SCHEMAS,
-    ):
-        if delta.get("content"):
-            content_parts.append(delta["content"])
-            writer({"type": "token", "content": delta["content"]})
-        for call in delta.get("tool_calls") or []:
-            slot = tool_slots.setdefault(
-                call.get("index", 0), {"id": "", "name": "", "arguments": ""}
-            )
-            if call.get("id"):
-                slot["id"] = call["id"]
-            function = call.get("function") or {}
-            if function.get("name"):
-                slot["name"] = function["name"]
-            if function.get("arguments"):
-                slot["arguments"] += function["arguments"]
-
-    tool_calls = []
-    for index in sorted(tool_slots):
-        slot = tool_slots[index]
-        try:
-            args = json.loads(slot["arguments"] or "{}")
-        except (json.JSONDecodeError, TypeError):
-            args = {}
-        tool_calls.append({"id": slot["id"], "name": slot["name"], "args": args})
-
-    return {
-        "messages": [
-            AIMessage(
-                content="".join(content_parts),
-                tool_calls=tool_calls,
-            )
-        ]
-    }
-
-
-def tool_node(state: AgentState) -> dict:
-    """Run the pending tool calls, scoping them to the state's vehicle.
+def _execute_tool_calls(
+    tool_calls: list[dict], vehicle_id: str | None
+) -> list[ToolMessage]:
+    """Run pending tool calls, scoping them to the conversation's vehicle.
 
     The model cannot know the vehicle id, so the state's value is merged into
     every tool argument and overrides any value the model supplied. Tools that
     do not take a ``vehicle_id`` parameter (calculator) are left alone.
     """
-    last = state["messages"][-1]
     tool_messages: list[ToolMessage] = []
-    for call in last.tool_calls:
+    for call in tool_calls:
         fn = TOOL_REGISTRY.get(call["name"])
         if fn is None:
             output = f"Error: unknown tool '{call['name']}'"
@@ -191,29 +153,164 @@ def tool_node(state: AgentState) -> dict:
             try:
                 args = dict(call["args"])
                 if "vehicle_id" in inspect.signature(fn).parameters:
-                    args["vehicle_id"] = state["vehicle_id"]
+                    args["vehicle_id"] = vehicle_id
                 output = fn(**args)
             except TypeError as exc:
                 output = f"Error: bad arguments for '{call['name']}': {exc}"
         tool_messages.append(
             ToolMessage(content=output, name=call["name"], tool_call_id=call["id"])
         )
-    return {"messages": tool_messages}
+    return tool_messages
 
 
-def _route(state: AgentState) -> str:
-    """After `chat`, go to `tools` if the model asked for one, else finish."""
-    last = state["messages"][-1]
-    return "tools" if getattr(last, "tool_calls", None) else END
+# The supervisor plans and writes the final answer; this prompt is its routing
+# instruction. The worker and synthesize nodes keep the grounding system prompt.
+_SUPERVISOR_SYSTEM = (
+    "You are the supervisor of a grounded repair-manual assistant. Read the "
+    "question and the worker's findings, then decide the next step. Reply with "
+    "one word: 'worker' to keep searching the manual, or 'synthesize' when the "
+    "findings are enough to write the final answer."
+)
+
+
+def supervisor_node(state: AgentState) -> dict:
+    """Decide whether the worker keeps searching, or the graph synthesizes."""
+    settings = get_settings()
+    tier = settings.tier_for_model(state["model"])
+    gathered = state.get("gathered") or []
+    hops = state.get("hops", 0)
+
+    # Gather at least once, and force synthesis at the hop cap so a confused
+    # supervisor cannot loop forever.
+    if not gathered:
+        return {"next": "worker", "hops": hops}
+    if hops >= settings.agent_max_hops:
+        return {"next": "synthesize", "hops": hops}
+
+    reply = llm.chat(
+        [
+            {"role": "system", "content": _SUPERVISOR_SYSTEM},
+            {
+                "role": "user",
+                "content": (
+                    f"Question: {_question(state)}\n\n"
+                    f"Findings so far:\n" + "\n\n".join(gathered) + "\n\n"
+                    "Reply with one word: worker or synthesize."
+                ),
+            },
+        ],
+        tier.supervisor_model,
+        params={"reasoning_effort": tier.supervisor_effort},
+    )
+    choice = (reply.get("content") or "").strip().lower()
+    return {"next": "worker" if choice.startswith("worker") else "synthesize", "hops": hops}
+
+
+def worker_node(state: AgentState) -> dict:
+    """Run the retrieval tool loop and record what the worker found.
+
+    Offers the tool schemas to the tier's sub model and runs the calculator and
+    the three RAG tools, injecting the state's ``vehicle_id``. The findings are
+    the model's last text turn, once it stops asking for tools.
+    """
+    settings = get_settings()
+    tier = settings.tier_for_model(state["model"])
+    gathered = state.get("gathered") or []
+
+    user = _question(state)
+    if gathered:
+        user = "Findings so far:\n" + "\n\n".join(gathered) + "\n\nQuestion: " + user
+    messages = _with_system_prompt([HumanMessage(content=user)])
+
+    findings = ""
+    for _ in range(settings.agent_max_tool_steps):
+        reply = llm.chat(
+            _serialize(messages),
+            tier.sub_model,
+            params={"reasoning_effort": tier.sub_effort},
+            tools=TOOL_SCHEMAS,
+        )
+        message = AIMessage(
+            content=reply.get("content") or "",
+            tool_calls=_tool_calls_from_reply(reply),
+        )
+        messages.append(message)
+        findings = message.content or findings
+        if not message.tool_calls:
+            break
+        messages.extend(
+            _execute_tool_calls(message.tool_calls, state.get("vehicle_id"))
+        )
+
+    return {"gathered": [findings], "hops": state.get("hops", 0) + 1}
+
+
+def synthesize_node(state: AgentState) -> dict:
+    """Write the final markdown answer with `[Page N]` citations."""
+    tier = get_settings().tier_for_model(state["model"])
+    findings = "\n\n".join(state.get("gathered") or []) or "(the worker found nothing)"
+    messages = _with_system_prompt(
+        [
+            HumanMessage(
+                content=(
+                    f"Question: {_question(state)}\n\n"
+                    f"Findings from the manual:\n{findings}\n\n"
+                    "Write the final answer."
+                )
+            )
+        ]
+    )
+
+    if state.get("stream"):
+        answer = _stream_answer(messages, tier)
+    else:
+        reply = llm.chat(
+            _serialize(messages),
+            tier.supervisor_model,
+            params={"reasoning_effort": tier.supervisor_effort},
+        )
+        answer = reply.get("content") or ""
+    return {"messages": [AIMessage(content=answer)]}
+
+
+def _stream_answer(messages: list[BaseMessage], tier: SuperSubTier) -> str:
+    """Stream the final answer to the client, returning the assembled text.
+
+    Each content delta goes through the custom stream writer, consumed by
+    ``POST /chat/stream`` via ``stream_mode="custom"``. Supervisor and worker
+    reasoning is internal and is not streamed.
+    """
+    writer = get_stream_writer()
+    parts: list[str] = []
+    for delta in llm.stream_chat(
+        _serialize(messages),
+        tier.supervisor_model,
+        params={"reasoning_effort": tier.supervisor_effort},
+    ):
+        if delta.get("content"):
+            parts.append(delta["content"])
+            writer({"type": "token", "content": delta["content"]})
+    return "".join(parts)
+
+
+def _route_supervisor(state: AgentState) -> str:
+    """After `supervisor`, go to `worker` or `synthesize`."""
+    return "worker" if state.get("next") == "worker" else "synthesize"
 
 
 def build_graph():
     graph = StateGraph(AgentState)
-    graph.add_node("chat", chat_node)
-    graph.add_node("tools", tool_node)
-    graph.add_edge(START, "chat")
-    graph.add_conditional_edges("chat", _route, {"tools": "tools", END: END})
-    graph.add_edge("tools", "chat")
+    graph.add_node("supervisor", supervisor_node)
+    graph.add_node("worker", worker_node)
+    graph.add_node("synthesize", synthesize_node)
+    graph.add_edge(START, "supervisor")
+    graph.add_conditional_edges(
+        "supervisor",
+        _route_supervisor,
+        {"worker": "worker", "synthesize": "synthesize"},
+    )
+    graph.add_edge("worker", "supervisor")
+    graph.add_edge("synthesize", END)
     return graph.compile()
 
 

@@ -47,7 +47,19 @@
   gets enable/disable switches and a two-step delete. Chunk point ids derive
   from the manual id, so point ids stay unique across manuals indexed into one
   collection.
-- Tool calling: the graph runs a `chat -> tools -> chat` loop. The
+- Agent graph: the graph is a supervisor, worker, and synthesize topology
+  (DECISIONS A1). The `supervisor` node reads the question and what the worker
+  has found, and decides whether the worker keeps searching or the graph
+  synthesizes. The `worker` node runs the tool loop. The `synthesize` node
+  writes the final markdown answer with `[Page N]` citations. A hop cap
+  (`AGENT_MAX_HOPS`, default 4) forces synthesis when the supervisor has not
+  stopped; a second cap (`AGENT_MAX_TOOL_STEPS`, default 4) bounds the worker's
+  tool loop. The model the user picked selects a tier (DECISIONS M1). Flash
+  picks `fast`: the supervisor runs Flash at high reasoning effort, the worker
+  runs Flash at low. Pro picks `pro`: the supervisor runs Pro at max reasoning
+  effort, the worker runs Flash at high. The tier table is `SUPER_SUB_TIERS`
+  (JSON), and the slug-to-tier map is `SUPER_SUB_SLUG_TIERS`.
+- Tool calling: the `worker` node runs a tool loop. The
   `calculator` and three RAG tools (`search_manual`, `extract_specs`,
   `get_page_text`) are in `backend/tools.py`. The RAG tools use real retrieval
   (IMPLEMENTATION Task 4). `search_manual` calls `retrieval.search` and
@@ -72,8 +84,9 @@
 - Backend services (Task 5): `POST /chat/stream` streams the answer from the
   graph as SSE JSON chunks. A chunk is `{"type": "token"}`, and the last one
   is `{"type": "done"}`. The stream runs through `llm.stream_chat` and a
-  `stream` state flag that routes `chat_node` through a streaming path. The
-  graph shape and the plain `/chat` reply stay unchanged.
+  `stream` state flag that sends the `synthesize` node through a streaming
+  path; the supervisor and worker reasoning is internal and is not streamed.
+  The plain `/chat` reply is unchanged.
   `GET /manuals/{id}/thumbnails/{page}` renders one physical page of the
   stored `source.pdf` to a PNG at `THUMBNAIL_DPI` (default 150) for the
   raster fallback of the viewer.
@@ -144,17 +157,16 @@
 - The RAG pipeline, in phases. The ingest stage (Task 1), chunking and
   indexing (Task 3), and real retrieval behind the tools (Task 4) are done.
   The chunk eval is next. The prototype runs against the 56-page `pl.pdf`.
-  The graph stays a flat loop between the chat node and the tools node, and
-  the answer stays markdown text with `[Page N]` citations. The ratified
+  The graph runs the supervisor, worker, and synthesize topology, and the
+  answer stays markdown text with `[Page N]` citations. The ratified
   values are in `DECISIONS.md` (D9 to D13, R3 to R9, A1 to A3, T1 to T3).
 - The chunk eval: 16 questions live in `backend/tests/eval_questions.json`.
   Each question names a known answer page and the expected answer, from the
   56-page `pl.pdf`. Nothing runs or scores the set yet. Run and score the
   set. The scores test recall, citation precision, the chunk size (DECISIONS
   D10), and the overlap (D11).
-- Future work (DECISIONS Deferred): the Supervisor and Synthesizer graph, the
-  structured `AgentAnswer`, the spec ledger, the scanned-manual OCR path, and
-  the Docker work.
+- Future work (DECISIONS Deferred): the structured `AgentAnswer`, the
+  spec ledger, the scanned-manual OCR path, and the Docker work.
 - Memory: the summary field, the compaction node, and a checkpointer per
   `MEMORY_DESIGN.md`.
 - The scanned-manual OCR path. Deferred past MVP per DECISIONS S1.
