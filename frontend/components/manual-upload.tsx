@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import { UploadIcon } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { LoaderCircleIcon, UploadIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,6 +37,8 @@ export function ManualUpload() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [manuals, setManuals] = useState<Manual[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const submittingRef = useRef(false);
   const anyProcessing = manuals.some((manual) => manual.status === "processing");
 
   useEffect(() => {
@@ -89,8 +91,10 @@ export function ManualUpload() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (submittingRef.current) return;
     const trimmed = displayName.trim();
     if (!vehicleId || !file || !trimmed) return;
+    submittingRef.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -108,6 +112,7 @@ export function ManualUpload() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
+      submittingRef.current = false;
       setBusy(false);
     }
   }
@@ -137,49 +142,76 @@ export function ManualUpload() {
             <DialogTitle>Upload a manual</DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={submit} className="flex flex-col gap-3">
-            <VehiclePicker
-              value={vehicleId}
-              onValueChange={(id) => setVehicleId(id)}
-              triggerClassName="w-full text-xs"
-            />
-            <input
-              type="file"
-              accept="application/pdf"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-            />
-            <Input
-              value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
-              placeholder="Manual name, e.g. Rhino 700 service manual"
-            />
-            <Textarea
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Description (optional)"
-              className="min-h-12"
-            />
-
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            {done && (
-              <p className="text-sm text-muted-foreground">
-                Manual uploaded.
+          {busy ? (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <LoaderCircleIcon className="text-primary size-6 animate-spin" />
+              <p className="text-sm">
+                Uploading {file?.name ?? "manual"}…
               </p>
-            )}
+              <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
+                <div className="bg-primary h-full w-1/2 animate-pulse rounded-full" />
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={submit} className="flex flex-col gap-3">
+              <VehiclePicker
+                value={vehicleId}
+                onValueChange={(id) => setVehicleId(id)}
+                triggerClassName="w-full text-xs"
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Browse…
+                </Button>
+                <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs">
+                  {file ? file.name : "No file selected"}
+                </span>
+              </div>
+              <Input
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+                placeholder="Manual name, e.g. Rhino 700 service manual"
+              />
+              <Textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Description (optional)"
+                className="min-h-12"
+              />
 
-            <DialogFooter>
-              <Button
-                type="submit"
-                disabled={!vehicleId || !file || !displayName.trim() || busy}
-              >
-                Upload
-              </Button>
-            </DialogFooter>
-          </form>
+              {error && <p className="text-destructive text-sm">{error}</p>}
+              {done && (
+                <p className="text-muted-foreground text-sm">
+                  Manual uploaded.
+                </p>
+              )}
 
-          {manuals.length > 0 && (
+              <DialogFooter>
+                <Button
+                  type="submit"
+                  disabled={!vehicleId || !file || !displayName.trim()}
+                >
+                  Upload
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+
+          {!busy && manuals.length > 0 && (
             <div className="flex flex-col gap-1.5">
-              <p className="text-xs font-medium text-muted-foreground">
+              <p className="text-muted-foreground text-xs font-medium">
                 Manuals for this vehicle
               </p>
               <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto">
@@ -189,7 +221,7 @@ export function ManualUpload() {
                     className="flex items-center justify-between gap-2 text-sm"
                   >
                     <span className="truncate">{manual.display_name}</span>
-                    <span className="shrink-0 text-muted-foreground">
+                    <span className="text-muted-foreground shrink-0">
                       {statusText(manual)}
                     </span>
                   </li>
