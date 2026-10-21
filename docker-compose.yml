@@ -1,6 +1,6 @@
 # ManualChat — two services, started one-per-terminal (never `docker compose up`
-# all-in-one, never detached). The only secret is OPENROUTER_API_KEY, passed
-# through from the host shell; it is never stored in the repo.
+# all-in-one, never detached). The secrets OPENROUTER_API_KEY and
+# LANGSMITH_API_KEY are passed through from the host shell; never stored here.
 
 services:
   backend:
@@ -10,6 +10,12 @@ services:
     environment:
       # Passed through from the host shell. Never hardcoded or committed.
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      # LangSmith tracing (MVP+1 monitoring). Optional; set LANGSMITH_TRACING
+      # and LANGSMITH_API_KEY in the host shell to record runs (backend/config.py).
+      - LANGSMITH_TRACING=${LANGSMITH_TRACING:-}
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
+      - LANGSMITH_PROJECT=${LANGSMITH_PROJECT:-manualchat}
+      - LANGSMITH_ENDPOINT=${LANGSMITH_ENDPOINT:-https://api.smith.langchain.com}
       # Manuals and vehicles persist on the host (DECISIONS U1); see the mounts.
       - MANUALS_DIR=/data/manuals
       - VEHICLES_DIR=/data/vehicles

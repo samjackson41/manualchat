@@ -168,6 +168,12 @@
   workspace agent files are local only.
   `.github/workflows/ci.yml` and `.github/PULL_REQUEST_TEMPLATE.md` stay
   tracked in this repo.
+- Monitoring (MVP+1): LangSmith traces every OpenRouter model call
+  (`backend/tracing.py`, wired into `backend/llm.py`). One `llm` run per call
+  records the model slug, the token usage, the wall-clock latency, and any
+  error. Tracing is off until `LANGSMITH_TRACING=true` and
+  `LANGSMITH_API_KEY` are both set; a failed post is swallowed, so an
+  unreachable LangSmith never breaks the chat (DECISIONS O1).
 
 ## What is left
 

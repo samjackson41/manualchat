@@ -239,6 +239,18 @@ Source: https://code.visualstudio.com/docs/agent-customization/custom-instructio
 https://marketplace.visualstudio.com/items?itemName=husamettinulutas.openrouter-maestro
 Last-checked: 2026-10-13
 
+## Monitoring (observability)
+
+| ID | Decision | Default | Configuration key |
+|---|---|---|---|
+| O1 | LangSmith traces every OpenRouter model call (MVP+1). Each run has type `llm` and records the model slug, token usage (`prompt_tokens`, `completion_tokens`, `total_tokens`), wall-clock latency from its start and end times, and any error. A failed post is swallowed, so an unreachable LangSmith never breaks the chat. Tracing turns on only while `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` are both set. | off | `langsmith_tracing` (bool), `langsmith_api_key` (secret), `langsmith_project` (`manualchat`), `langsmith_endpoint` (`https://api.smith.langchain.com`) |
+
+The trace layer (`backend/tracing.py`) is decoupled from the wrapper. `backend/llm.py` records one run per call and never lets recording fail the call.
+Token usage comes from the OpenRouter `usage` object; the stream path reads it from the final usage chunk.
+
+Source: https://docs.smith.langchain.com/ and https://openrouter.ai/docs/api-reference/streaming
+Last-checked: 2026-10-20
+
 ## Deferred and undecided
 
 - The OCR-engine head-to-head is deferred with the whole scanned and FJ40 path (S1).

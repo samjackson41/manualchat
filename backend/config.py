@@ -18,6 +18,10 @@ env vars case-insensitively, so:
     agent_max_hops          <- AGENT_MAX_HOPS
     agent_max_tool_steps    <- AGENT_MAX_TOOL_STEPS
     openrouter_api_key      <- OPENROUTER_API_KEY
+    langsmith_tracing       <- LANGSMITH_TRACING     (default false)
+    langsmith_api_key       <- LANGSMITH_API_KEY     (secret, env only)
+    langsmith_project       <- LANGSMITH_PROJECT
+    langsmith_endpoint      <- LANGSMITH_ENDPOINT
     ingest_chunk_tokens     <- INGEST_CHUNK_TOKENS
     qdrant_url              <- QDRANT_URL      (empty = local mode)
     retrieval_embed_model   <- RETRIEVAL_EMBED_MODEL
@@ -222,6 +226,16 @@ class Settings(BaseSettings):
     eval_vehicle_id: str = ""
     # CI gate on citation precision (Task 7 needs more than 0.9).
     eval_citation_precision_min: float = 0.9
+
+    # --- LangSmith tracing (MVP+1 monitoring) ---
+    # Off until both LANGSMITH_TRACING=true and LANGSMITH_API_KEY are set.
+    # backend/tracing.py records one LLM run per OpenRouter call with the
+    # token usage, the wall-clock latency, and any error. A failed post is
+    # swallowed, so an unreachable LangSmith never breaks the chat.
+    langsmith_tracing: bool = False
+    langsmith_api_key: str = ""
+    langsmith_project: str = "manualchat"
+    langsmith_endpoint: str = "https://api.smith.langchain.com"
 
     @field_validator("model_options", mode="before")
     @classmethod

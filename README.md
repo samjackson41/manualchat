@@ -18,6 +18,7 @@ manualchat/
   backend/
     config.py        # env-only configuration through pydantic-settings
     llm.py           # the OpenRouter wrapper (chat, stream_chat, tool calls)
+    tracing.py       # LangSmith runs per model call: tokens, latency, errors
     ingest.py        # Docling ingest: page text, tables, and the ingest record
     retrieval.py     # chunking, embedding, and search over the Qdrant index
     thumbnails.py    # PNG page thumbnails for the viewer raster fallback
@@ -117,13 +118,14 @@ curl http://localhost:8000/models
 
 ## Secrets
 
-`OPENROUTER_API_KEY` is the only secret. `docker-compose.yml` passes it
-through as an environment variable
-(`OPENROUTER_API_KEY=${OPENROUTER_API_KEY}`). The key never enters the
-repository. If the key is missing, `POST /chat` fails fast with a clear
-error, while `/health` and `/models` still respond.
+`OPENROUTER_API_KEY` and `LANGSMITH_API_KEY` are the only secrets.
+`docker-compose.yml` passes them through from the host shell. They never enter
+the repository. `LANGSMITH_API_KEY` is optional: it turns on LangSmith tracing
+only while `LANGSMITH_TRACING` is also set (see Configuration). If
+`OPENROUTER_API_KEY` is missing, `POST /chat` fails fast with a clear error,
+while `/health` and `/models` still respond.
 
-Never print the key, and never commit it.
+Never print a key, and never commit one.
 
 ## Configuration
 
@@ -178,6 +180,10 @@ OpenRouter request entirely.
 | RETRIEVAL_RERANK_MODEL | `cross-encoder/ms-marco-MiniLM-L-6-v2` | DECISIONS R7. The reranker. |
 | RETRIEVAL_CANDIDATE_K | `50` | DECISIONS R8. Chunks fetched before the rerank. |
 | RETRIEVAL_TOP_N | `5` | DECISIONS R9. Chunks returned to the agent. |
+| LANGSMITH_TRACING | `false` | DECISIONS O1. Set `true` with `LANGSMITH_API_KEY` to record one LangSmith `llm` run per OpenRouter call. |
+| LANGSMITH_API_KEY | _(empty)_ | DECISIONS O1. The LangSmith API key. A secret; never commit it. |
+| LANGSMITH_PROJECT | `manualchat` | DECISIONS O1. The LangSmith project that receives the runs. |
+| LANGSMITH_ENDPOINT | `https://api.smith.langchain.com` | DECISIONS O1. The LangSmith API endpoint. |
 
 ### Frontend
 
