@@ -47,7 +47,22 @@
   gets enable/disable switches and a two-step delete. Chunk point ids derive
   from the manual id, so point ids stay unique across manuals indexed into one
   collection.
-- Tool calling: the graph runs a `chat -> tools -> chat` loop. The
+- Agent graph: the graph is a supervisor, worker, and synthesize topology
+  (DECISIONS A1). The `supervisor` node reads the question and what the worker
+  has found, and decides whether the worker keeps searching or the graph
+  synthesizes. The `worker` node runs the tool loop. The `synthesize` node
+  writes the final markdown answer with `[Page N]` citations. A hop cap
+  (`AGENT_MAX_HOPS`, default 4) forces synthesis when the supervisor has not
+  stopped; a second cap (`AGENT_MAX_TOOL_STEPS`, default 4) bounds the worker's
+  tool loop. The model the user picked selects a tier (DECISIONS M1). Flash
+  picks `fast`: the working model runs Flash at low reasoning effort for the
+  routing check and the tool loop, and the answer is written by Flash at high
+  effort. Pro picks `pro`: the working model stays Flash at low effort, and the
+  answer is written by Pro at high effort. The two tiers differ only in the
+  authoring model, so the expensive model is spent only on the answer. The tier
+  table is `SUPER_SUB_TIERS`
+  (JSON), and the slug-to-tier map is `SUPER_SUB_SLUG_TIERS`.
+- Tool calling: the `worker` node runs a tool loop. The
   `calculator` and three RAG tools (`search_manual`, `extract_specs`,
   `get_page_text`) are in `backend/tools.py`. The RAG tools use real retrieval
   (IMPLEMENTATION Task 4). `search_manual` calls `retrieval.search` and
@@ -72,16 +87,36 @@
 - Backend services (Task 5): `POST /chat/stream` streams the answer from the
   graph as SSE JSON chunks. A chunk is `{"type": "token"}`, and the last one
   is `{"type": "done"}`. The stream runs through `llm.stream_chat` and a
-  `stream` state flag that routes `chat_node` through a streaming path. The
-  graph shape and the plain `/chat` reply stay unchanged.
+  `stream` state flag that sends the `synthesize` node through a streaming
+  path; the supervisor and worker reasoning is internal and is not streamed.
+  The plain `/chat` reply is unchanged.
   `GET /manuals/{id}/thumbnails/{page}` renders one physical page of the
   stored `source.pdf` to a PNG at `THUMBNAIL_DPI` (default 150) for the
   raster fallback of the viewer.
+- Automated evals (Task 7): `backend/eval/` scores the 16-question set in
+  `backend/tests/eval_questions.json` with an LLM judge (DECISIONS E1 to E6).
+  `backend/eval/dataset.py` loads the set, `backend/eval/judge.py` scores one
+  markdown answer against its category rubric, and `backend/eval/run.py` runs
+  every case through the agent and reports the result. The rubric checks a
+  spec value with its unit and qualifier, a procedure in substance and order,
+  and an out-of-scope answer that must invent nothing. Citation precision is
+  counted in code from the `[Page N]` markers, not by the judge. The judge
+  model is distinct from the model under test (E1). The runner prints the
+  pass rate overall and per category, the citation precision, and the
+  fabricated count, and it gates on the pass rate, the citation precision,
+  and a zero fabricated count. It is a live-LLM run, so it stays out of the
+  default CI (T4). Run it from the repo root, against an ingested manual:
+  `EVAL_VEHICLE_ID=<id> uv run --project backend python -m backend.eval.run`.
+- Eval result on the 56-page `pl.pdf` (vehicle `demo_vehicle`): 16/16 passed
+  (100%), citation precision 0.95 to 1.00 across runs, and 0 fabricated
+  out-of-scope answers. The agent runs at the provider's default temperature,
+  so the score moves between runs. The bar is more than 90% precision and 0%
+  fabricated (Task 7).
 - Tests: `backend/tests/` holds unit tests for the API, the configuration,
   ingest,
   retrieval, the slicer, the manual PDF endpoint, the thumbnails, the tools,
-  and the stream. The tests inject fakes per DECISIONS T1, so the default run
-  downloads no model.
+  the stream, and the eval. The tests inject fakes per DECISIONS T1, so the
+  default run downloads no model.
 - Frontend: Next.js chat built on assistant-ui. The styled Thread shows
   messages, markdown, streaming, and regeneration. A thread-list sidebar keeps
   chat history in localStorage across reloads. The chat adapter in
@@ -138,23 +173,27 @@
   workspace agent files are local only.
   `.github/workflows/ci.yml` and `.github/PULL_REQUEST_TEMPLATE.md` stay
   tracked in this repo.
+- Monitoring (MVP+1): LangSmith traces every OpenRouter model call
+  (`backend/tracing.py`, wired into `backend/llm.py`). One `llm` run per call
+  records the model slug, the token usage, the wall-clock latency, and any
+  error. Tracing is off until `LANGSMITH_TRACING=true` and
+  `LANGSMITH_API_KEY` are both set; a failed post is swallowed, so an
+  unreachable LangSmith never breaks the chat (DECISIONS O1).
 
 ## What is left
 
 - The RAG pipeline, in phases. The ingest stage (Task 1), chunking and
-  indexing (Task 3), and real retrieval behind the tools (Task 4) are done.
-  The chunk eval is next. The prototype runs against the 56-page `pl.pdf`.
-  The graph stays a flat loop between the chat node and the tools node, and
-  the answer stays markdown text with `[Page N]` citations. The ratified
-  values are in `DECISIONS.md` (D9 to D13, R3 to R9, A1 to A3, T1 to T3).
-- The chunk eval: 16 questions live in `backend/tests/eval_questions.json`.
-  Each question names a known answer page and the expected answer, from the
-  56-page `pl.pdf`. Nothing runs or scores the set yet. Run and score the
-  set. The scores test recall, citation precision, the chunk size (DECISIONS
-  D10), and the overlap (D11).
-- Future work (DECISIONS Deferred): the Supervisor and Synthesizer graph, the
-  structured `AgentAnswer`, the spec ledger, the scanned-manual OCR path, and
-  the Docker work.
+  indexing (Task 3), real retrieval behind the tools (Task 4), and the
+  automated eval (Task 7) are done. The prototype runs against the 56-page
+  `pl.pdf`. The graph runs the supervisor, worker, and synthesize topology,
+  and the answer stays markdown text with `[Page N]` citations. The ratified
+  values are in `DECISIONS.md` (D9 to D13, R3 to R9, A1 to A3, E1 to E6,
+  T1 to T4).
+- The chunk-size and overlap sweep: the eval scores one chunk configuration.
+  A later run scores other sizes (DECISIONS D10) and overlaps (D11) and
+  compares them.
+- Future work (DECISIONS Deferred): the structured `AgentAnswer`, the
+  spec ledger, the scanned-manual OCR path, and the Docker work.
 - Memory: the summary field, the compaction node, and a checkpointer per
   `MEMORY_DESIGN.md`.
 - The scanned-manual OCR path. Deferred past MVP per DECISIONS S1.

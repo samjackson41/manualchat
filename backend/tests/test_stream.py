@@ -1,8 +1,8 @@
 """End-to-end tests for the SSE chat stream (IMPLEMENTATION Task 5).
 
 These go through the real FastAPI app and the real LangGraph graph. Only the
-OpenRouter boundary is stubbed — the streaming node calls `llm.stream_chat`, so
-that is the seam these tests replace.
+OpenRouter boundary is stubbed: `llm.chat` for the supervisor and worker, and
+`llm.stream_chat` for the `synthesize` node, which is the only streamed node.
 """
 
 import json
@@ -31,11 +31,28 @@ def _events(resp) -> list[dict]:
     ]
 
 
+def _supervisor_chat(worker_reply="draft"):
+    """A stand-in ``llm.chat`` for the supervisor and the worker nodes.
+
+    The supervisor is the only caller whose first message is not the grounding
+    system prompt; it always chooses synthesis so the answer can be streamed.
+    """
+    grounding = get_settings().agent_system_prompt
+
+    def fake_chat(messages, model, params=None, tools=None):
+        if messages[0]["content"] != grounding:
+            return {"role": "assistant", "content": "synthesize", "tool_calls": None}
+        return {"role": "assistant", "content": worker_reply, "tool_calls": None}
+
+    return fake_chat
+
+
 def test_chat_stream_emits_tokens_then_done(monkeypatch):
     def fake_stream_chat(*args, **kwargs):
         yield {"content": "Hello", "tool_calls": None}
         yield {"content": " world.", "tool_calls": None}
 
+    monkeypatch.setattr(llm, "chat", _supervisor_chat())
     monkeypatch.setattr(llm, "stream_chat", fake_stream_chat)
     client = TestClient(app)
 
@@ -53,32 +70,37 @@ def test_chat_stream_emits_tokens_then_done(monkeypatch):
 
 
 def test_chat_stream_runs_the_tool_loop(monkeypatch):
-    """A first streamed turn that asks for the calculator still resolves."""
-    turns = iter(
+    """A worker turn that asks for the calculator still resolves, then streams."""
+    grounding = get_settings().agent_system_prompt
+    worker_turns = iter(
         [
-            [
-                {
-                    "content": None,
-                    "tool_calls": [
-                        {
-                            "index": 0,
-                            "id": "call_1",
-                            "type": "function",
-                            "function": {
-                                "name": "calculator",
-                                "arguments": '{"expression": "3*7+2"}',
-                            },
-                        }
-                    ],
-                }
-            ],
-            [{"content": "3*7+2 is 23.", "tool_calls": None}],
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {
+                            "name": "calculator",
+                            "arguments": '{"expression": "3*7+2"}',
+                        },
+                    }
+                ],
+            },
+            {"role": "assistant", "content": "3*7+2 is 23.", "tool_calls": None},
         ]
     )
 
-    def fake_stream_chat(*args, **kwargs):
-        yield from next(turns)
+    def fake_chat(messages, model, params=None, tools=None):
+        if messages[0]["content"] != grounding:
+            return {"role": "assistant", "content": "synthesize", "tool_calls": None}
+        return next(worker_turns)
 
+    def fake_stream_chat(*args, **kwargs):
+        yield {"content": "3*7+2 is 23.", "tool_calls": None}
+
+    monkeypatch.setattr(llm, "chat", fake_chat)
     monkeypatch.setattr(llm, "stream_chat", fake_stream_chat)
     client = TestClient(app)
 

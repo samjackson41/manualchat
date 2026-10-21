@@ -68,18 +68,39 @@ Last-checked: 2026-10-15
 
 | ID | Decision | Value | Configuration key |
 |---|---|---|---|
-| M1 | One active model drives every agent process: planning, synthesis, summarization, and the eval judge | DeepSeek Flash | `models.default` |
+| M1 | The selected model sets the agent's tier. A tier fixes a cheap working model that runs the tool loop and the supervisor's routing check, and a strong authoring model that writes the final answer. Flash selects `fast`; Pro selects `pro`; a slug that matches neither falls back to `fast`. | see the tier table below | `models.super_sub_tiers`, `models.super_sub_slug_tiers`, `models.super_sub_default_tier` |
 | M2 | The ordered model list for the UI selector | DeepSeek Flash, then DeepSeek Pro | `models.options` |
 | M3 | The UI selection is a runtime override of `models.default`, scoped to the session and held in memory | session override | (none yet) |
+
+| Tier | Trigger slug | Working model (`sub_model`): routing and tools | Authoring model (`supervisor_model`): the answer |
+|---|---|---|---|
+| `fast` | `~deepseek/deepseek-flash-latest` | Flash, `reasoning_effort=low` | Flash, `reasoning_effort=high` |
+| `pro` | `~deepseek/deepseek-pro-latest` | Flash, `reasoning_effort=low` | Pro, `reasoning_effort=high` |
+
+The tier table lives in `SUPER_SUB_TIERS` as JSON, with code defaults equal to the table above.
+The slug-to-tier map lives in `SUPER_SUB_SLUG_TIERS`.
+The `fast` tier is "flash low thinking for the working model, flash high thinking for the answer".
+The `pro` tier is "flash low thinking for the working model, pro high thinking for the answer".
+The two tiers differ only in the authoring model, so the expensive model is spent only on the answer.
+
+A routing check is a two-way decision, so it runs on the working model.
+Measured against OpenRouter, Pro at `max` cost $0.00062 to $0.00087 and took 3.4 to 7.7 seconds per routing call.
+Flash at `low` cost $0.00002 to $0.00005 and took 0.3 to 1.4 seconds, and chose the same route.
+Pro output costs $8.00 per million tokens against Flash at $0.50, so the authoring model is reserved for the answer.
+`max` did not produce more reasoning tokens than `high`; it is a budget cap, not a guarantee of more thinking.
+
+The working model keeps `low` effort, never `none`.
+At `none` the model skipped the calculator and answered arithmetic from its own knowledge, and returned a wrong result once in four runs.
+`none` also overrides the model's own default: OpenRouter reports Flash as `default_enabled: true` with `default_effort: "high"`.
 
 The `models.options` list can grow later with no schema or flow change.
 OpenRouter serves the DeepSeek `-latest` aliases as prerelease, so each slug carries a `~` prefix.
 DeepSeek Pro is `~deepseek/deepseek-pro-latest`.
 DeepSeek Flash is `~deepseek/deepseek-flash-latest`.
-Both models run with medium reasoning effort (`models.reasoning_effort = "medium"`).
+OpenRouter reports the supported efforts of both slugs as `["max", "high", "low", "none"]`, so every tier effort is accepted and no fallback is needed.
 
-Source: https://openrouter.ai/docs/quickstart
-Last-checked: 2026-10-15
+Source: https://openrouter.ai/docs/quickstart and https://openrouter.ai/api/v1/models
+Last-checked: 2026-10-20
 
 ## Cloud region
 
@@ -147,13 +168,44 @@ Last-checked: 2026-10-15
 
 | ID | Decision | Value | Configuration key |
 |---|---|---|---|
-| A1 | The POC graph stays a flat chat and tools loop. The Supervisor and Synthesizer topology in IMPLEMENTATION §2.3 is future work. | (none) | (none) |
+| A1 | The graph is a supervisor, worker, and synthesize topology. The supervisor routes between the retrieval worker and synthesis, capped by a hop limit. The worker runs the tool loop. `synthesize` writes the answer. | see IMPLEMENTATION §2.3 | `agent.max_hops`, `agent.max_tool_steps` |
 | A2 | The agent answers in markdown text with `[Page N]` citations. The structured `AgentAnswer` in IMPLEMENTATION §4.1 is future work. | (none) | (none) |
 | A3 | The system prompt carries the grounding rules: every claim and step names its page, the answer states plainly when the manual holds no answer, and conflicting values show both pages. The prompt text lives in the configuration (field `agent_system_prompt`, env `AGENT_SYSTEM_PROMPT`), and the graph prepends it before the first chat call. | (none) | `agent.system_prompt` |
 
-The graph runs as a flat chat and tools loop today.
+The graph runs as a supervisor, a retrieval worker, and a synthesize node.
+The supervisor plans and decides when to stop; the worker gathers manual evidence with the calculator and the three RAG tools; `synthesize` writes the final answer.
+The routing check in the supervisor and the tool loop in the worker run on the tier's working model and effort.
+`Synthesize` writes the answer on the tier's authoring model and effort, so the expensive model is spent only on the answer (M1).
 `/chat` returns markdown text with `[Page N]` citations.
-The Supervisor, the Synthesizer, the `AgentAnswer`, the hop cap, and the confidence gate are future work (see the Deferred section).
+The structured `AgentAnswer` and the confidence gate are future work (see the Deferred section).
+
+## Automated evals
+
+| ID | Decision | Default | Configuration key |
+|---|---|---|---|
+| E1 | The eval scores the 16-question accuracy set with an LLM judge. The judge model stays distinct from the model under test, so self-preference bias stays low: the run drives the agent with Flash, so Pro judges. | `~deepseek/deepseek-pro-latest` | `eval.judge_model` |
+| E2 | The reasoning effort for the judge call. | `high` | `eval.judge_reasoning_effort` |
+| E3 | A case passes at or above this score when the judge omits an explicit `passed`. | `0.7` | `eval.pass_threshold` |
+| E4 | The CI gate on the overall pass rate. | `0.8` | `eval.min_pass_rate` |
+| E5 | The CI gate on citation precision. Task 7 asks for more than `0.9`. | `0.9` | `eval.citation_precision_min` |
+| E6 | The vehicle that owns the eval manual. The run supplies it, because the vehicle id is generated when the manual is uploaded. | from the environment | `eval.vehicle_id` |
+
+The set has three categories, and each category has one rubric.
+A `spec` answer scores against the gold value, with the correct unit and qualifier (model range, U.S. versus non-U.S., torque units).
+A `procedure` answer scores against the gold steps in substance and order, with every key number correct.
+An `out-of-scope` question has no answer in the manual: a pass says so and invents nothing, and a fluent invention scores `0`.
+
+The gold `expected` text and the `answer_pages` list are the authoritative reference, and the judge prompt tells the judge to trust them over the agent.
+The judge writes its reason before its score, and it returns one JSON object, so the run aggregates without reading prose.
+Citation precision is computed in code, not by the judge: the `[Page N]` set is exact, so a count beats a model.
+
+The agent answers in markdown text (A2), so the judge reads that text directly and no structured answer is added.
+The judge shares no model with the agent in the default run.
+A judge from another vendor would add independence; it stays a later improvement.
+OpenRouter reports `high` for both DeepSeek slugs, so the judge effort needs no fallback (M1).
+
+Source: https://openrouter.ai/api/v1/models
+Last-checked: 2026-10-19
 
 ## Testing and continuous integration
 
@@ -162,11 +214,13 @@ The Supervisor, the Synthesizer, the `AgentAnswer`, the hop cap, and the confide
 | T1 | Unit tests inject a fake embedder, so no test downloads a model | (none) |
 | T2 | The end-to-end retrieval test carries a pytest marker and stays out of the default run | `@pytest.mark.heavy` |
 | T3 | The default CI run stays cheap: dependency install, the syntax check, and the marked test excluded | (none) |
+| T4 | The eval runner is a live-LLM run, so it stays out of the default cheap CI, the same way the marked heavy test does. It needs `OPENROUTER_API_KEY` and an ingested manual, and it runs by hand with `python -m backend.eval.run`. | (none) |
 
 Docling, torch, and sentence-transformers make a full install slow and large.
 T1 and T2 keep the default check fast.
 Tests run against mocks, not the full model set, even though the project prefers end-to-end tests.
 Some behavior needs a mock to stay testable without a download.
+T4 keeps the default run offline: the eval calls OpenRouter and reads an indexed manual, so it needs a key and a live index.
 
 ## Manual Viewer
 
@@ -197,12 +251,24 @@ Source: https://code.visualstudio.com/docs/agent-customization/custom-instructio
 https://marketplace.visualstudio.com/items?itemName=husamettinulutas.openrouter-maestro
 Last-checked: 2026-10-13
 
+## Monitoring (observability)
+
+| ID | Decision | Default | Configuration key |
+|---|---|---|---|
+| O1 | LangSmith traces every OpenRouter model call (MVP+1). Each run has type `llm` and records the model slug, token usage (`prompt_tokens`, `completion_tokens`, `total_tokens`), wall-clock latency from its start and end times, and any error. A failed post is swallowed, so an unreachable LangSmith never breaks the chat. Tracing turns on only while `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` are both set. | off | `langsmith_tracing` (bool), `langsmith_api_key` (secret), `langsmith_project` (`manualchat`), `langsmith_endpoint` (`https://api.smith.langchain.com`) |
+
+The trace layer (`backend/tracing.py`) is decoupled from the wrapper. `backend/llm.py` records one run per call and never lets recording fail the call.
+Token usage comes from the OpenRouter `usage` object; the stream path reads it from the final usage chunk.
+
+Source: https://docs.smith.langchain.com/ and https://openrouter.ai/docs/api-reference/streaming
+Last-checked: 2026-10-20
+
 ## Deferred and undecided
 
 - The OCR-engine head-to-head is deferred with the whole scanned and FJ40 path (S1).
 - The normalization rules catalog: the existence of the stage is decided (D3).
 The exact unit and header repair rules (`lb` and `Ib`, `m· kg`, `SPECiFiCATIONS`, diagram-symbol junk) become test fixtures when the stage is built.
-- The Supervisor and Synthesizer graph, the `AgentAnswer`, the hop cap, and the confidence gate: the POC uses a flat loop with markdown answers.
+- The structured `AgentAnswer` and the confidence gate: the graph answers in markdown text.
 - The spec ledger: the POC returns table values without writing a ledger.
 - The scanned-manual rejection probe: not built for the POC. The prototype manual `pl.pdf` is digital, so no scanned manual is expected.
 - The manual viewer rerank threshold: the value that opens the viewer page set.

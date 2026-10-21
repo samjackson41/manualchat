@@ -23,15 +23,47 @@ def _fresh_settings():
     get_settings.cache_clear()
 
 
-def _fake_llm(responses):
-    """Return a stand-in llm.chat that records each call and pops a canned reply."""
+def _fake_llm(worker_reply="Hello there.", synth_reply=None):
+    """A stand-in llm.chat that answers the supervisor, worker, and synthesize nodes.
+
+    The nodes are told apart by their messages: the supervisor is the only
+    caller whose first message is not the grounding system prompt; the
+    synthesize node is the grounding-prompt caller that asks for the final
+    answer. Each call is recorded.
+    """
     calls = []
+    grounding = get_settings().agent_system_prompt
+    final = synth_reply if synth_reply is not None else worker_reply
 
     def fake(messages, model, params=None, tools=None):
-        calls.append({"messages": messages, "model": model, "tools": tools})
-        return responses.pop(0)
+        calls.append(
+            {"messages": messages, "model": model, "params": params, "tools": tools}
+        )
+        if messages[0]["content"] != grounding:
+            return {"role": "assistant", "content": "synthesize", "tool_calls": None}
+        if "Write the final answer" in messages[-1]["content"]:
+            return {"role": "assistant", "content": final, "tool_calls": None}
+        return {"role": "assistant", "content": worker_reply, "tool_calls": None}
 
     return fake, calls
+
+
+def _node_calls(calls):
+    """Split recorded llm.chat calls into (worker, supervisor, synthesize)."""
+    grounding = get_settings().agent_system_prompt
+    supervisor = [c for c in calls if c["messages"][0]["content"] != grounding]
+    synthesize = [
+        c
+        for c in calls
+        if c["messages"][0]["content"] == grounding
+        and "Write the final answer" in c["messages"][-1]["content"]
+    ]
+    worker = [
+        c
+        for c in calls
+        if c["messages"][0]["content"] == grounding and c not in synthesize
+    ]
+    return worker, supervisor, synthesize
 
 
 def test_health():
@@ -55,9 +87,7 @@ def test_models():
 
 
 def test_chat_plain_reply(monkeypatch):
-    fake, calls = _fake_llm(
-        [{"role": "assistant", "content": "Hello there.", "tool_calls": None}]
-    )
+    fake, calls = _fake_llm("Hello there.")
     monkeypatch.setattr(llm, "chat", fake)
 
     client = TestClient(app)
@@ -68,16 +98,14 @@ def test_chat_plain_reply(monkeypatch):
         "model": "~deepseek/deepseek-flash-latest",
     }
 
-    # The graph leads with the system prompt, then the user's query.
+    # The worker is the first model call; it leads with the system prompt, then the query.
     assert calls[0]["messages"][0]["role"] == "system"
     assert calls[0]["messages"][1] == {"role": "user", "content": "hi"}
 
 
 def test_chat_system_prompt_is_first(monkeypatch):
     """The grounding prompt is the first message the model receives."""
-    fake, calls = _fake_llm(
-        [{"role": "assistant", "content": "ok", "tool_calls": None}]
-    )
+    fake, calls = _fake_llm("ok")
     monkeypatch.setattr(llm, "chat", fake)
 
     client = TestClient(app)
@@ -93,8 +121,10 @@ def test_chat_system_prompt_is_first(monkeypatch):
 
 
 def test_chat_tool_loop(monkeypatch):
-    """A query that needs the calculator runs tool -> chat inside the graph."""
-    fake, calls = _fake_llm(
+    """A query that needs the calculator runs the tool loop inside the worker."""
+    grounding = get_settings().agent_system_prompt
+    calls = []
+    worker_turns = iter(
         [
             {
                 "role": "assistant",
@@ -113,6 +143,17 @@ def test_chat_tool_loop(monkeypatch):
             {"role": "assistant", "content": "3*7+2 is 23.", "tool_calls": None},
         ]
     )
+
+    def fake(messages, model, params=None, tools=None):
+        calls.append(
+            {"messages": messages, "model": model, "params": params, "tools": tools}
+        )
+        if messages[0]["content"] != grounding:
+            return {"role": "assistant", "content": "synthesize", "tool_calls": None}
+        if "Write the final answer" in messages[-1]["content"]:
+            return {"role": "assistant", "content": "3*7+2 is 23.", "tool_calls": None}
+        return next(worker_turns)
+
     monkeypatch.setattr(llm, "chat", fake)
 
     client = TestClient(app)
@@ -120,11 +161,50 @@ def test_chat_tool_loop(monkeypatch):
     assert resp.status_code == 200
     assert resp.json()["reply"] == "3*7+2 is 23."
 
-    # Two model calls: first asks for the calculator, then answers.
-    assert len(calls) == 2
-    # The second call was handed the tool result, proving the calculator ran.
-    tool_msg = next(m for m in calls[1]["messages"] if m["role"] == "tool")
+    # The second worker call was handed the tool result, proving the calculator ran.
+    worker_calls, _, _ = _node_calls(calls)
+    assert len(worker_calls) == 2
+    tool_msg = next(m for m in worker_calls[1]["messages"] if m["role"] == "tool")
     assert tool_msg["content"] == "23"
+
+
+def test_chat_fast_tier_models_and_effort(monkeypatch):
+    """Flash: routing and worker on Flash @ low, answer on Flash @ high."""
+    fake, calls = _fake_llm("ok")
+    monkeypatch.setattr(llm, "chat", fake)
+
+    client = TestClient(app)
+    assert client.post("/chat", json={"query": "hi"}).status_code == 200
+
+    worker, supervisor, synthesize = _node_calls(calls)
+    assert worker[0]["model"] == "~deepseek/deepseek-flash-latest"
+    assert worker[0]["params"] == {"reasoning_effort": "low"}
+    assert supervisor[0]["model"] == "~deepseek/deepseek-flash-latest"
+    assert supervisor[0]["params"] == {"reasoning_effort": "low"}
+    assert synthesize[0]["model"] == "~deepseek/deepseek-flash-latest"
+    assert synthesize[0]["params"] == {"reasoning_effort": "high"}
+
+
+def test_chat_pro_tier_models_and_effort(monkeypatch):
+    """Pro spends Pro only on the answer; routing and worker stay on Flash."""
+    fake, calls = _fake_llm("ok")
+    monkeypatch.setattr(llm, "chat", fake)
+
+    client = TestClient(app)
+    resp = client.post(
+        "/chat",
+        json={"query": "hi", "model": "~deepseek/deepseek-pro-latest"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["model"] == "~deepseek/deepseek-pro-latest"
+
+    worker, supervisor, synthesize = _node_calls(calls)
+    assert supervisor[0]["model"] == "~deepseek/deepseek-flash-latest"
+    assert supervisor[0]["params"] == {"reasoning_effort": "low"}
+    assert worker[0]["model"] == "~deepseek/deepseek-flash-latest"
+    assert worker[0]["params"] == {"reasoning_effort": "low"}
+    assert synthesize[0]["model"] == "~deepseek/deepseek-pro-latest"
+    assert synthesize[0]["params"] == {"reasoning_effort": "high"}
 
 
 def test_chat_without_api_key_returns_400(monkeypatch):
@@ -367,9 +447,7 @@ def test_delete_unknown_vehicle_returns_404(vehicles_dir):
 
 
 def test_chat_accepts_vehicle_id(monkeypatch):
-    fake, _ = _fake_llm(
-        [{"role": "assistant", "content": "ok", "tool_calls": None}]
-    )
+    fake, _ = _fake_llm("ok")
     monkeypatch.setattr(llm, "chat", fake)
 
     client = TestClient(app)

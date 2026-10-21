@@ -18,6 +18,7 @@ manualchat/
   backend/
     config.py        # env-only configuration through pydantic-settings
     llm.py           # the OpenRouter wrapper (chat, stream_chat, tool calls)
+    tracing.py       # LangSmith runs per model call: tokens, latency, errors
     ingest.py        # Docling ingest: page text, tables, and the ingest record
     retrieval.py     # chunking, embedding, and search over the Qdrant index
     thumbnails.py    # PNG page thumbnails for the viewer raster fallback
@@ -117,13 +118,14 @@ curl http://localhost:8000/models
 
 ## Secrets
 
-`OPENROUTER_API_KEY` is the only secret. `docker-compose.yml` passes it
-through as an environment variable
-(`OPENROUTER_API_KEY=${OPENROUTER_API_KEY}`). The key never enters the
-repository. If the key is missing, `POST /chat` fails fast with a clear
-error, while `/health` and `/models` still respond.
+`OPENROUTER_API_KEY` and `LANGSMITH_API_KEY` are the only secrets.
+`docker-compose.yml` passes them through from the host shell. They never enter
+the repository. `LANGSMITH_API_KEY` is optional: it turns on LangSmith tracing
+only while `LANGSMITH_TRACING` is also set (see Configuration). If
+`OPENROUTER_API_KEY` is missing, `POST /chat` fails fast with a clear error,
+while `/health` and `/models` still respond.
 
-Never print the key, and never commit it.
+Never print a key, and never commit one.
 
 ## Configuration
 
@@ -144,9 +146,14 @@ OpenRouter request entirely.
 | OPENROUTER_BASE_URL | `https://openrouter.ai/api/v1` | The OpenRouter API base URL. `backend/llm.py` appends the chat endpoint. |
 | MODEL_DEFAULT | `~deepseek/deepseek-flash-latest` | DECISIONS M1. The model used when the request names none. |
 | MODEL_OPTIONS | `~deepseek/deepseek-flash-latest,~deepseek/deepseek-pro-latest` | DECISIONS M2. Comma-separated slugs. `_MODEL_LABELS` in `backend/config.py` holds the dropdown labels. |
-| MODEL_REASONING_EFFORT | `medium` | DECISIONS M. The reasoning effort sent with every request. |
+| MODEL_REASONING_EFFORT | `medium` | The fallback reasoning effort when a node passes none. The tier sets the per-node effort (DECISIONS M1). |
 | MODEL_TEMPERATURE | _(unset)_ | Pending decision. Omit the variable to use the provider default. |
 | MODEL_MAX_TOKENS | _(unset)_ | Pending decision. Omit the variable to use the provider default. |
+| SUPER_SUB_TIERS | the tier table in `backend/config.py` | DECISIONS M1. JSON. Each tier names a cheap working model (the routing check and the tool loop) and a strong authoring model (the answer), with their reasoning effort. |
+| SUPER_SUB_SLUG_TIERS | `~deepseek/deepseek-flash-latest`→`fast`, `~deepseek/deepseek-pro-latest`→`pro` | DECISIONS M1. JSON. Maps a selected model slug to a tier. |
+| SUPER_SUB_DEFAULT_TIER | `fast` | DECISIONS M1. The tier used when the selected slug matches no entry. |
+| AGENT_MAX_HOPS | `4` | DECISIONS A1. The supervisor forces synthesis after this many worker hops. |
+| AGENT_MAX_TOOL_STEPS | `4` | DECISIONS A1. The cap on the worker's tool loop. |
 | AGENT_SYSTEM_PROMPT | the grounding prompt in `backend/config.py` | DECISIONS A3. The grounding rules for the agent. |
 | MANUALS_DIR | `manuals` | DECISIONS U1. One `{manual_id}/` subdirectory per manual, with the PDF and its JSON record. In Docker: `/data/manuals`. |
 | VEHICLES_DIR | `vehicles` | One `{vehicle_id}/` subdirectory per vehicle profile. In Docker: `/data/vehicles`. |
@@ -173,6 +180,16 @@ OpenRouter request entirely.
 | RETRIEVAL_RERANK_MODEL | `cross-encoder/ms-marco-MiniLM-L-6-v2` | DECISIONS R7. The reranker. |
 | RETRIEVAL_CANDIDATE_K | `50` | DECISIONS R8. Chunks fetched before the rerank. |
 | RETRIEVAL_TOP_N | `5` | DECISIONS R9. Chunks returned to the agent. |
+| EVAL_JUDGE_MODEL | `~deepseek/deepseek-pro-latest` | DECISIONS E1. The judge model, kept distinct from the model under test. |
+| EVAL_JUDGE_REASONING_EFFORT | `high` | DECISIONS E2. The reasoning effort for the judge call. |
+| EVAL_PASS_THRESHOLD | `0.7` | DECISIONS E3. A score at or above this passes a case when the judge omits `passed`. |
+| EVAL_MIN_PASS_RATE | `0.8` | DECISIONS E4. The eval gate on the overall pass rate. |
+| EVAL_CITATION_PRECISION_MIN | `0.9` | DECISIONS E5. The eval gate on citation precision. |
+| EVAL_VEHICLE_ID | _(empty)_ | DECISIONS E6. The vehicle that owns the eval manual. Supplied at run time. |
+| LANGSMITH_TRACING | `false` | DECISIONS O1. Set `true` with `LANGSMITH_API_KEY` to record one LangSmith `llm` run per OpenRouter call. |
+| LANGSMITH_API_KEY | _(empty)_ | DECISIONS O1. The LangSmith API key. A secret; never commit it. |
+| LANGSMITH_PROJECT | `manualchat` | DECISIONS O1. The LangSmith project that receives the runs. |
+| LANGSMITH_ENDPOINT | `https://api.smith.langchain.com` | DECISIONS O1. The LangSmith API endpoint. |
 
 ### Frontend
 
@@ -197,18 +214,19 @@ starts. Restart the frontend after a change to these variables.
 
 ## Where the next change goes
 
-- Chunk eval: 16 questions with known answer pages and expected answers, from
-  the 56-page `pl.pdf`, live in `backend/tests/eval_questions.json`. Nothing
-  runs or scores the set yet. Run and score the set. The scores give recall
-  and citation precision, and they test the chunk size (DECISIONS D10) and
-  the overlap (D11).
+- Eval: the harness in `backend/eval/` runs the 16 questions in
+  `backend/tests/eval_questions.json` through the agent and scores each answer
+  with an LLM judge (DECISIONS E1 to E6). Run it from the repo root with
+  `EVAL_VEHICLE_ID=<id> uv run --project backend python -m backend.eval.run`.
+  It reports the pass rate, the citation precision, and the fabricated count.
+  The chunk-size and overlap sweep (DECISIONS D10, D11) comes next.
 - Memory: add the `summary` state field, a compaction node, and a checkpointer
   (MEMORY_DESIGN §4-5).
-- Later graph: the Supervisor and Synthesizer topology, the structured
-  `AgentAnswer`, and the spec ledger are future work (DECISIONS, Deferred).
+- Later graph: the structured `AgentAnswer` and the spec ledger are future work
+  (DECISIONS, Deferred).
 - File locations: the graph is `backend/agent/graph.py`, the tools are
-  `backend/tools.py`, retrieval is `backend/retrieval.py`, and the routes are
-  `backend/api/main.py`.
+  `backend/tools.py`, retrieval is `backend/retrieval.py`, the eval is
+  `backend/eval/`, and the routes are `backend/api/main.py`.
 
 ## Git workflow
 
@@ -261,6 +279,6 @@ them.
    `400 "not a valid model ID"` response. Both
    `~deepseek/deepseek-flash-latest` and `~deepseek/deepseek-pro-latest` were
    confirmed live (HTTP 200), and they resolve to `deepseek-v4.1-flash` and
-   `deepseek-v4-pro-0813`. DECISIONS.md records the corrected slugs. The
-   `reasoning_effort=medium` setting is accepted: OpenRouter forwards it, and
-   DeepSeek ignores it, so the ratified `medium` default is safe.
+   `deepseek-v4-pro-0813`. DECISIONS.md records the corrected slugs. OpenRouter
+   reports the supported reasoning efforts of both slugs as
+   `["max", "high", "low", "none"]`, so every tier effort is accepted.
