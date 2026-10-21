@@ -11,7 +11,8 @@
   `MANUALS_DIR`), bind-mounted into the Docker backend as `/data/manuals`.
   Each record also stores the SHA-256 of the uploaded bytes (`content_hash`);
   an upload whose hash matches an existing manual of the same vehicle is
-  refused with `409` before ingest (DECISIONS U2).
+  refused with `409` before ingest, and a record without a digest has one
+  computed from its stored PDF (DECISIONS U2).
 - Ingest: uploading a manual sets `status` to `processing` and runs the Docling
   pipeline in the background (IMPLEMENTATION Task 1). The pipeline probes the
   text layer and refuses a manual with no text (DECISIONS D1), strips the

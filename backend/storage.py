@@ -21,6 +21,7 @@ record; the on-disk name is fixed so a hostile filename cannot escape the
 directory.
 """
 
+import hashlib
 import shutil
 import json
 import uuid
@@ -79,6 +80,23 @@ def store_manual(
     return manual
 
 
+def content_hash_of(manual: Manual) -> str | None:
+    """Return a manual's content hash, computing it from `source.pdf` if absent.
+
+    A record written before `content_hash` existed carries no digest, so the
+    stored PDF is hashed on demand and the digest is written back. Returns None
+    only when the stored PDF is missing.
+    """
+    if manual.content_hash:
+        return manual.content_hash
+    source = manual_dir(manual.manual_id) / "source.pdf"
+    if not source.is_file():
+        return None
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    update_manual(manual.manual_id, content_hash=digest)
+    return digest
+
+
 def find_duplicate(vehicle_id: str, content_hash: str) -> Manual | None:
     """Return the manual of `vehicle_id` whose bytes hash to `content_hash`.
 
@@ -87,7 +105,9 @@ def find_duplicate(vehicle_id: str, content_hash: str) -> Manual | None:
     (DECISIONS U2). Returns None when no stored manual matches.
     """
     for manual in list_manuals():
-        if manual.vehicle_id == vehicle_id and manual.content_hash == content_hash:
+        if manual.vehicle_id != vehicle_id:
+            continue
+        if content_hash_of(manual) == content_hash:
             return manual
     return None
 

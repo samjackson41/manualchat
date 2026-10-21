@@ -5,6 +5,8 @@ tool executor. Only the external OpenRouter boundary (`llm.chat`) is stubbed so
 the tests are deterministic and need no API key or network.
 """
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -252,6 +254,36 @@ def test_upload_allows_same_pdf_for_different_vehicle(manuals_dir, no_ingest):
     )
     assert resp.status_code == 200
     assert len(no_ingest) == 2
+
+
+def test_upload_detects_duplicate_of_manual_without_stored_hash(manuals_dir, no_ingest):
+    """A manual stored before `content_hash` existed is still caught.
+
+    The digest is computed from the stored PDF when the record carries none.
+    """
+    client = TestClient(app)
+    first = client.post(
+        "/manuals",
+        files=_pdf(body=b"%PDF-1.4 legacy bytes"),
+        data={"vehicle_id": "v1", "display_name": "Legacy manual"},
+    ).json()
+
+    # Mimic a record written before the field existed.
+    record_path = manuals_dir / first["manual_id"] / "manual.json"
+    record = json.loads(record_path.read_text())
+    del record["content_hash"]
+    record_path.write_text(json.dumps(record))
+
+    resp = client.post(
+        "/manuals",
+        files=_pdf(body=b"%PDF-1.4 legacy bytes"),
+        data={"vehicle_id": "v1", "display_name": "Legacy manual again"},
+    )
+    assert resp.status_code == 409
+    assert len(no_ingest) == 1
+
+    # The computed digest is written back to the old record.
+    assert json.loads(record_path.read_text())["content_hash"]
 
 
 def test_upload_description_is_optional(manuals_dir, no_ingest):
