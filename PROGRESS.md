@@ -108,8 +108,10 @@
   default CI (T4). Run it from the repo root, against an ingested manual:
   `EVAL_VEHICLE_ID=<id> uv run --project backend python -m backend.eval.run`.
 - Eval result on the 56-page `pl.pdf` (vehicle `demo_vehicle`): 16/16 passed
-  (100%), citation precision 1.00, and 0 fabricated out-of-scope answers. The
-  bar is more than 90% precision and 0% fabricated (Task 7).
+  (100%), citation precision 0.95 to 1.00 across runs, and 0 fabricated
+  out-of-scope answers. The agent runs at the provider's default temperature,
+  so the score moves between runs. The bar is more than 90% precision and 0%
+  fabricated (Task 7).
 - Tests: `backend/tests/` holds unit tests for the API, the configuration,
   ingest,
   retrieval, the slicer, the manual PDF endpoint, the thumbnails, the tools,
