@@ -126,8 +126,8 @@ for a production deployment.
 
 | Item | Decision |
 |---|---|
-| U1 | **MVP**: assume a smart single-user — each manual is uploaded/processed **once** and must **remain in local storage** in a `manuals/{manual_id}/` subdirectory so the processed result is never re-derived. No dedup check. |
-| U2 | **MVP+1**: add a **file-hash check** (against stored manual hashes) and surface a **warning** to the user on a suspected re-upload. |
+| U1 | **MVP**: assume a smart single-user — each manual is uploaded/processed **once** and must **remain in local storage** in a `manuals/{manual_id}/` subdirectory so the processed result is never re-derived. Duplicate detection is U2. |
+| U2 | Each manual stores the SHA-256 of its uploaded PDF in `content_hash`. An upload whose hash matches an existing manual of the same vehicle is refused with `409` before ingest, naming the stored manual. The same PDF can still be uploaded under a different vehicle. |
 
 ---
 

@@ -9,6 +9,9 @@
   `manual.json` record), and `GET /manuals` + `GET /manuals/{id}` read it back
   (DECISIONS U1). The directory is the `manuals_dir` config value (env
   `MANUALS_DIR`), bind-mounted into the Docker backend as `/data/manuals`.
+  Each record also stores the SHA-256 of the uploaded bytes (`content_hash`);
+  an upload whose hash matches an existing manual of the same vehicle is
+  refused with `409` before ingest (DECISIONS U2).
 - Ingest: uploading a manual sets `status` to `processing` and runs the Docling
   pipeline in the background (IMPLEMENTATION Task 1). The pipeline probes the
   text layer and refuses a manual with no text (DECISIONS D1), strips the
@@ -84,7 +87,11 @@
   place of the old manual kind, and its own vehicle picker (with an Add
   vehicle entry) aims the manual at a vehicle from the form. It lists the
   chosen vehicle's manuals with their ingest status and polls `GET /manuals`
-  until the ingest finishes.
+  until the ingest finishes. The file picker is a Browse button that shows a
+  truncated file name, so a long name never stretches the dialog; while the
+  upload runs the dialog swaps to a loading bar and a guard blocks a quick
+  double or triple click from starting the pipeline twice (a 409 from the
+  backend also stops a duplicate).
   A typed client in `frontend/lib/api.ts` wraps every backend call. Tailwind is
   v4, themed in red, white, gray, black, and gold. A light/dark theme toggle
   sits in a top bar that also holds the selector, upload, viewer, and model
