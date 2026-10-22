@@ -35,6 +35,21 @@ class Vehicle(BaseModel):
     created_at: datetime = Field(default_factory=_utcnow)
 
 
+class IngestProgress(BaseModel):
+    """How far the ingest of one manual has come (DECISIONS U3).
+
+    The upload dialog polls the manual record for this, so the reader sees a
+    bar instead of an unexplained wait. `stage` names the pipeline step that is
+    in progress. `completed` and `total` count the units of that step. The
+    units are pages while `convert` reads the PDF, and chunks while `index`
+    embeds them. A stage with nothing to count reports `total` as 0.
+    """
+
+    stage: Literal["probe", "convert", "index", "done"] = "probe"
+    completed: int = 0
+    total: int = 0
+
+
 class Manual(BaseModel):
     """A registered, locally stored manual (DECISIONS U1).
 
@@ -44,6 +59,13 @@ class Manual(BaseModel):
 
     `enabled` gates retrieval only (DECISIONS M1): a disabled manual stays
     stored and listed, but its chunks never come back from search.
+
+    `content_hash` is the SHA-256 of the uploaded PDF bytes. The upload path
+    compares it against the stored hashes of the same vehicle so a duplicate
+    manual is refused instead of ingested twice (DECISIONS U2).
+
+    `progress` is the live position of the ingest run (DECISIONS U3). It is
+    only meaningful while `status` is `processing`.
     """
 
     manual_id: str
@@ -51,10 +73,12 @@ class Manual(BaseModel):
     display_name: str
     source_filename: str
     description: Optional[str] = None
+    content_hash: Optional[str] = None
     status: Literal["processing", "ready", "error"] = "processing"
     enabled: bool = True
     page_count: int = 0
     chunk_count: int = 0
+    progress: IngestProgress = Field(default_factory=IngestProgress)
     created_at: datetime = Field(default_factory=_utcnow)
 
 

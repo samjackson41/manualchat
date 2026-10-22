@@ -23,7 +23,18 @@ export type Manual = {
   page_count: number;
   chunk_count: number;
   enabled: boolean;
+  progress: IngestProgress;
   created_at: string;
+};
+
+export type IngestStage = "probe" | "convert" | "index" | "done";
+
+// The live position of an ingest run (DECISIONS U3). `completed` and `total`
+// count pages while `stage` is "convert", and chunks while it is "index".
+export type IngestProgress = {
+  stage: IngestStage;
+  completed: number;
+  total: number;
 };
 
 type ChatResponse = { reply: string; model: string };
@@ -82,6 +93,12 @@ export async function deleteVehicle(vehicle_id: string): Promise<void> {
 
 export async function listManuals(): Promise<Manual[]> {
   const res = await fetch(`${BACKEND_URL}/manuals`);
+  if (!res.ok) throw new Error(await errorDetail(res));
+  return res.json();
+}
+
+export async function getManual(manual_id: string): Promise<Manual> {
+  const res = await fetch(`${BACKEND_URL}/manuals/${manual_id}`);
   if (!res.ok) throw new Error(await errorDetail(res));
   return res.json();
 }

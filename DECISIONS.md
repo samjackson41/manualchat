@@ -117,8 +117,11 @@ R1 and R2 hold for a production deployment.
 
 | Item | Decision |
 |---|---|
-| U1 | The MVP assumes a smart single user. Each manual is uploaded and processed once. The processed result stays in local storage under `manuals/{manual_id}/`, so it is never derived again. There is no dedup check. |
-| U2 | MVP+1 adds a file-hash check against stored manual hashes and a warning to the user on a suspected re-upload. |
+| U1 | **MVP**: assume a smart single-user — each manual is uploaded/processed **once** and must **remain in local storage** in a `manuals/{manual_id}/` subdirectory so the processed result is never re-derived. Duplicate detection is U2. |
+| U2 | Each manual stores the SHA-256 of its uploaded PDF in `content_hash`. An upload whose hash matches an existing manual of the same vehicle is refused with `409` before ingest, naming the stored manual. A record that carries no digest has one computed from its stored `source.pdf` and written back. The same PDF can still be uploaded under a different vehicle. |
+| U3 | Ingest records how far it has come on the manual's `progress` field, so the upload dialog shows a bar instead of an unexplained wait. `stage` names the step: `probe`, `convert`, `index`, or `done`. `completed` and `total` count the units of that step. The units are pages while `convert` reads the PDF, and chunks while `index` embeds them. Docling reports every converted page through its own progress callback, and indexing reports every embedded batch. |
+
+---
 
 ## Manual enable, disable, and delete
 
@@ -154,6 +157,7 @@ The entries below fix the values that the design left open, and the values that 
 | R7 | Reranker model for the second pass | `cross-encoder/ms-marco-MiniLM-L-6-v2` | `retrieval.rerank_model` |
 | R8 | Candidate count handed to the reranker | `50` | `retrieval.candidate_k` |
 | R9 | Chunk count returned to the agent | `5` | `retrieval.top_n` |
+| R10 | Chunks embedded per call while indexing. Batching keeps peak memory low on a large manual, and it carries the upload dialog's indexing progress (U3). | `64` | `retrieval.embed_batch_size` |
 
 R3 keeps R1 for production.
 R1 names Qdrant Cloud in us-east-1.
@@ -169,7 +173,7 @@ Last-checked: 2026-10-15
 | ID | Decision | Value | Configuration key |
 |---|---|---|---|
 | A1 | The graph is a supervisor, worker, and synthesize topology. The supervisor routes between the retrieval worker and synthesis, capped by a hop limit. The worker runs the tool loop. `synthesize` writes the answer. | see IMPLEMENTATION §2.3 | `agent.max_hops`, `agent.max_tool_steps` |
-| A2 | The agent answers in markdown text with `[Page N]` citations. The structured `AgentAnswer` in IMPLEMENTATION §4.1 is future work. | (none) | (none) |
+| A2 | The agent answers in markdown text with `[Page N]` citations. The structured `AgentAnswer` is future work (see the Deferred section). | (none) | (none) |
 | A3 | The system prompt carries the grounding rules: every claim and step names its page, the answer states plainly when the manual holds no answer, and conflicting values show both pages. The prompt text lives in the configuration (field `agent_system_prompt`, env `AGENT_SYSTEM_PROMPT`), and the graph prepends it before the first chat call. | (none) | `agent.system_prompt` |
 
 The graph runs as a supervisor, a retrieval worker, and a synthesize node.
@@ -237,8 +241,9 @@ T4 keeps the default run offline: the eval calls OpenRouter and reads an indexed
 
 | Item | Decision |
 |---|---|
-| C1 | The UI has a light theme and a dark theme. The first visit follows the color scheme of the operating system. After the visitor chooses, the choice is stored in `localStorage` and wins on later visits. The theme is applied before the first paint, so the page never flashes the wrong theme. |
-| C2 | A top bar carries the vehicle selector, the upload button, the viewer toggle, the model selector, and the theme toggle over a thin red rule. The manual viewer opens as a right-hand pane beside the chat. The wrench-in-bubble logo (`frontend/assets/manualchat-logo.svg`) replaces the ManualChat wordmark at the top of the thread list. |
+| C1 | The UI has a light theme and a dark theme. The first visit follows the operating system's colour scheme. After the visitor chooses, the choice is stored in `localStorage` and wins on later visits. The theme is applied before the first paint, so the page never flashes the wrong theme. |
+| C2 | A top bar carries the vehicle selector, the upload button, the viewer toggle, the model selector, and the theme toggle, over a thin red rule. The manual viewer opens as a right-hand pane beside the chat. The wrench-in-bubble logo (`frontend/assets/manualchat-logo.svg`) replaces the ManualChat wordmark at the top of the thread list. |
+| C3 | The upload dialog shows how far an ingest has come. The bar is determinate over the units of the current stage, and it moves for a stage with nothing to count. The estimate beside the bar comes from the rate the run has kept. The same manual can take a minute or an hour, so a fixed guess is wrong in one case or the other. The form and the Upload button stay locked while a manual uploads or ingests. A manual list row shows its own percent, for example `Processing 29%`. The dialog polls the manual record on its own, so the progress panel returns when the reader reopens the dialog. While the dialog is closed, a toast below the top bar reports the upload and opens the dialog again on a click. It sits below the top bar, because the chat composer and the viewer pane hold the bottom corners of the window. |
 
 ## Dev tooling
 

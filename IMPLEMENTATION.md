@@ -1,148 +1,231 @@
 # IMPLEMENTATION — ManualChat
 
-## 1. Decided Tech Stack & Rationale
+This document describes what ManualChat implements: the tech stack, the
+architecture, the HTTP API, the data contracts, the on-disk layout, and the
+frontend. It is a technical reference, not a plan. The task numbers (Task 1 to
+Task 6) name the milestone that built each part.
 
-| Layer | Component | Decision / Rationale |
+`PROGRESS.md` holds the current state and what is left. `DECISIONS.md` holds the
+ratified decisions and their config keys. `SPECIFICATION.md` holds the
+requirements. `README.md` holds the environment variable table.
+
+---
+
+## 1. Tech stack
+
+| Layer | Component | Notes |
 |---|---|---|
-| **Language & Runtime** | Python 3.11+, UV virtual environment | Cohort standard (`aie-cohort-202609/.venv`), fast dependency management. |
-| **PDF Extraction** | IBM Docling (`docling>=2.52.0`) | High-fidelity table structure extraction (`TableFormerMode.FAST`) and layout blocks. Ingestion pins `do_ocr=False` to prevent memory blowups. |
-| **PDF Slicing & Raster** | `pypdf>=6.19.0` & `PyMuPDF>=1.28.2` | `pypdf` generates lightweight multi-page PDF slices (50 KB) for selectable text and zoom. `PyMuPDF` pre-renders raster PNG thumbnails for mobile/inline diagram viewing. |
-| **Vector Database** | Qdrant (local Docker / local service) | Single collection with payload filtering (`vehicle_id`, `manual_id`). Low overhead, dense cosine index. |
-| **Embeddings & Re-ranking** | `sentence-transformers` | `multi-qa-mpnet-base-dot-v1` (768-dim) for first-pass bi-encoder retrieval; `cross-encoder/ms-marco-MiniLM-L-6-v2` for citation re-ranking. Reused from cohort repository. |
-| **Agent Orchestration** | LangGraph (`StateGraph`) | Supervisor/Planner node $\to$ a `worker` node that runs the tool loop (`search_manual`, `extract_specs`, `get_page_text`, `calculator`) $\to$ a `synthesize` node. |
-| **LLM Gateway** | OpenRouter (`shared.llm.client`) | Provider-agnostic gateway. The UI-selectable model picks a tier that fixes the supervisor and worker models and their reasoning effort (DECISIONS M1). |
-| **Session & State Memory** | LangGraph `InMemorySaver` / `RedisSaver` | Swappable checkpointer from cohort memory patterns. Scoped per vehicle session. |
-| **API Backend** | FastAPI | Async endpoints for ingestion (`POST /manuals/upload`), chat stream (`POST /chat/stream`), and sliced document retrieval (`GET /manuals/{id}/pages/{start}-{end}`). |
-| **Frontend** | Next.js 14+ (App Router), Tailwind CSS v4, shadcn/ui, assistant-ui, `react-pdf` | Dedicated garage chat interface built on assistant-ui (thread history, markdown, streaming), with a split-pane PDF viewer using `react-pdf` in PDF slice mode. |
-| **Evaluations** | Custom LLM-as-judge script (`project/eval`) | Automated scoring on citation precision, torque/fluid accuracy, and hallucination rate against a synthetic ground-truth eval set. |
+| Language and runtime | Python 3.11+ with a UV virtual environment | Backend runs bare-metal or in Docker. |
+| PDF extraction | IBM Docling | `do_ocr=False`, FAST table structure, one batch item, two threads. |
+| PDF slicing and raster | PyMuPDF | Cuts the page slices and renders the PNG thumbnails. |
+| Vector store | Qdrant | One collection. Embedded local mode by default, with no server or credentials. |
+| Embeddings | `sentence-transformers` | `multi-qa-mpnet-base-dot-v1` for the first pass. |
+| Reranking | `sentence-transformers` | `cross-encoder/ms-marco-MiniLM-L-6-v2` for the second pass. |
+| Chunk token counting | tiktoken | The `cl100k_base` encoding. |
+| Agent orchestration | LangGraph `StateGraph` | A supervisor, worker, and synthesize topology. |
+| LLM gateway | OpenRouter | `backend/llm.py` is the only module that calls OpenRouter. The selected model picks a tier (DECISIONS M1). |
+| Evaluations | `backend/eval/` | An LLM judge scores the 16-question accuracy set. |
+| Monitoring | LangSmith | `backend/tracing.py` traces each OpenRouter call when enabled. |
+| API backend | FastAPI | Background ingest, Server-Sent Events, and file responses. |
+| Frontend | Next.js 14 App Router, Tailwind CSS v4, assistant-ui, react-pdf | Chat, citations, and the manual viewer. |
 
-### Considered and Rejected
-* **BigQuery**: Rejected. The problem domain consists of document chunks, tables, and unstructured manual text. Tabular OLAP warehousing provides zero benefit and adds infrastructure bloat.
-* **Custom MCP Server**: Rejected for MVP. Function calls are internal to the LangGraph agent (`bind_tools`). Model Context Protocol is designed for cross-client external tool sharing, which is unnecessary for this single-application system.
-* **BYOK (Bring Your Own Key)**: Rejected for MVP. The system is run single-user locally. Key management interfaces add friction with zero MVP utility.
-* **Full Multi-Tenant Authentication (Auth0/Clerk/Supabase)**: Rejected for MVP. Local execution requires no auth. When shared with trusted peers post-MVP, a static `X-API-Key` or shared bearer token suffices.
-* **Client-Side Full PDF Rendering**: Rejected. Parsing 500+ page (25+ MB) PDFs in browser WebAssembly crashes mobile browsers and causes severe rendering lag. Server-side page slicing resolves this cleanly.
-
+`project_proposal.md` records the tech options that were rejected.
 
 ---
 
-## 2. Architecture & Data Flow
+## 2. Architecture and data flow
 
-### 2.1 System Topology
-
-```
-                  ┌─────────────────────────────────────────┐
-                  │           Next.js Frontend              │
-                  │   (Chat + Citations + react-pdf Slice)  │
-                  └──────────────┬───────────────────▲──────┘
-                                 │                   │
-                 SSE Stream / API Calls        PDF Slices & Thumbnails
-                                 │                   │
-                  ┌──────────────▼───────────────────┴──────┐
-                  │             FastAPI Backend             │
-                  └───────┬───────────────────────────┬─────┘
-                          │                           │
-            ┌─────────────▼───────────────┐     ┌─────▼─────────────────────┐
-            │       LangGraph Agent       │     │     Document Storage      │
-            │  (Supervisor + Tool Nodes)  │     │ - Uploaded Full PDFs      │
-            └───────┬───────────────┬─────┘     │ - Sliced PDF Segments     │
-                    │               │           │ - Raster Thumbnail PNGs   │
-         ┌──────────▼─────┐   ┌─────▼───────┐   └───────────────────────────┘
-         │ Qdrant Vector  │   │ OpenRouter  │
-         │ (Payload-filt) │   │ (LLM / VLM) │
-         └────────────────┘   └─────────────┘
-```
-
-### 2.2 Ingestion Pipeline Flow
-```
-PDF Upload
-  │
-  ├─► PyMuPDF Page Check & Slice Index Generator
-  │     └─► Emits physical-to-printed page mapping JSON
-  │
-  ├─► Docling Converter (`do_ocr=False`, `FAST` tables, batch=1)
-  │     ├─► Text Blocks (with section header hints)
-  │     └─► Structured TableItems (converted to Pandas DataFrames -> Markdown)
-  │
-  ├─► Text & Unit Normalizer (Fixes `HiddenHorzOCR` artifacts, `Ib` -> `lb`, strip junk)
-  │
-  ├─► Chunk Generator (Section-aware split, 512 tokens / 64 overlap, tables kept whole, tagged with `vehicle_id`, `manual_id`, `page_number`)
-  │
-  ├─► SentenceTransformer (`multi-qa-mpnet-base-dot-v1`) Embedder
-  │
-  ├─► Qdrant Payload Upsert (`points` with embeddings + chunk metadata)
-  │
-  └─► Slice & Thumbnail Generator (Runs in background worker):
-        ├─► `pypdf` extracts 5-page window PDF slices
-        └─► `PyMuPDF` renders 150 DPI page preview PNGs
-```
-
-### 2.3 Agent Tool Loop (LangGraph StateGraph)
-
-Implemented. The agent uses a supervisor-directed topology to keep grounded reasoning:
+### 2.1 System topology
 
 ```
-        User Query
-             |
-             v
-      +--------------+   keep searching   +-------------------------------+
-      |  Supervisor  |------------------->|  Worker (tool loop)           |
-      |   (Plan)     |<-------------------|  search_manual, extract_specs |
-      +------+-------+      findings      |  get_page_text, calculator    |
-             |                            +-------------------------------+
-             | synthesize
-             v
-      +--------------+
-      |  Synthesize  |   markdown + [Page N]
-      +------+-------+
-             v
-      Final Grounded Output to User
+                    ┌───────────────────────────────────────────┐
+                    │            Next.js frontend               │
+                    │  chat, citations, manual viewer (browser)  │
+                    └───────┬───────────────────────▲───────────┘
+                            │                       │
+              JSON / SSE API calls         PDF slices, whole PDF,
+                            │                PNG thumbnails
+                    ┌───────▼───────────────────────┴───────────┐
+                    │              FastAPI backend              │
+                    │           (backend/api/main.py)           │
+                    └───┬───────────┬───────────────┬───────────┘
+                        │           │               │
+              ┌─────────▼──┐  ┌─────▼──────┐  ┌─────▼──────────────┐
+              │ LangGraph  │  │  Manual    │  │  retrieval.py      │
+              │ agent      │  │  storage   │  │  chunk, embed,     │
+              │ supervisor │  │  (disk)    │  │  rerank, search    │
+              └─────┬──────┘  └────────────┘  └─────┬──────────────┘
+                    │                               │
+            ┌───────▼───────┐             ┌─────────▼─────────┐
+            │  OpenRouter   │             │  Qdrant (local)   │
+            │  LLM / tools  │             │  on-disk store    │
+            └───────────────┘             └───────────────────┘
 ```
 
-The graph has three nodes: `supervisor`, `worker`, and `synthesize`.
-The `supervisor` decides whether the worker keeps searching or the graph synthesizes, and a hop cap (`AGENT_MAX_HOPS`) forces synthesis when it has not stopped.
-The `worker` runs the tool loop over `search_manual`, `extract_specs`, `get_page_text`, and `calculator`.
-The selected model picks the tier (DECISIONS M1): Flash selects `fast` (Flash at low effort for the routing check and the tool loop, Flash at high effort for the answer), and Pro selects `pro` (Flash at low effort for the routing check and the tool loop, Pro at high effort for the answer). The two tiers differ only in the authoring model, so the expensive model is spent only on the answer.
+A browser session keeps one active vehicle. Every chat request carries its
+`vehicle_id`, and retrieval uses that value to scope the search.
 
-1. **Supervisor**: Analyzes the request and the worker's findings, then routes to the worker for more search, or to synthesis. It runs on the tier's working model.
-2. **`search_manual`**: Executes filtered Qdrant vector retrieval scoped to `vehicle_id` (and optional `manual_id`), reranked via `cross-encoder/ms-marco-MiniLM-L-6-v2`.
-3. **`extract_specs`**: Targeted retrieval over extracted `TableItem` structured data to extract exact key/value parameters.
-4. **`get_page_text`**: Retrieves the complete unchunked text for a target page when a procedure spans consecutive paragraphs.
-5. **Synthesize**: Compiles the final response: Markdown steps and inline `[Page X]` citations. Enforces the strict rule: "If unmentioned in context, state not found." It runs on the tier's authoring model.
+### 2.2 Ingestion pipeline (Task 1)
 
+`backend/ingest.py` turns a stored `source.pdf` into the text and tables that
+later stages chunk and index.
 
+```
+source.pdf
+  │
+  ├─► Text-layer probe                  (PyMuPDF)
+  │     └─► average characters per page
+  │           below threshold  -> status = error, stop  (DECISIONS D1)
+  │
+  ├─► Hidden-OCR sanitize               (PyMuPDF)
+  │     └─► remove ghost-font spans that do not overlap visible text (D2)
+  │
+  ├─► Docling convert                   (do_ocr=False, FAST tables, batch 1)
+  │     └─► per-page progress events -> manual.progress
+  │
+  ├─► Normalize                         (unit and header repair, D3)
+  │
+  └─► Persist under manuals/{manual_id}/
+        ├─► page_text/page_NNNN.txt     one file per physical page
+        ├─► tables.json                 each table as Markdown, with its page
+        ├─► ingest.json                 the IngestResult summary
+        └─► status = ready, page_count set
+```
 
----
+On upload, the API schedules `ingest_in_background`. After the pipeline reaches
+`ready`, that function chunks and indexes the manual through
+`retrieval.index_manual` and writes `chunk_count`. A failure sets
+`status = error`. The same pipeline runs by hand with
+`python -m backend.ingest <manual_id>`.
 
-## 3. Reuse Map (Cohort Repository Patterns)
+The run reports its position on the manual's `progress` field. Conversion
+reports one event per converted page. Indexing reports one event per embedded
+batch. The upload dialog reads that field and shows a bar with a time estimate.
 
-| Component | Cohort Source Path | Adaptation Strategy |
+### 2.3 Agent graph and tool loop (Task 4)
+
+`backend/agent/graph.py` builds the graph and compiles it at import. The shape
+is a supervisor, worker, and synthesize topology.
+
+```mermaid
+flowchart LR
+    START([START]) --> supervisor[supervisor]
+    supervisor -->|route: worker| worker[worker]
+    supervisor -->|route: synthesize| synthesize[synthesize]
+    worker --> supervisor
+    synthesize --> STOP([END])
+```
+
+The `supervisor` node reads the question and what the worker has found, then
+decides whether the worker keeps searching or the graph synthesizes. A hop cap
+(`AGENT_MAX_HOPS`) forces synthesis when the supervisor has not stopped. The
+`worker` node runs the tool loop over the calculator and the three RAG tools. A
+second cap (`AGENT_MAX_TOOL_STEPS`) bounds that loop. The `synthesize` node
+writes the final markdown answer with `[Page N]` citations.
+
+The model the user picked selects a tier (DECISIONS M1). The tier fixes two
+models: a working model that runs the supervisor routing check and the worker's
+tool loop, and an authoring model that writes the answer. The expensive model
+is spent only on the answer.
+
+The graph state is `AgentState`: `messages` (merged with `add_messages`),
+`model` (a per-request override), `vehicle_id`, `stream`, `gathered`, `next`,
+and `hops`. The `worker` node appends its findings to `gathered` so the
+supervisor sees them; `next` is the supervisor's routing decision; `hops`
+counts the worker runs. When `stream` is true, the `synthesize` node streams
+content deltas through the stream writer. `POST /chat/stream` consumes those
+events.
+
+The `worker` node merges the state's `vehicle_id` into every tool argument
+whose executor takes that parameter, and it overrides any value the model
+supplied. The model cannot know the vehicle id, so the state value is the only
+trusted source.
+
+The tools live in `backend/tools.py`.
+
+| Tool | Arguments | Returns |
 |---|---|---|
-| **Embeddings & Re-ranking** | `/home/sam/dev/aie-cohort-202609/project/retrieval/embeddings.py` | Import directly: `embed(texts)` and `rerank(query, candidates, top_n)`. Uses `multi-qa-mpnet-base-dot-v1` and `ms-marco-MiniLM-L-6-v2`. |
-| **Qdrant Ingest Pattern** | `/home/sam/dev/aie-cohort-202609/project/retrieval/ingest.py` | Adapt `ingest()` to attach `vehicle_id`, `manual_id`, and `page_number` in `PointStruct` payload. Replace flat markdown loader with Docling output. |
-| **Filtered Search** | `/home/sam/dev/aie-cohort-202609/project/retrieval/search.py` | Add Qdrant `Filter` with `must` match on `vehicle_id` and optional `manual_id`. |
-| **LLM Gateway & Tools** | `/home/sam/dev/aie-cohort-202609/shared/llm/client.py`, `tools.py` | Reuse `chat()`, OpenRouter model config, and function-calling schemas as-is. |
-| **StateGraph Pattern** | `/home/sam/dev/aie-cohort-202609/project/agents/graph.py` | Adapt the supervisor graph to one retrieval worker: a `supervisor` node, a `worker` node that runs the RAG tool loop, and a `synthesize` node. |
-| **Memory Checkpointer** | `/home/sam/dev/aie-cohort-202609/project/memory/checkpointer.py` | Reuse `make_checkpointer()` to swap `InMemorySaver` (dev) and `RedisSaver` (production) via config. |
-| **FastAPI SSE Streaming** | `/home/sam/dev/aie-cohort-202609/project/api/main.py` | Reuse Server-Sent Events (`EventSource`) streaming patterns for token-by-token UI updates. |
-| **LLM-as-a-Judge Eval** | `/home/sam/dev/aie-cohort-202609/project/eval/judge.py`, `run.py` | Adapt rubric to evaluate `citation_precision`, `spec_exactness`, and `hallucination_rate`. |
+| `calculator` | `expression` | The numeric result, or an error string. |
+| `search_manual` | `query`, `vehicle_id`, `manual_id?`, `top_k?` | `SearchResult` JSON: reranked chunks with page citations. |
+| `extract_specs` | `subject`, `vehicle_id`, `manual_id?` | `ExtractSpecsResult` JSON: verbatim table rows that match the subject. |
+| `get_page_text` | `page_numbers`, `manual_id`, `vehicle_id?` | `GetPageTextResult` JSON: the full text of each requested page. |
+
+`search_manual` calls `retrieval.search`. `extract_specs` reads `tables.json`
+and matches the subject against table captions and row labels. It skips
+disabled manuals and returns each matched row verbatim. `get_page_text` reads
+`page_text/page_NNNN.txt` for each requested physical page.
 
 ---
 
-## 4. Schemas, Naming, and Conventions
+## 3. HTTP API (Task 5)
 
-### 4.1 Data Schemas (`backend/schemas.py`)
+`backend/api/main.py` holds every endpoint. CORS allows the Next.js dev server
+on `localhost:3000`.
+
+| Method | Path | Purpose | Response |
+|---|---|---|---|
+| GET | `/health` | Liveness check. | `{"status": "ok"}` |
+| GET | `/models` | The model selector choices. | `{"default": ..., "options": [...]}` |
+| POST | `/chat` | Run one chat turn through the graph. | `{"reply": ..., "model": ...}` |
+| POST | `/chat/stream` | The same turn as Server-Sent Events. | SSE stream |
+| POST | `/manuals` | Store an uploaded PDF and start ingest. | A `Manual` with `status="processing"` |
+| GET | `/manuals` | List every stored manual, newest first. | `Manual[]` |
+| GET | `/manuals/{id}` | One manual, including its ingest progress. | `Manual` |
+| PATCH | `/manuals/{id}` | Enable or disable a manual. | `Manual` |
+| DELETE | `/manuals/{id}` | Purge a manual's index, then remove it. | `{"deleted": "<id>"}` |
+| GET | `/manuals/{id}/pages/{start}-{end}` | A PDF holding those pages, both ends inclusive. | `application/pdf` |
+| GET | `/manuals/{id}/pdf` | The whole stored PDF. | `application/pdf` |
+| GET | `/manuals/{id}/thumbnails/{page}` | One page as a PNG. | `image/png` |
+| GET | `/vehicles` | List every vehicle profile, newest first. | `Vehicle[]` |
+| POST | `/vehicles` | Create a vehicle profile. | `Vehicle` |
+| PATCH | `/vehicles/{id}` | Rename a vehicle profile. | `Vehicle` |
+| DELETE | `/vehicles/{id}` | Delete a vehicle profile. | `{"deleted": "<id>"}` |
+
+`POST /chat` and `POST /chat/stream` take a `ChatRequest`:
+`{"query": str, "model": str | null, "vehicle_id": str | null}`. The `model`
+field overrides the config default for that request. The `vehicle_id` field
+scopes the turn to one vehicle.
+
+Status codes:
+
+- `400` for an empty `vehicle_id` or `display_name`, a non-PDF upload, a bad
+  page range, a bad page number, and an LLM failure on `POST /chat`.
+- `404` for an unknown manual or vehicle, and for a manual whose `source.pdf`
+  is missing.
+- `409` for an upload whose SHA-256 digest matches an existing manual of the
+  same vehicle. The body names the manual it duplicates.
+- `304` for a page request whose `If-None-Match` matches the slice `ETag`.
+
+`POST /chat/stream` sends one JSON object per `data:` line. Content arrives as
+`{"type": "token", "content": "..."}`. The stream ends with
+`{"type": "done", "content": "<full reply>", "model": "<slug>"}`. A failure
+before any answer ends the stream with `{"type": "error", "message": "..."}`.
+
+`DELETE /manuals/{id}` purges the indexed chunks first, then removes the record
+and its directory. The purge runs first so a failure there leaves the record in
+place to retry.
+
+---
+
+## 4. Data contracts and storage
+
+### 4.1 Data schemas (backend/schemas.py)
+
+These are the output contracts of the tools and the storage records. The input
+contracts (the OpenAI function-calling schemas the model sees) live in
+`backend/tools.py`.
 
 ```python
-from datetime import datetime
-from typing import Literal, Optional
-from pydantic import BaseModel, Field
-
 class Vehicle(BaseModel):
     vehicle_id: str
-    user_id: str = "default_user"  # Single-user local default
-    display_name: str              # e.g., "2023 Civic"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    user_id: str = "default_user"
+    display_name: str
+    created_at: datetime
+
+class IngestProgress(BaseModel):
+    stage: Literal["probe", "convert", "index", "done"] = "probe"
+    completed: int = 0
+    total: int = 0
 
 class Manual(BaseModel):
     manual_id: str
@@ -150,120 +233,208 @@ class Manual(BaseModel):
     display_name: str
     source_filename: str
     description: Optional[str] = None
+    content_hash: Optional[str] = None      # SHA-256 of the uploaded bytes
     status: Literal["processing", "ready", "error"] = "processing"
+    enabled: bool = True                    # gates retrieval only
     page_count: int = 0
     chunk_count: int = 0
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    progress: IngestProgress
+    created_at: datetime
+
+class TextLayerProbe(BaseModel):
+    page_count: int
+    total_chars: int
+    avg_chars_per_page: float
+    threshold: float
+    needs_ocr: bool
+
+class IngestTable(BaseModel):
+    page_number: int
+    caption: Optional[str] = None
+    markdown: str
+
+class IngestResult(BaseModel):
+    manual_id: str
+    page_count: int
+    table_count: int
+    probe: TextLayerProbe
+    normalized: bool
+    hidden_ocr_detected: bool
 
 class ChunkPayload(BaseModel):
     text: str
     vehicle_id: str
     manual_id: str
-    page_number: int               # Printed page number
-    physical_page: int             # 1-indexed PDF page
+    page_number: int                        # physical PDF page, 1-indexed
+    physical_page: Optional[int] = None     # legacy, unused
     section_name: Optional[str] = None
     is_table: bool = False
     score: float = 0.0
 
 class SpecItem(BaseModel):
-    item: str                      # e.g., "Engine oil drain bolt"
-    value: str                     # e.g., "30"
-    unit: str                      # e.g., "Nm (22 ft·lb)"
+    item: str
+    value: str
+    unit: str
     page_number: int
 
-class ProcedureStep(BaseModel):
-    step_number: int
-    instruction: str
-    tools: list[str] = []
-    warnings: list[str] = []
-    specs: list[SpecItem] = []
-    page_citations: list[int] = []
+class PageText(BaseModel):
+    page_number: int
+    text: str
 
-class AgentAnswer(BaseModel):
-    summary: str
-    procedure: list[ProcedureStep] = []
-    specs: list[SpecItem] = []
-    citations: list[int] = []      # Distinct pages referenced
-    confidence: float
+class SearchResult(BaseModel):
+    query: str
+    results: list[ChunkPayload]
+
+class ExtractSpecsResult(BaseModel):
+    subject: str
+    specs: list[SpecItem]
+
+class GetPageTextResult(BaseModel):
+    manual_id: str
+    pages: list[PageText]
 ```
 
+A disabled manual stays stored and listed, but its chunks never come back from
+search. Citations carry the physical PDF page number. The printed page number
+on the sheet stays unrecovered (DECISIONS D12).
 
+### 4.2 On-disk layout
 
----
+`backend/storage.py` writes one directory per record. Every id is a
+server-generated UUID, so a client cannot address another record's directory.
+The original filename lives only in the `source_filename` field.
 
-## 5. Build Order (Step-by-Step Milestones)
+```
+{manuals_dir}/                     # MANUALS_DIR, default "manuals"
+  {manual_id}/                     # a UUID
+    source.pdf                     # the uploaded bytes, fixed name
+    manual.json                    # the Manual record
+    page_text/page_NNNN.txt        # written by ingest
+    tables.json                    # written by ingest
+    ingest.json                    # written by ingest
 
-The POC order is: the system prompt (its own branch), the dependencies and
-configuration, local storage and upload, ingest on `pl.pdf`, chunk and index in
-local Qdrant, the retrieval tools with markdown answers, then the eval. The
-`AgentAnswer` and the spec ledger come
-later (DECISIONS Deferred).
+{vehicles_dir}/                    # VEHICLES_DIR, default "vehicles"
+  {vehicle_id}/                    # a UUID
+    vehicle.json                   # the Vehicle record
 
-Each task is scoped to be executed and verified in a single session:
+{qdrant_path}/                     # QDRANT_PATH, default "qdrant"
+                                   # the embedded Qdrant store
+```
 
-1. **Task 1: Ingestion Pipeline & Normalization**
-   - *Action*: Implement `ingest.py` integrating Docling with pinned config (`do_ocr=False`, `TableFormerMode.FAST`, threads=2, batch=1). Run the text-layer probe and refuse a manual that carries no text layer (DECISIONS D13). Build the printed-to-physical page map from the page footer or the header, with the TOC table as the fallback (DECISIONS D12). Add OCR artifact cleaning (`SPECiFiCATIONS` $\to$ `SPECIFICATIONS`, `Ib` $\to$ `lb`).
-   - *Done when*: Running `python -m ingest /path/to/manual.pdf` extracts the 56-page `pl.pdf` in about 8 minutes, emitting normalized text and tables. The 503-page Rhino manual is a later, longer run.
+A relative `manuals_dir`, `vehicles_dir`, or `qdrant_path` resolves against the
+repo root, not the process working directory. Docker Compose bind-mounts
+`manuals/`, `vehicles/`, and `qdrant/`, so uploads, profiles, and the index all
+persist on the host.
 
-2. **Task 2: Slicing & Thumbnail Pre-generation**
-   - *Action*: Implement `slicer.py` using `pypdf` to produce 5-page window PDF slices and `PyMuPDF` for 150 DPI thumbnail images saved in `data/manuals/{manual_id}/`.
-   - *Done when*: A slice request returns a clean ~50 KB vector PDF slice, and thumbnails render crisp images for sample pages 1, 9, 24, 82.
-
-3. **Task 3: Qdrant Indexing & Payload Filtering**
-   - *Action*: Implement chunking (512 tokens with 64 overlap, split on section headings, each table kept whole per DECISIONS D9 to D11), embedding via `multi-qa-mpnet-base-dot-v1`, and upsert into local Qdrant with `vehicle_id` and `manual_id` payload fields.
-   - *Done when*: Querying `search_manual("oil change drain bolt", vehicle_id="demo_vehicle")` returns chunks from pages 24 and 82 with cross-encoder scores $> 0.7$.
-
-4. **Task 4: Agent Tool Contracts & LangGraph Graph**
-   - *Action*: Build `search_manual`, `extract_specs`, and `get_page_text` as Pydantic-typed tools, then run them in the supervisor/worker/synthesize graph. The POC answers in markdown with `[Page N]` citations. The structured `AgentAnswer` is a later task.
-   - *Done when*: Running `python -m agent "how do I change engine oil?"` returns ordered steps, torque values, and correct page citations from the prototype manual.
-
-5. **Task 5: FastAPI Backend Services**
-   - *Action*: Expose REST endpoints: `GET /manuals/{id}/pages/{start}-{end}` (serves PDF slices), `GET /manuals/{id}/thumbnails/{page}` (serves PNG images), and `POST /chat/stream` (SSE token stream).
-   - *Done when*: `curl -N http://localhost:8000/chat/stream` streams JSON chunks of a synthesized repair procedure.
-
-6. **Task 6: Next.js Frontend with Sliced PDF Viewer**
-   - *Action*: Build chat interface with Tailwind + shadcn/ui. Wire citation badges to trigger `react-pdf` in PDF mode loading `GET /manuals/{id}/pages/{start}-{end}`.
-   - *Done when*: Clicking a `[Page 82]` badge in a chat bubble renders page 82 with selectable text in under 1.5 seconds.
-
-7. **Task 7: Automated Evals & Quality Benchmark**
-   - *Action*: Create synthetic eval suite (16 queries covering specs, procedures, and out-of-scope questions). Run LLM-as-a-judge scoring citation precision and spec correctness.
-   - *Done when*: Evaluation run achieves $>90\%$ citation precision and $0\%$ fabricated specifications on out-of-scope queries.
-   - *Status*: **DONE** on the 56-page `pl.pdf` — 16/16 passed, citation precision `0.95` to `1.00` across runs, and `0` fabricated out-of-scope answers. The harness is `backend/eval/` (dataset loader, judge, runner) over `backend/tests/eval_questions.json`. Run it with `EVAL_VEHICLE_ID=<id> uv run --project backend python -m backend.eval.run` from the repo root. The runner reports the pass rate, the citation precision, and the fabricated count, and it gates on all three.
-
-
+A manual record is written through a temporary file and an atomic replace,
+because ingest rewrites the record while it runs and a reader must never catch
+a half-written file.
 
 ---
 
-## 6. Spike Outcomes & Resolved Decisions
+## 5. Retrieval (Task 3)
 
-The two gating spikes from brainstorming §6 are resolved by empirical data in `SPIKE_FINDINGS.md`:
+`backend/retrieval.py` chunks a manual's ingest output, embeds the chunks, and
+stores them in Qdrant. Heavy imports (tiktoken, sentence-transformers,
+qdrant-client) stay inside the functions that need them, so importing the
+module is free.
 
-### Spike Outcome 1: Docling Fidelity (Q6)
-* **Status**: **RESOLVED / PASS WITH CONSTRAINTS**.
-* **Criterion**: Docling extracts tables and text with high fidelity without exhausting system resources.
-* **Result**:
-  - `DocumentConverter(do_ocr=False, table_structure_options=TableFormerMode.FAST)` succeeded on 42-page sample in 335s with 2.92 GB peak RSS.
-  - 34 structured spec tables cleanly parsed to DataFrames (e.g., M14 oil drain bolt 30 Nm, oil capacities 2.0L / 2.1L / 3.0L).
-  - *Hard Constraint*: Default Docling config crashes host with OOM (~6 GB RSS). Ingestion pipeline must strictly enforce `do_ocr=False`, batch size 1, and max 2 threads.
-  - *Heading Constraint*: `document_index` is empty; section names must be parsed from TOC table + section header regex, not Docling's document tree.
+Chunking follows the ratified values.
 
-### Spike Outcome 2: PDF Slicing vs. Raster Images (Q10)
-* **Status**: **RESOLVED / HYBRID ARCHITECTURE**.
-* **Criterion**: Optimal rendering mode for `react-pdf` and bandwidth performance.
-* **Result**:
-  - `pypdf` slicing yields 5-page PDF segments of ~50 KB (10 KB/page) retaining vector crispness and selectable text (critical for copying torque numbers).
-  - Raster PNG thumbnails (PyMuPDF at 150 DPI) are ~283 KB/page, lacking selectable text.
-  - *Decision*: Serve **pre-sliced PDFs** as the primary viewer format in `react-pdf` (`<Document file={slice}><Page/></Document>`). Use **raster thumbnails** only for static image companions, mobile list views, and future on-demand diagram inspection.
+- Prose splits at section headings. A heading stays attached to the body it
+  introduces.
+- Prose chunks target `INGEST_CHUNK_TOKENS` (512) with
+  `INGEST_CHUNK_OVERLAP_TOKENS` (64) of overlap.
+- Each table stays one chunk, even when it exceeds the prose budget.
+- Token counting uses `INGEST_TOKENIZER` (`cl100k_base`).
+
+Embedding uses `RETRIEVAL_EMBED_MODEL` (`multi-qa-mpnet-base-dot-v1`) with
+L2-normalized vectors, in batches of `RETRIEVAL_EMBED_BATCH_SIZE` (64).
+
+The store is the `QDRANT_COLLECTION` collection (`manualchat_chunks`) with
+cosine distance. An empty `QDRANT_URL` selects the embedded local store at
+`QDRANT_PATH`. A point id is a UUIDv5 derived from `{manual_id}:chunk:{i}`, so
+ids stay unique across the manuals in one collection. A re-index deletes the
+manual's existing points first, so it never duplicates them.
+
+A search runs in two stages:
+
+1. Qdrant filters on `vehicle_id` and an optional `manual_id`, and excludes the
+   manuals the vehicle has disabled. It returns `RETRIEVAL_CANDIDATE_K` (50)
+   candidates.
+2. The cross-encoder (`RETRIEVAL_RERANK_MODEL`) scores each candidate. A sigmoid
+   maps the score to 0 to 1. The top `RETRIEVAL_TOP_N` (5) come back.
+
+Deleting a manual purges its points through `delete_manual_index`. A missing
+store or collection makes that call a no-op, so it never creates a store just
+to delete from it.
 
 ---
 
-## 7. Implementation Risks & Fallbacks
+## 6. Frontend (Task 6)
 
-| Risk | Trigger Condition | Concrete Fallback Plan |
-|---|---|---|
-| **Host OOM during Full Ingestion** | Ingestion process RSS exceeds 3.5 GB or crashes worker on 500-page manual. | Split PDF into 50-page chunks using `pypdf` before passing to Docling; process chunks sequentially with manual `gc.collect()` between runs, then merge resulting JSON structures. |
-| **Noisy OCR Text Layer Distortion** | Extracted specs contain garbled characters (e.g., `ft·Ib` or missing decimals). | Run deterministic regex normalizer on all text blocks prior to embedding and table conversion (`re.sub(r'ft·Ib', 'ft·lb', ...)`). |
-| **Docling TOC Outline Missing** | Section titles missing in viewer context navigation bar. | Fallback from document tree to page-window navigation: use fixed 5-page windows (`[Page-2, Page+2]`) around cited page, reading section names from pre-parsed printed TOC table (pages 1–7). |
-| **Agent Tool Calling Loops** | Agent repeatedly calls `search_manual` without progressing to synthesis. | Enforce a strict hop cap (`AGENT_MAX_HOPS`, default `4`) in the graph state. If exceeded, force the transition to `synthesize` with the context gathered so far, or return a gap acknowledgment. |
-| **Browser PDF Rendering Latency** | `react-pdf` WebAssembly takes $>3$ seconds to mount on mobile browsers. | Toggle viewer to fallback `<img>` raster thumbnail mode (`GET /manuals/{id}/thumbnails/{page}`) for low-power mobile clients. |
+| File | Responsibility |
+|---|---|
+| `app/page.tsx` | The page that mounts the runtime providers. |
+| `app/chat-runtime.tsx` | The assistant-ui chat adapter. Calls `POST /chat` scoped to the active vehicle. |
+| `app/vehicle-runtime.tsx` | The active vehicle state. |
+| `app/viewer-runtime.tsx` | The manual viewer pane state. |
+| `app/theme-runtime.tsx` | The light and dark theme state. |
+| `lib/api.ts` | A typed client that wraps every backend call. |
+| `lib/pdf-cache.ts` | The slice and whole-manual byte caches. |
+| `lib/ingest-progress.ts` | The upload progress bar and its time estimate. |
+| `lib/viewer-config.ts` | The `NEXT_PUBLIC_VIEWER_*` values. |
+| `components/manual-upload.tsx` | The upload dialog. |
+| `components/manual-viewer.tsx` | The viewer pane and its react-pdf document. |
+| `components/vehicle-selector.tsx` | The vehicle dropdown in the top bar. |
+| `components/vehicle-picker.tsx` | The vehicle picker inside the upload dialog. |
+| `components/top-bar.tsx` | The bar that holds the selector, upload, viewer, model, and theme controls. |
+| `components/theme-toggle.tsx` | The theme switch. |
+| `components/assistant-ui/elements/markdown-text.tsx` | Renders each `[Page N]` as a clickable badge. |
 
+A click on a page badge opens the viewer beside the chat at the cited page. The
+pane shows the cited page plus the configured pages around it, with selectable
+text and zoom. The pane opens at the cited page, so a page held before it
+scrolls out of view. While a slice shows, the pane names it in place of the
+manual selector. A `View whole manual` button opens the stored PDF, and the
+pages mount one at a time as the reader scrolls.
+
+The viewer caches PDF bytes, never rendered pages. Page slices live in a
+module-level `Map` with an LRU cap. A whole manual is cached once per manual in
+the Cache API. Deleting a manual drops its cached bytes. The page endpoints
+answer with `Cache-Control: immutable` and an `ETag`, so a matching request
+returns `304`. The slice `ETag` comes from the stored PDF and the page range,
+because PyMuPDF stamps a fresh document id into every re-serialization.
+
+Next.js inlines `NEXT_PUBLIC_` values at build time or at dev-server start, so
+restart the frontend after a change to one.
+
+---
+
+## 7. Page thumbnails (raster fallback) (Task 5)
+
+`GET /manuals/{id}/thumbnails/{page}` renders one physical page of the stored
+`source.pdf` to a PNG with PyMuPDF. The resolution is the `THUMBNAIL_DPI` value
+(150 by default). A client that cannot mount the PDF viewer uses this raster
+fallback mode.
+
+---
+
+## 8. Configuration
+
+Every tunable value lives in `backend/config.py` and is read from the
+environment. There is no `.env` file in the repo. `README.md` holds the full
+environment variable table with defaults.
+
+The config groups are:
+
+- Model selection and generation: `MODEL_DEFAULT`, `MODEL_OPTIONS`, the
+  `MODEL_*` generation parameters, and the `SUPER_SUB_*` tier table.
+- Agent graph: `AGENT_SYSTEM_PROMPT`, `AGENT_MAX_HOPS`, and
+  `AGENT_MAX_TOOL_STEPS`.
+- Local storage: `MANUALS_DIR`, `VEHICLES_DIR`.
+- Manual viewer: `THUMBNAIL_DPI`, `VIEWER_CACHE_MAX_AGE_SECONDS`.
+- Ingestion: the `INGEST_*` pipeline and chunking values.
+- Retrieval: the `QDRANT_*` and `RETRIEVAL_*` values.
+- Automated evals: the `EVAL_*` judge and gating values.
+- Monitoring: the `LANGSMITH_*` tracing values.

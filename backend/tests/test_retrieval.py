@@ -179,6 +179,25 @@ def test_index_then_search_returns_the_indexed_chunks():
     assert {c.page_number for c in result} == {1, 2}
 
 
+def test_index_manual_reports_chunk_progress():
+    """The upload dialog needs the embedded-chunk count, so index must report it."""
+    manual_id = _store_ingested_manual(
+        {1: "Engine oil and oil filter change: remove the oil drain bolt."}
+    )
+    seen: list[tuple[int, int]] = []
+
+    count = retrieval.index_manual(
+        manual_id,
+        embed=_fake_embed,
+        on_progress=lambda done, total: seen.append((done, total)),
+    )
+
+    assert count > 0
+    assert seen
+    assert seen[-1] == (count, count)
+    assert all(0 < done <= total == count for done, total in seen)
+
+
 def test_search_is_scoped_to_vehicle():
     manual_id = _store_ingested_manual(
         {1: "Engine oil and oil filter change: remove the oil drain bolt."}

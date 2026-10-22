@@ -113,12 +113,24 @@ async def create_manual(
     if not content.startswith(b"%PDF"):
         raise HTTPException(status_code=400, detail="file is not a PDF")
 
+    content_hash = hashlib.sha256(content).hexdigest()
+    existing = storage.find_duplicate(vehicle_id.strip(), content_hash)
+    if existing is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"this manual is already uploaded for this vehicle "
+                f"(duplicate of \"{existing.display_name}\")"
+            ),
+        )
+
     manual = storage.store_manual(
         source_pdf=content,
         vehicle_id=vehicle_id.strip(),
         display_name=display_name.strip(),
         description=description.strip() or None,
         source_filename=file.filename or "manual.pdf",
+        content_hash=content_hash,
     )
     background_tasks.add_task(ingest.ingest_in_background, manual.manual_id)
     return manual

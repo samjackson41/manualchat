@@ -21,6 +21,7 @@ record; the on-disk name is fixed so a hostile filename cannot escape the
 directory.
 """
 
+import hashlib
 import shutil
 import json
 import uuid
@@ -51,6 +52,7 @@ def store_manual(
     display_name: str,
     source_filename: str,
     description: str | None = None,
+    content_hash: str | None = None,
 ) -> Manual:
     """Write an uploaded manual and return its record.
 
@@ -69,12 +71,43 @@ def store_manual(
         display_name=display_name,
         source_filename=source_filename,
         description=description,
+        content_hash=content_hash,
         status="processing",
     )
-    (manual_dir / "manual.json").write_text(
-        json.dumps(manual.model_dump(mode="json"), indent=2)
-    )
+    _write_manual(manual)
     return manual
+
+
+def content_hash_of(manual: Manual) -> str | None:
+    """Return a manual's content hash, computing it from `source.pdf` if absent.
+
+    A record written before `content_hash` existed carries no digest, so the
+    stored PDF is hashed on demand and the digest is written back. Returns None
+    only when the stored PDF is missing.
+    """
+    if manual.content_hash:
+        return manual.content_hash
+    source = manual_dir(manual.manual_id) / "source.pdf"
+    if not source.is_file():
+        return None
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    update_manual(manual.manual_id, content_hash=digest)
+    return digest
+
+
+def find_duplicate(vehicle_id: str, content_hash: str) -> Manual | None:
+    """Return the manual of `vehicle_id` whose bytes hash to `content_hash`.
+
+    The digest is the SHA-256 of the uploaded PDF. A match means the same PDF
+    was already stored under this vehicle, so the new upload is a re-upload
+    (DECISIONS U2). Returns None when no stored manual matches.
+    """
+    for manual in list_manuals():
+        if manual.vehicle_id != vehicle_id:
+            continue
+        if content_hash_of(manual) == content_hash:
+            return manual
+    return None
 
 
 def manual_dir(manual_id: str) -> Path:
@@ -82,19 +115,30 @@ def manual_dir(manual_id: str) -> Path:
     return manuals_root() / manual_id
 
 
+def _write_manual(manual: Manual) -> None:
+    """Write one manual record, replacing the file in a single step.
+
+    Ingest rewrites the record while it runs so the upload dialog can poll its
+    progress. A reader must never catch a half-written file.
+    """
+    record_path = manual_dir(manual.manual_id) / "manual.json"
+    temp_path = record_path.with_name(record_path.name + ".tmp")
+    temp_path.write_text(json.dumps(manual.model_dump(mode="json"), indent=2))
+    temp_path.replace(record_path)
+
+
 def update_manual(manual_id: str, **updates) -> Manual | None:
     """Patch a manual's record fields and persist it, or return None when unknown.
 
-    The ingest pipeline uses this to fill in ``page_count`` and ``status`` after
-    a successful run without replacing the ``Manual`` identity.
+    The ingest pipeline uses this to fill in ``page_count``, ``status``, and
+    ``progress`` after a successful run without replacing the ``Manual``
+    identity.
     """
     manual = get_manual(manual_id)
     if manual is None:
         return None
     updated = manual.model_copy(update=updates)
-    (manual_dir(manual_id) / "manual.json").write_text(
-        json.dumps(updated.model_dump(mode="json"), indent=2)
-    )
+    _write_manual(updated)
     return updated
 
 

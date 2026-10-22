@@ -76,11 +76,25 @@ class _FakeDocument:
         self.tables = tables
 
 
+class _FakePageEvent:
+    """The Docling page-event shape the pipeline reads (a real one needs Docling)."""
+
+    def __init__(self, completed: int, total: int):
+        self.kind = "page_completed"
+        self.completed_pages = completed
+        self.total_pages = total
+
+
 class _FakeConverter:
     def __init__(self, document):
         self._document = document
 
-    def convert(self, pdf_path):
+    def convert(self, pdf_path, progress_callback=None):
+        pages = len(self._document.texts)
+        if progress_callback is not None:
+            for done in range(1, pages + 1):
+                progress_callback(_FakePageEvent(done, pages))
+
         class _Result:
             document = self._document
 
@@ -167,6 +181,40 @@ def test_ingest_manual_writes_pages_tables_and_record():
     manual = storage.get_manual(manual_id)
     assert manual.page_count == 2
     assert manual.status == "ready"
+
+
+def test_ingest_manual_reports_page_progress(monkeypatch):
+    """The upload dialog polls these values, so every page must reach the record."""
+    manual_id = _store_manual(
+        [
+            "Remove the oil drain bolt and drain the oil fully into a pan.",
+            "Refill with two litres of engine oil and tighten the bolt.",
+        ]
+    )
+    seen: list[tuple[str, int, int]] = []
+    real_update = storage.update_manual
+
+    def spy(manual_id_: str, **updates):
+        progress = updates.get("progress")
+        if progress is not None:
+            seen.append((progress.stage, progress.completed, progress.total))
+        return real_update(manual_id_, **updates)
+
+    monkeypatch.setattr(storage, "update_manual", spy)
+    document = _FakeDocument(
+        texts=[
+            _FakeText("Remove the oil drain bolt and drain the oil fully.", 1),
+            _FakeText("Refill with two litres of engine oil.", 2),
+        ],
+        tables=[],
+    )
+    ingest.ingest_manual(manual_id, converter=_FakeConverter(document))
+
+    assert seen[0] == ("probe", 0, 0)
+    assert ("convert", 1, 2) in seen
+    assert ("convert", 2, 2) in seen
+    assert seen[-1] == ("done", 2, 2)
+    assert storage.get_manual(manual_id).progress.stage == "done"
 
 
 def test_ingest_manual_refuses_a_manual_with_no_text_layer():
