@@ -26,11 +26,13 @@
   description, status, page count, and chunk count, with an enable switch and a
   two-step delete.
 
-- Agent tools: the agent runs a `chat -> tools -> chat` loop. The tools are a
-  calculator, `search_manual`, `extract_specs`, and `get_page_text`.
-  `search_manual` returns reranked chunks with page citations, `get_page_text`
-  returns the full text of a page, and `extract_specs` returns the matching rows
-  from the manual's tables.
+- Agent graph: the agent runs a supervisor, worker, and synthesize topology.
+  The supervisor decides whether the worker keeps searching the manual or the
+  graph writes the answer. The worker runs the tool loop over a calculator,
+  `search_manual`, `extract_specs`, and `get_page_text`. `search_manual`
+  returns reranked chunks with page citations, `get_page_text` returns the full
+  text of a page, and `extract_specs` returns the matching rows from the
+  manual's tables.
 
 - Grounding: the agent answers only from the manual. Every claim and step
   carries a `[Page N]` citation. When the manual holds no answer, the agent says
@@ -42,6 +44,10 @@
 
 - Page thumbnails: `GET /manuals/{id}/thumbnails/{page}` renders one page of the
   stored PDF as a PNG.
+
+- Automated evals: `backend/eval/` scores a 16-question set with an LLM judge.
+  On the 56-page `pl.pdf` the run passed 16/16, with citation precision 0.95 to
+  1.00 and no fabricated out-of-scope answers.
 
 - Frontend chat: a Next.js chat built on assistant-ui. It shows messages and
   markdown, and regenerates a reply. A sidebar keeps the chat history in the
@@ -87,57 +93,67 @@
   OpenRouter Maestro extension, model `deepseek/deepseek-v4-pro-0813`). Repo
   rules live in `AGENTS.md`. The other agent files live in the workspace
   `.github/` folder one level above this repo: `copilot-instructions.md`,
-  `instructions/`, and `skills/`. `.github/workflows/ci.yml` and
-  `.github/PULL_REQUEST_TEMPLATE.md` stay tracked in this repo.
+  `instructions/`, and `skills/` with the `simple-english` and `open-pr`
+  skills. The `open-pr` skill opens one PR per branch with the `gh` CLI. The
+  workspace agent files are local only.
+  `.github/workflows/ci.yml` and `.github/PULL_REQUEST_TEMPLATE.md` stay
+  tracked in this repo.
+- Monitoring (MVP+1): LangSmith traces every OpenRouter model call
+  (`backend/tracing.py`, wired into `backend/llm.py`). One `llm` run per call
+  records the model slug, the token usage, the wall-clock latency, and any
+  error. Tracing is off until `LANGSMITH_TRACING=true` and
+  `LANGSMITH_API_KEY` are both set; a failed post is swallowed, so an
+  unreachable LangSmith never breaks the chat (DECISIONS O1).
 
 ## What is left
 
 - The RAG pipeline, in phases. The ingest stage (Task 1), chunking and
-  indexing (Task 3), and real retrieval behind the tools (Task 4) are done. The
-  chunk eval is next. The prototype runs against the 56-page `pl.pdf`. The
-  graph stays a flat `chat ↔ tools` loop and the answer stays markdown text with
-  `[Page N]` citations. The ratified values are in `DECISIONS.md` (D9 to D13,
-  R3 to R9, A1 to A3, T1 to T3).
-- The chunk eval: about 15 questions with known answer pages from `pl.pdf`, to
-  check recall and citation precision and confirm the chunk size and overlap.
-- Future work (DECISIONS Deferred): the Supervisor and Synthesizer graph, the
-  structured `AgentAnswer`, the spec ledger, the scanned-manual OCR path, and
-  the Docker work.
+  indexing (Task 3), real retrieval behind the tools (Task 4), and the
+  automated eval (Task 7) are done. The prototype runs against the 56-page
+  `pl.pdf`. The graph runs the supervisor, worker, and synthesize topology,
+  and the answer stays markdown text with `[Page N]` citations. The ratified
+  values are in `DECISIONS.md` (D9 to D13, R3 to R9, A1 to A3, E1 to E6,
+  T1 to T4).
+- The chunk-size and overlap sweep: the eval scores one chunk configuration.
+  A later run scores other sizes (DECISIONS D10) and overlaps (D11) and
+  compares them.
+- Future work (DECISIONS Deferred): the structured `AgentAnswer`, the
+  spec ledger, the scanned-manual OCR path, and the Docker work.
 - Memory: the summary field, the compaction node, and a checkpointer per
   `MEMORY_DESIGN.md`.
 - The scanned-manual OCR path. Deferred past MVP per DECISIONS S1.
-- CI linting, formatting, and tests. The current CI checks syntax, types, and the
-  build only.
+- CI linting, formatting, and tests. The current CI checks syntax, types, and
+  the build only.
 
 ### Manual viewer backlog
 
 Planned work for the Manual viewer pane. None of it is built.
 
-- Cite the manual page that holds the answer. The answer must not name page 1 of
-  the slice if slice buffer start != -0.
 - Add a note that the page count follows the PDF page index, not the printed
   page number on the sheet.
-- MVP+1: add a page-number offset. The reader shifts the page numbers to repair
-  an off-by-n error, so that the numbers match the citations.
-- MVP+1: make the pane reactive, so that it works on a phone.
+- MVP+1: add a page-number offset. The reader shifts the page numbers to
+  repair an off-by-n error, so the numbers match the citations.
+- MVP+1: make the pane reactive, so it works on a phone.
 
 ### Frontend backlog
 
 Planned frontend work. None of it is built.
 
-- Stream the agent's progress in the chat. Show the tool calls and the RAG model
-  weight loading the way the terminal shows them, so the reader sees progress
-  instead of a loading spinner.
+- Stream the progress of the agent in the chat. Show the tool calls and the RAG
+  model weight loading the way the terminal shows them, so the reader sees
+  progress instead of a loading spinner.
 - Let the reader rename a chat session in the frontend.
 - Add tooltips to the edit, theme, and manual upload buttons.
-- Make the threads sidebar collapsible with a small button that shows a double
-  right chevron icon to expand it.
+- Make the threads sidebar collapsible with a small button that shows a
+  double right chevron icon to expand it.
 
 ## Known problems
 
-- The chat shows the whole answer in one flash. The frontend does not render the
-  token stream one chunk at a time, so the answer does not form smoothly.
-
+- The chat shows the whole answer in one flash. The frontend does not render
+  the token stream one chunk at a time, so the answer does not form smoothly.
+- DeepSeek `-latest` slugs need the `~` prefix, or OpenRouter returns 400.
+  This is recorded in the `README.md` "Deviations" section and in
+  `DECISIONS.md`.
 
 ## Decisions
 

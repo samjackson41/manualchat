@@ -19,6 +19,7 @@ dependencies = [
     "tiktoken>=0.14.0",
     "sentence-transformers>=6.1.0",
     "qdrant-client>=1.19.1",
+    "langsmith>=0.14.0",
 ]
 
 # This project is NOT itself installed as a package — the `backend/` source is

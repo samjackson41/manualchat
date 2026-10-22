@@ -1,200 +1,260 @@
-# ManualChat — skeleton
+# ManualChat
 
-The **bare-minimum "ask a model" loop** for ManualChat, the grounded repair-manual
-assistant (capstone). A `chat -> tools -> chat` LangGraph loop with a calculator
-tool and three RAG stubs, one FastAPI endpoint, one Next.js chat built on
-assistant-ui, deliberately skeletal so real RAG and memory can be added later
-without rework.
+ManualChat is a grounded repair-manual assistant. A grounded answer comes from
+the manual text itself, and every claim carries a page citation. You add a
+vehicle, upload its PDF manual, and ask questions in the chat. A citation
+badge opens the manual at the cited page in a viewer beside the chat.
 
-> **In scope this pass:** LangGraph `StateGraph` with a tool-calling loop, FastAPI `/chat` via
-> OpenRouter, Next.js chat + model dropdown, Docker (one image per terminal).
->
-> **Out of scope (not built / no deps):** Qdrant, Redis, embeddings, rerankers,
-> vector search, the spec ledger.
+The backend is FastAPI with a LangGraph graph. The frontend is Next.js 14 with
+assistant-ui and react-pdf. The models come from OpenRouter. Docling turns an
+uploaded PDF into page text and tables during ingest. A chunk is a piece of
+manual text sized in tokens. Qdrant stores the chunk index and runs in local
+mode, which means a directory on disk with no server.
 
-## Lay of the land
+## Layout
 
 ```
 manualchat/
   backend/
-    config.py        # pydantic-settings BaseSettings — env vars ONLY (no .env)
-    llm.py           # thin OpenRouter wrapper (httpx) -> chat(messages, model, params, tools)
-    tools.py         # agent tools: OpenAI schemas + executors (calculator, RAG stubs)
-    agent/graph.py   # StateGraph: AgentState, chat -> tools -> chat loop (iteration point)
-    api/main.py      # FastAPI: /health, /models, /chat, /chat/stream, /manuals
-                     # (upload/read/toggle/delete, page slices, whole manual,
-                     # thumbnails), /vehicles create/rename/delete
-    storage.py       # local manual + vehicle storage (DECISIONS U1, SPEC §5)
-    slicer.py        # on-demand PDF page slices for the manual viewer (PyMuPDF)
-    schemas.py       # shared Pydantic contracts (Vehicle, Manual, RAG models)
-    pyproject.toml   #                 uv project (package = false; deps only)
-    uv.lock          #                 generated lockfile (deps only)
+    config.py        # env-only configuration through pydantic-settings
+    llm.py           # the OpenRouter wrapper (chat, stream_chat, tool calls)
+    tracing.py       # LangSmith runs per model call: tokens, latency, errors
+    ingest.py        # Docling ingest: page text, tables, and the ingest record
+    retrieval.py     # chunking, embedding, and search over the Qdrant index
+    thumbnails.py    # PNG page thumbnails for the viewer raster fallback
+    tools.py         # agent tools: calculator, search_manual, extract_specs,
+                     # get_page_text
+    agent/graph.py   # LangGraph StateGraph: chat to tools and back to chat
+    api/main.py      # routes: /health, /models, /chat, /chat/stream,
+                     # /manuals, /vehicles, page slices, whole manual,
+                     # thumbnails
+    storage.py       # local manual and vehicle storage (DECISIONS U1)
+    slicer.py        # on-demand PDF page slices with PyMuPDF
+    schemas.py       # the shared Pydantic contracts
+    tests/           # unit tests and the eval question set
+    pyproject.toml   # the uv project (deps only, no package)
+    uv.lock          # the generated lockfile
     Dockerfile
-  frontend/          # Next.js 14 App Router + Tailwind v4 + shadcn/ui + assistant-ui + react-pdf
-    app/page.tsx     # top bar + thread-list sidebar + chat, side-by-side viewer
-    app/chat-runtime.tsx  # thread-list runtime + localStorage adapter -> POST /chat
-    app/vehicle-runtime.tsx  # vehicle list + selection context -> /vehicles
-    app/viewer-runtime.tsx  # viewer state: open/close, cited page, manual choice, pane width
-    app/theme-runtime.tsx  # light/dark theme state; the choice survives reloads
-    app/layout.tsx   # provider stack + a pre-paint script that sets the theme
-    app/globals.css  # Tailwind v4 theme, light and dark (red, white, gray, black, gold)
-    lib/api.ts       # typed client for every backend call
+  frontend/          # Next.js 14 App Router, Tailwind v4, shadcn/ui,
+                     # assistant-ui, react-pdf
+    app/page.tsx     # top bar, thread-list sidebar, chat, and side viewer
+    app/chat-runtime.tsx  # the chat runtime and the local thread storage
+    app/vehicle-runtime.tsx  # the vehicle list and selection
+    app/viewer-runtime.tsx  # viewer state: open, cited page, pane width
+    app/theme-runtime.tsx  # light and dark theme state
+    app/layout.tsx   # the provider stack and the pre-paint theme script
+    app/globals.css  # the Tailwind v4 theme, light and dark
+    lib/api.ts       # the typed client for the backend routes
     lib/viewer-config.ts  # viewer tunables, each from a NEXT_PUBLIC_ env var
-    lib/pdf-cache.ts # viewer byte caches: slice map + whole-manual Cache API
-    lib/theme.ts     # theme key, the stored choice, and the pre-paint script
-    components/      # assistant-ui elements + shadcn/ui primitives + garage UI
-                     # (top bar, vehicle selector, manual upload, PDF viewer)
+    lib/pdf-cache.ts # the viewer byte caches: slice map and whole manual
+    lib/theme.ts     # the theme key, the stored choice, and the pre-paint script
+    assets/          # the logo (manualchat-logo.svg)
+    components/      # assistant-ui elements, shadcn/ui primitives, and the
+                     # garage UI
     Dockerfile
-  docker-compose.yml # services: backend, frontend (started one-per-terminal)
-  README.md          # this file
+  docker-compose.yml # two services: backend and frontend, one terminal each
+  Makefile           # shared targets: backend, frontend, status, build, down
+  README.md          # this file: run steps, API output, and the config tables
+  AGENTS.md          # the rules for the coding agent
+  CONTRIBUTING.md    # branch, commit, and pull-request conventions
+  project_proposal.md     # the capstone proposal
+  project_brainstorming.md # the running idea and open-question notes
+  SPECIFICATION.md   # the feature specification
+  IMPLEMENTATION.md  # the phased implementation plan
+  DECISIONS.md       # the ratified decision log
+  PROGRESS.md        # what works, what is left, and known problems
+  MEMORY_DESIGN.md   # the memory design for later phases
+  SCANNED_OCR_RUNBOOK.md # the OCR recipe for scanned manuals (MVP+1, S1)
+  SPIKE_FINDINGS.md  # the findings from the FJ40 OCR spike
 ```
 
-## Run it — one terminal per image
+## Run it
 
-**Terminal 1 — backend** (FastAPI on `:8000`, hot reload):
+Docker Compose runs one service per terminal. Start the backend first.
+
+Terminal 1: the backend (FastAPI on :8000, hot reload).
 
 ```bash
 OPENROUTER_API_KEY=sk-or-... docker compose up backend
 ```
 
-**Terminal 2 — frontend** (Next.js on `:3000`, hot reload):
+Terminal 2: the frontend (Next.js on :3000, hot reload).
 
 ```bash
 docker compose up frontend
 ```
 
-Then open <http://localhost:3000>, add a vehicle, upload a manual, pick
-**DeepSeek Flash** or **DeepSeek Pro** in the dropdown, type a query, and get
-a reply.
+Open <http://localhost:3000>. Add a vehicle. Upload its manual. Wait for the
+ingest status `ready`. Pick a model in the dropdown. Ask a question.
 
-> Do **not** run `docker compose up` (all-in-one) or `-d` (detached) — the two
-> services are meant to run in two explicit terminals.
+The Makefile wraps the same commands: `make backend`, `make frontend`, and
+`make status`. The API key still comes from the shell environment.
+
+Do not run `docker compose up` without a service name. Do not add `-d`. The
+services are meant to run in two visible terminals.
 
 ### Good output
 
-- **Terminal 1** prints `Uvicorn running on http://0.0.0.0:8000` and
-  `curl http://localhost:8000/health` returns `{"status":"ok"}`.
-- **Terminal 2** prints `Ready in …` / `Local: http://localhost:3000`.
-- `curl http://localhost:8000/models` returns:
-  ```json
-  {"default":"~deepseek/deepseek-flash-latest",
-   "options":[{"id":"~deepseek/deepseek-flash-latest","label":"DeepSeek Flash"},
-              {"id":"~deepseek/deepseek-pro-latest","label":"DeepSeek Pro"}]}
-  ```
+Terminal 1 prints `Uvicorn running on http://0.0.0.0:8000`. This command
+returns `{"status":"ok"}`:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Terminal 2 prints `Ready in …` and `Local: http://localhost:3000`.
+
+This command lists the models:
+
+```bash
+curl http://localhost:8000/models
+```
+
+```json
+{"default": "~deepseek/deepseek-flash-latest",
+ "options": [{"id": "~deepseek/deepseek-flash-latest", "label": "DeepSeek Flash"},
+             {"id": "~deepseek/deepseek-pro-latest", "label": "DeepSeek Pro"}]}
+```
 
 ## Secrets
 
-`OPENROUTER_API_KEY` is the **only** secret. It is passed through as an env var
-(`docker-compose.yml` → `OPENROUTER_API_KEY=${OPENROUTER_API_KEY}`), never stored
-in the repo. If it's missing, `POST /chat` fails fast with a clear error while
-`/health` and `/models` still respond. Never echo or commit the key.
+`OPENROUTER_API_KEY` and `LANGSMITH_API_KEY` are the only secrets.
+`docker-compose.yml` passes them through from the host shell. They never enter
+the repository. `LANGSMITH_API_KEY` is optional: it turns on LangSmith tracing
+only while `LANGSMITH_TRACING` is also set (see Configuration). If
+`OPENROUTER_API_KEY` is missing, `POST /chat` fails fast with a clear error,
+while `/health` and `/models` still respond.
 
-## Configuration (all env vars, no `.env` file)
+Never print a key, and never commit one.
 
-| Env var | Default | Notes |
+## Configuration
+
+Every tunable value lives in config (DECISIONS P1). The backend reads
+environment variables through pydantic-settings, and the frontend reads
+`NEXT_PUBLIC_` environment variables. There is no `.env` file in the repo
+(see Deviation 1).
+
+### Backend
+
+Generation parameters are under research and surface as `MODEL_*` env vars,
+so they can change without code edits. Unset values are omitted from the
+OpenRouter request entirely.
+
+| Variable | Default | Notes |
 |---|---|---|
-| `OPENROUTER_API_KEY` | _(required for /chat)_ | secret |
-| `MODEL_DEFAULT` | `~deepseek/deepseek-flash-latest` | DECISIONS M1 |
-| `MODEL_OPTIONS` | `~deepseek/deepseek-flash-latest,~deepseek/deepseek-pro-latest` | DECISIONS M2 (comma-separated) |
-| `MODEL_REASONING_EFFORT` | `medium` | ratified (DECISIONS M note) |
-| `MODEL_TEMPERATURE` | _(unset)_ | **TBD** — omit to use provider default |
-| `MODEL_MAX_TOKENS` | _(unset)_ | **TBD** — omit to use provider default |
-| `AGENT_SYSTEM_PROMPT` | the grounding prompt text | DECISIONS A3 — prepended before the first chat call |
-| `MANUALS_DIR` | `manuals` | DECISIONS U1 — where each uploaded manual lands as `{manual_id}/`; in Docker this is `/data/manuals` |
-| `VEHICLES_DIR` | `vehicles` | SPEC §5 — where each vehicle profile lands as `{vehicle_id}/`; in Docker this is `/data/vehicles` |
-| `THUMBNAIL_DPI` | `150` | IMPLEMENTATION Task 5 — the PNG page-preview resolution (dots per inch) for the manual viewer's raster fallback |
-| `VIEWER_CACHE_MAX_AGE_SECONDS` | `31536000` | DECISIONS V5 — how long a browser may cache served page bytes; a manual never changes after upload |
-| `INGEST_OCR_MIN_CHARS_PER_PAGE` | `50` | DECISIONS D1 — a manual below this average needs OCR and is refused |
-| `INGEST_STRIP_HIDDEN_OCR_LAYER` | `true` | DECISIONS D2 — remove the ghost OCR font before Docling |
-| `INGEST_NORMALIZATION_ENABLED` | `true` | DECISIONS D3 — repair unit and header noise after Docling |
-| `INGEST_USE_PRINTED_PAGE_NUMBERS` | `false` | DECISIONS D12 — citations use the PDF page number |
-| `INGEST_DO_OCR` | `false` | DECISIONS S2 — OCR stays off for digital manuals |
-| `INGEST_DO_TABLE_STRUCTURE` | `true` | IMPLEMENTATION Task 1 — turn on table extraction |
-| `INGEST_TABLE_MODE` | `FAST` | IMPLEMENTATION Task 1 — the fast table model |
-| `INGEST_THREADS` | `2` | IMPLEMENTATION Task 1 — keeps peak memory low |
-| `INGEST_BATCH_SIZE` | `1` | IMPLEMENTATION Task 1 — one page per batch |
-| `INGEST_CHUNK_STRUCTURE_AWARE` | `true` | DECISIONS D9 — split prose on section headings, keep each table as one chunk |
-| `INGEST_CHUNK_TOKENS` | `512` | DECISIONS D10 — target size of a prose chunk, in tokens |
-| `INGEST_CHUNK_OVERLAP_TOKENS` | `64` | DECISIONS D11 — overlap between neighbouring prose chunks, in tokens |
-| `INGEST_TOKENIZER` | `cl100k_base` | DECISIONS D13 — the tiktoken encoding that counts chunk tokens |
-| `QDRANT_URL` | _(empty)_ | DECISIONS R3 — empty means local mode: the store lives on disk under `QDRANT_PATH`, no server or credentials; an `http(s)` URL switches to a remote server |
-| `QDRANT_PATH` | `qdrant` | DECISIONS R3 — the on-disk directory for the local-mode store (git-ignored) |
-| `QDRANT_COLLECTION` | `manualchat_chunks` | DECISIONS R4 — the one collection that holds every manual's chunks |
-| `QDRANT_API_KEY` | _(empty in dev)_ | DECISIONS R5 — only set when a remote Qdrant server needs it |
-| `RETRIEVAL_EMBED_MODEL` | `multi-qa-mpnet-base-dot-v1` | DECISIONS R6 — the sentence-transformers model that embeds chunks and queries |
-| `RETRIEVAL_RERANK_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | DECISIONS R7 — the cross-encoder that reranks the candidate chunks |
-| `RETRIEVAL_CANDIDATE_K` | `50` | DECISIONS R8 — how many first-pass candidates the reranker gets |
-| `RETRIEVAL_TOP_N` | `5` | DECISIONS R9 — how many chunks come back to the agent |
+| OPENROUTER_API_KEY | _(empty)_ | Required for `POST /chat`. The empty default keeps `/health` and `/models` working without it. Never commit it. |
+| OPENROUTER_BASE_URL | `https://openrouter.ai/api/v1` | The OpenRouter API base URL. `backend/llm.py` appends the chat endpoint. |
+| MODEL_DEFAULT | `~deepseek/deepseek-flash-latest` | DECISIONS M1. The model used when the request names none. |
+| MODEL_OPTIONS | `~deepseek/deepseek-flash-latest,~deepseek/deepseek-pro-latest` | DECISIONS M2. Comma-separated slugs. `_MODEL_LABELS` in `backend/config.py` holds the dropdown labels. |
+| MODEL_REASONING_EFFORT | `medium` | The fallback reasoning effort when a node passes none. The tier sets the per-node effort (DECISIONS M1). |
+| MODEL_TEMPERATURE | _(unset)_ | Pending decision. Omit the variable to use the provider default. |
+| MODEL_MAX_TOKENS | _(unset)_ | Pending decision. Omit the variable to use the provider default. |
+| SUPER_SUB_TIERS | the tier table in `backend/config.py` | DECISIONS M1. JSON. Each tier names a cheap working model (the routing check and the tool loop) and a strong authoring model (the answer), with their reasoning effort. |
+| SUPER_SUB_SLUG_TIERS | `~deepseek/deepseek-flash-latest`→`fast`, `~deepseek/deepseek-pro-latest`→`pro` | DECISIONS M1. JSON. Maps a selected model slug to a tier. |
+| SUPER_SUB_DEFAULT_TIER | `fast` | DECISIONS M1. The tier used when the selected slug matches no entry. |
+| AGENT_MAX_HOPS | `4` | DECISIONS A1. The supervisor forces synthesis after this many worker hops. |
+| AGENT_MAX_TOOL_STEPS | `4` | DECISIONS A1. The cap on the worker's tool loop. |
+| AGENT_SYSTEM_PROMPT | the grounding prompt in `backend/config.py` | DECISIONS A3. The grounding rules for the agent. |
+| MANUALS_DIR | `manuals` | DECISIONS U1. One `{manual_id}/` subdirectory per manual, with the PDF and its JSON record. In Docker: `/data/manuals`. |
+| VEHICLES_DIR | `vehicles` | One `{vehicle_id}/` subdirectory per vehicle profile. In Docker: `/data/vehicles`. |
+| THUMBNAIL_DPI | `150` | The PNG page preview resolution in dots per inch (IMPLEMENTATION Task 5). |
+| VIEWER_CACHE_MAX_AGE_SECONDS | `31536000` | DECISIONS V5. A manual never changes after upload, so the browser can cache the page bytes this long. |
+| INGEST_DO_OCR | `false` | False for MVP, because every manual is born-digital (DECISIONS S2). |
+| INGEST_OCR_MIN_CHARS_PER_PAGE | `50` | DECISIONS D1. A manual needs OCR when its average text per page falls below this count. |
+| INGEST_STRIP_HIDDEN_OCR_LAYER | `true` | DECISIONS D2. Removes an invisible OCR font layer before Docling reads the PDF. |
+| INGEST_NORMALIZATION_ENABLED | `true` | DECISIONS D3. Runs the unit and header repair stage after Docling. |
+| INGEST_USE_PRINTED_PAGE_NUMBERS | `false` | DECISIONS D12. Citations carry the physical PDF page number. |
+| INGEST_DO_TABLE_STRUCTURE | `true` | Docling reconstructs table structure. |
+| INGEST_TABLE_MODE | `FAST` | The Docling table mode. `FAST` keeps peak memory low. |
+| INGEST_THREADS | `2` | The Docling thread count. |
+| INGEST_BATCH_SIZE | `1` | The Docling batch size. |
+| INGEST_CHUNK_STRUCTURE_AWARE | `true` | DECISIONS D9. Splits prose on section headings and keeps each table as one chunk. |
+| INGEST_CHUNK_TOKENS | `512` | DECISIONS D10. The prose chunk target in tokens. |
+| INGEST_CHUNK_OVERLAP_TOKENS | `64` | DECISIONS D11. Tokens shared between neighboring chunks. |
+| INGEST_TOKENIZER | `cl100k_base` | DECISIONS D13. The tiktoken token counter. |
+| QDRANT_URL | _(empty)_ | DECISIONS R3. Empty means local mode: Qdrant stores under `QDRANT_PATH` with no server, network, or credentials. An http(s) URL switches to a remote server. |
+| QDRANT_PATH | `qdrant` | The local-mode directory, relative to the repo. |
+| QDRANT_COLLECTION | `manualchat_chunks` | DECISIONS R4. The collection name. |
+| QDRANT_API_KEY | _(empty)_ | DECISIONS R5. Empty in development. Production supplies it through the environment. |
+| RETRIEVAL_EMBED_MODEL | `multi-qa-mpnet-base-dot-v1` | DECISIONS R6. The embedding model. |
+| RETRIEVAL_RERANK_MODEL | `cross-encoder/ms-marco-MiniLM-L-6-v2` | DECISIONS R7. The reranker. |
+| RETRIEVAL_CANDIDATE_K | `50` | DECISIONS R8. Chunks fetched before the rerank. |
+| RETRIEVAL_TOP_N | `5` | DECISIONS R9. Chunks returned to the agent. |
+| EVAL_JUDGE_MODEL | `~deepseek/deepseek-pro-latest` | DECISIONS E1. The judge model, kept distinct from the model under test. |
+| EVAL_JUDGE_REASONING_EFFORT | `high` | DECISIONS E2. The reasoning effort for the judge call. |
+| EVAL_PASS_THRESHOLD | `0.7` | DECISIONS E3. A score at or above this passes a case when the judge omits `passed`. |
+| EVAL_MIN_PASS_RATE | `0.8` | DECISIONS E4. The eval gate on the overall pass rate. |
+| EVAL_CITATION_PRECISION_MIN | `0.9` | DECISIONS E5. The eval gate on citation precision. |
+| EVAL_VEHICLE_ID | _(empty)_ | DECISIONS E6. The vehicle that owns the eval manual. Supplied at run time. |
+| LANGSMITH_TRACING | `false` | DECISIONS O1. Set `true` with `LANGSMITH_API_KEY` to record one LangSmith `llm` run per OpenRouter call. |
+| LANGSMITH_API_KEY | _(empty)_ | DECISIONS O1. The LangSmith API key. A secret; never commit it. |
+| LANGSMITH_PROJECT | `manualchat` | DECISIONS O1. The LangSmith project that receives the runs. |
+| LANGSMITH_ENDPOINT | `https://api.smith.langchain.com` | DECISIONS O1. The LangSmith API endpoint. |
 
-Generation params are **under research** and surfaced as `MODEL_*` env vars so
-they can be tuned without code edits. Unset values are omitted from the OpenRouter
-request entirely.
+### Frontend
 
-The viewer tunables are **frontend** values. Next.js inlines `NEXT_PUBLIC_` env
-vars when it builds, or when the dev server starts, so restart the frontend
-after a change.
+Next.js inlines `NEXT_PUBLIC_` env vars at build time, or when the dev server
+starts. Restart the frontend after a change to these variables.
 
-| Env var | Default | Notes |
+| Variable | Default | Notes |
 |---|---|---|
-| `NEXT_PUBLIC_BACKEND_URL` | `http://localhost:8000` | base URL of the backend API |
-| `NEXT_PUBLIC_VIEWER_SLICE_BEFORE` | `1` | DECISIONS V1 — pages loaded before the cited page |
-| `NEXT_PUBLIC_VIEWER_SLICE_AFTER` | `2` | DECISIONS V1 — pages loaded after the cited page |
-| `NEXT_PUBLIC_VIEWER_PAGE_ASPECT` | `1.294` | height/width that sizes a page before it renders |
-| `NEXT_PUBLIC_VIEWER_ZOOM_STEP` | `0.25` | DECISIONS V3 — the scale a zoom click adds |
-| `NEXT_PUBLIC_VIEWER_ZOOM_MIN` | `0.5` | DECISIONS V3 — the smallest zoom |
-| `NEXT_PUBLIC_VIEWER_ZOOM_MAX` | `3` | DECISIONS V3 — the largest zoom |
-| `NEXT_PUBLIC_VIEWER_WIDTH_DEFAULT` | `416` | DECISIONS V4 — pane width on first use, in pixels |
-| `NEXT_PUBLIC_VIEWER_WIDTH_MIN` | `280` | DECISIONS V4 — the narrowest the pane drags |
-| `NEXT_PUBLIC_VIEWER_WIDTH_MAX` | `900` | DECISIONS V4 — the widest the pane gets while the chat shows |
-| `NEXT_PUBLIC_CHAT_MIN_WIDTH` | `360` | DECISIONS V4 — the narrowest the chat gets before it hides and the pane fills the row |
-| `NEXT_PUBLIC_CHAT_RESTORE_TRAVEL` | `24` | DECISIONS V4 — how far the pane is pulled right, in pixels, before a hidden chat returns |
-| `NEXT_PUBLIC_VIEWER_SLICE_CACHE_ENTRIES` | `12` | DECISIONS V6 — slice byte windows kept in memory |
+| NEXT_PUBLIC_BACKEND_URL | `http://localhost:8000` | The backend base URL. |
+| NEXT_PUBLIC_VIEWER_SLICE_BEFORE | `1` | DECISIONS V1. Pages loaded before the cited page. |
+| NEXT_PUBLIC_VIEWER_SLICE_AFTER | `2` | DECISIONS V1. Pages loaded after the cited page. |
+| NEXT_PUBLIC_VIEWER_PAGE_ASPECT | `1.294` | The page aspect ratio for the loading placeholders. Fits US Letter. |
+| NEXT_PUBLIC_VIEWER_ZOOM_STEP | `0.25` | DECISIONS V3. The scale a zoom click adds. |
+| NEXT_PUBLIC_VIEWER_ZOOM_MIN | `0.5` | DECISIONS V3. The smallest zoom factor. |
+| NEXT_PUBLIC_VIEWER_ZOOM_MAX | `3` | DECISIONS V3. The largest zoom factor. |
+| NEXT_PUBLIC_VIEWER_WIDTH_DEFAULT | `416` | DECISIONS V4. The pane width on first use, in pixels. |
+| NEXT_PUBLIC_VIEWER_WIDTH_MIN | `280` | DECISIONS V4. The narrowest the pane gets. |
+| NEXT_PUBLIC_VIEWER_WIDTH_MAX | `900` | DECISIONS V4. The widest the pane gets while the chat shows. |
+| NEXT_PUBLIC_CHAT_MIN_WIDTH | `360` | DECISIONS V4. The narrowest the chat gets before it hides and the pane fills the row. |
+| NEXT_PUBLIC_CHAT_RESTORE_TRAVEL | `24` | DECISIONS V4. The travel to the right, in pixels, that brings a hidden chat back. |
+| NEXT_PUBLIC_VIEWER_SLICE_CACHE_ENTRIES | `12` | DECISIONS V6. Slice byte windows kept in memory. |
 
-## Where the next change goes (documented in code)
+## Where the next change goes
 
-- **RAG** → the contracts and stub bodies for `search_manual` / `extract_specs` /
-  `get_page_text` are in `backend/tools.py`. Real retrieval replaces the stub
-  bodies (IMPLEMENTATION Task 4). The graph loop is already in place.
-- **Ingest** → `POST /manuals` stores the PDF, sets `status` to `processing`,
-  and runs the Docling pipeline in the background (IMPLEMENTATION Task 1). It
-  fills the manual's directory with `page_text/`, `tables.json`, and
-  `ingest.json`, then sets `status` to `ready` or `error`. Clients poll
-  `GET /manuals/{id}` for the outcome. The pipeline is also runnable by hand
-  with `python -m backend.ingest <manual_id>`.
-- **Manual management** → `PATCH /manuals/{id}` enables or disables a manual.
-  A disabled manual keeps its stored files and its index, but search skips its
-  chunks. `DELETE /manuals/{id}` purges the manual's chunks from the index,
-  then removes the record and its directory. Deletion is permanent, so the
-  vehicle dialog in the frontend asks for confirmation before it deletes.
-- **Memory** → add `summary` field + compaction node (MEMORY_DESIGN §4-5) and a
-  checkpointer.
+- Eval: the harness in `backend/eval/` runs the 16 questions in
+  `backend/tests/eval_questions.json` through the agent and scores each answer
+  with an LLM judge (DECISIONS E1 to E6). Run it from the repo root with
+  `EVAL_VEHICLE_ID=<id> uv run --project backend python -m backend.eval.run`.
+  It reports the pass rate, the citation precision, and the fabricated count.
+  The chunk-size and overlap sweep (DECISIONS D10, D11) comes next.
+- Memory: add the `summary` state field, a compaction node, and a checkpointer
+  (MEMORY_DESIGN §4-5).
+- Later graph: the structured `AgentAnswer` and the spec ledger are future work
+  (DECISIONS, Deferred).
+- File locations: the graph is `backend/agent/graph.py`, the tools are
+  `backend/tools.py`, retrieval is `backend/retrieval.py`, the eval is
+  `backend/eval/`, and the routes are `backend/api/main.py`.
 
 ## Git workflow
 
-Short-lived feature branches + PRs into a protected `main` (GitHub Flow). See
-[`CONTRIBUTING.md`](CONTRIBUTING.md) for branch naming, commit conventions, the
-PR template, and the one-time branch-protection setup.
+The repo uses short-lived feature branches and pull requests into a protected
+`main` (GitHub Flow). [`CONTRIBUTING.md`](CONTRIBUTING.md) holds the branch
+naming, the commit conventions, the pull-request template, and the one-time
+branch-protection setup.
 
 ## Coding assistant (Copilot Chat)
 
 Development runs in the built-in VS Code Copilot Chat with OpenRouter models.
-The **OpenRouter Maestro** extension is the language provider: it puts any
-OpenRouter model into the chat model picker. The model in use is DeepSeek V4
-Pro 0813 (`deepseek/deepseek-v4-pro-0813`). Your OpenRouter API key goes into
-the Maestro panel (VS Code SecretStorage), never into the repo.
+The OpenRouter Maestro extension is the language provider: it puts the
+OpenRouter models into the chat model picker. The model in use is DeepSeek V4
+Pro 0813 (`deepseek/deepseek-v4-pro-0813`). The OpenRouter API key goes into
+the Maestro panel, which stores it in VS Code SecretStorage.
 
-Agent rules and skills live in Copilot formats. The VS Code workspace root sits
-one level above this repo, so the agent files live in the workspace `.github/`
-folder. This repo keeps only the two files that GitHub reads from it:
+The VS Code workspace root sits one level above this repo, so most agent files
+live in the workspace `.github/` folder:
 
-- `AGENTS.md`: project-wide rules, read at the start of every task. Tracked here.
-- `.github/copilot-instructions.md`: the same project rules. Workspace root.
-- `.github/instructions/*.instructions.md`: targeted rules for `**/backend/**`,
-  `**/frontend/**`, and `**/*.md`. Workspace root.
-- `.github/skills/`: the `simple-english` and `open-pr` skills. Workspace root.
-  `open-pr` opens a PR with the `gh` CLI.
-- `.github/workflows/ci.yml` and `.github/PULL_REQUEST_TEMPLATE.md`: tracked in
-  this repo, because GitHub reads them from the repository.
+- `AGENTS.md` in this repo: the project rules for the coding agent.
+- `.github/copilot-instructions.md` at the workspace root: the same project
+  rules.
+- `.github/instructions/` at the workspace root: targeted rules for
+  `**/backend/**`, `**/frontend/**`, and `**/*.md`.
+- `.github/skills/` at the workspace root: the `simple-english` and
+  `open-pr` skills.
+- `.github/workflows/ci.yml` and `.github/PULL_REQUEST_TEMPLATE.md` in this
+  repo: GitHub reads these from the repository.
 
 The workspace agent files are local only. The `applyTo` globs are relative to
 the workspace root, so the workspace `.github/` folder is the right place for
@@ -202,20 +262,23 @@ them.
 
 ## Deviations from DECISIONS.md (flagged, not silent)
 
-1. **Config surface: env vars, not `.env`.** DECISIONS P1 says "Pydantic
-   `BaseSettings` backed by `.env`"; this pass reads **env vars only** (per the
-   bootstrap scope: "no `.env` file in repo"). Consistent with DECISIONS' own
-   "secrets via Secret Manager / environment" rule. Revisit `.env` (git-ignored)
-   if local non-secret tunables should be filed.
-2. **`models.options` stored as slugs, not display names.** DECISIONS M2 lists the
-   options as `["DeepSeek Flash", "DeepSeek Pro"]` (display names); the slugs
-   (`deepseek/deepseek-f|pro-latest`) are pinned below that table, and the
-   bootstrap scope pins the slugs as config values. So config holds slugs (source
-   of truth) and a tiny `_MODEL_LABELS` map (`backend/config.py`) supplies the
-   cosmetic dropdown labels.
-3. **Config-key naming is flat (`MODEL_*`), not dotted (`models.*`).** DECISIONS
-   uses dotted keys like `models.reasoning_effort = "medium"`. Since this pass is
-   env-only, those map to flat `MODEL_REASONING_EFFORT` / `MODEL_TEMPERATURE` /
-   `MODEL_MAX_TOKENS`. A nested dotted config object can be reintroduced when a
-   `.env`-backed config layer returns.
-4. **Model slugs carry a `~` prefix (corrected against the live catalog).** DECISIONS.md pinned the slugs as `deepseek/deepseek-f|pro-latest`, but OpenRouter serves DeepSeek's `-latest` aliases as *prerelease* and requires the `~` prefix — the bare slug returns `400 "not a valid model ID"`. Both `~deepseek/deepseek-flash-latest` and `~deepseek/deepseek-pro-latest` were confirmed live (HTTP 200) and resolve to `deepseek-v4.1-flash` / `deepseek-v4-pro-0813`. This is a correction to DECISIONS, not a silent change — flagging it here. Also confirmed `reasoning_effort=medium` is accepted (OpenRouter forwards it; DeepSeek ignores it), so the ratified `medium` default is safe.
+1. Config surface: env vars, not a `.env` file. DECISIONS P1 says "Pydantic
+   `BaseSettings` backed by `.env`". This pass reads env vars only, per the
+   bootstrap scope ("no `.env` file in repo"). The DECISIONS rule keeps
+   secrets in the environment or a secret store, and this matches it.
+2. `models.options` stores slugs, not display names. DECISIONS M2 lists the
+   options as `["DeepSeek Flash", "DeepSeek Pro"]` (display names). The slugs
+   are the source of truth, so config holds the slugs, and a small
+   `_MODEL_LABELS` map (`backend/config.py`) supplies the dropdown labels.
+3. Config keys are flat (`MODEL_*`), not dotted (`models.*`). DECISIONS uses
+   dotted keys like `models.reasoning_effort = "medium"`. The env-only pass
+   maps those to `MODEL_REASONING_EFFORT`, `MODEL_TEMPERATURE`, and
+   `MODEL_MAX_TOKENS`.
+4. The DeepSeek slugs carry a `~` prefix. OpenRouter serves the DeepSeek
+   `-latest` aliases as prerelease, and a slug without the prefix gets a
+   `400 "not a valid model ID"` response. Both
+   `~deepseek/deepseek-flash-latest` and `~deepseek/deepseek-pro-latest` were
+   confirmed live (HTTP 200), and they resolve to `deepseek-v4.1-flash` and
+   `deepseek-v4-pro-0813`. DECISIONS.md records the corrected slugs. OpenRouter
+   reports the supported reasoning efforts of both slugs as
+   `["max", "high", "low", "none"]`, so every tier effort is accepted.

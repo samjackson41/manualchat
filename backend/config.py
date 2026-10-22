@@ -12,24 +12,73 @@ env vars case-insensitively, so:
     vehicles_dir            <- VEHICLES_DIR
     model_default           <- MODEL_DEFAULT
     model_options           <- MODEL_OPTIONS   (comma-separated)
+    super_sub_tiers         <- SUPER_SUB_TIERS         (JSON)
+    super_sub_slug_tiers    <- SUPER_SUB_SLUG_TIERS    (JSON)
+    super_sub_default_tier  <- SUPER_SUB_DEFAULT_TIER
+    agent_max_hops          <- AGENT_MAX_HOPS
+    agent_max_tool_steps    <- AGENT_MAX_TOOL_STEPS
     openrouter_api_key      <- OPENROUTER_API_KEY
+    langsmith_tracing       <- LANGSMITH_TRACING     (default false)
+    langsmith_api_key       <- LANGSMITH_API_KEY     (secret, env only)
+    langsmith_project       <- LANGSMITH_PROJECT
+    langsmith_endpoint      <- LANGSMITH_ENDPOINT
     ingest_chunk_tokens     <- INGEST_CHUNK_TOKENS
     qdrant_url              <- QDRANT_URL      (empty = local mode)
     retrieval_embed_model   <- RETRIEVAL_EMBED_MODEL
     retrieval_embed_batch_size <- RETRIEVAL_EMBED_BATCH_SIZE
+    eval_judge_model        <- EVAL_JUDGE_MODEL
+    eval_vehicle_id         <- EVAL_VEHICLE_ID   (the eval manual's vehicle)
+    eval_min_pass_rate      <- EVAL_MIN_PASS_RATE
+    eval_citation_precision_min <- EVAL_CITATION_PRECISION_MIN
 """
 
 from functools import lru_cache
+import json
 
-from pydantic import Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Display labels for the model selector. The slugs in `model_options` are the
 # source of truth (DECISIONS M2). OpenRouter requires the `~` prefix.
+_FLASH = "~deepseek/deepseek-flash-latest"
+_PRO = "~deepseek/deepseek-pro-latest"
+
 _MODEL_LABELS: dict[str, str] = {
-    "~deepseek/deepseek-flash-latest": "DeepSeek Flash",
-    "~deepseek/deepseek-pro-latest": "DeepSeek Pro",
+    _FLASH: "DeepSeek Flash",
+    _PRO: "DeepSeek Pro",
 }
+
+
+class SuperSubTier(BaseModel):
+    """One model tier: a cheap working model and a strong authoring model.
+
+    The working model (`sub_model`) runs the tool loop and the supervisor's
+    routing check. The authoring model (`supervisor_model`) writes the final
+    answer, so the expensive model is spent only on the answer (DECISIONS M1).
+    """
+
+    supervisor_model: str
+    supervisor_effort: str
+    sub_model: str
+    sub_effort: str
+
+
+def _default_tiers() -> dict[str, SuperSubTier]:
+    """The ratified tier table (DECISIONS M1). Overridable with `SUPER_SUB_TIERS`."""
+    return {
+        "fast": SuperSubTier(
+            supervisor_model=_FLASH,
+            supervisor_effort="high",
+            sub_model=_FLASH,
+            sub_effort="low",
+        ),
+        "pro": SuperSubTier(
+            supervisor_model=_PRO,
+            supervisor_effort="high",
+            sub_model=_FLASH,
+            sub_effort="low",
+        ),
+    }
 
 
 class Settings(BaseSettings):
@@ -43,18 +92,29 @@ class Settings(BaseSettings):
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     # --- Model selection (DECISIONS M1-M3) ---
-    model_default: str = "~deepseek/deepseek-flash-latest"
-    model_options: list[str] = Field(
-        default_factory=lambda: [
-            "~deepseek/deepseek-flash-latest",
-            "~deepseek/deepseek-pro-latest",
-        ]
-    )
+    model_default: str = _FLASH
+    model_options: list[str] = Field(default_factory=lambda: [_FLASH, _PRO])
 
     # --- Generation params (tunable via env; unset values are omitted) ---
-    model_reasoning_effort: str | None = "medium"  # ratified (DECISIONS M note)
+    model_reasoning_effort: str | None = "medium"  # fallback when a node passes no effort
     model_temperature: float | None = None         # TBD
     model_max_tokens: int | None = None            # TBD
+
+    # --- Supervisor and sub-agent tiers (DECISIONS M1) ---
+    # Keyed by tier name (`fast`, `pro`); each entry fixes a cheap working model
+    # (`sub_*`, runs the tool loop and the routing check) and a strong authoring
+    # model (`supervisor_*`, writes the answer). Load with JSON, e.g.
+    # SUPER_SUB_TIERS='{"fast": {"supervisor_model": "...", ...}, "pro": {...}}'.
+    super_sub_tiers: dict[str, SuperSubTier] = Field(default_factory=_default_tiers)
+    # The selected slug picks a tier; an unknown slug falls back to the default.
+    super_sub_slug_tiers: dict[str, str] = Field(
+        default_factory=lambda: {_FLASH: "fast", _PRO: "pro"}
+    )
+    super_sub_default_tier: str = "fast"
+    # Hop cap: the supervisor forces synthesis after this many worker hops
+    # (IMPLEMENTATION §7). `agent_max_tool_steps` caps the worker's tool loop.
+    agent_max_hops: int = 4
+    agent_max_tool_steps: int = 4
 
     # --- Agent graph (DECISIONS A3) ---
     agent_system_prompt: str = (
@@ -156,6 +216,33 @@ class Settings(BaseSettings):
     retrieval_candidate_k: int = 50  # R8, first-pass candidates for the reranker
     retrieval_top_n: int = 5  # R9, chunks returned to the agent
 
+    # --- Automated evals (IMPLEMENTATION Task 7) ---
+    # The judge model stays distinct from the model under test: the eval runs
+    # the agent on Flash, so Pro judges and self-preference bias stays low.
+    eval_judge_model: str = _PRO
+    # Reasoning effort for the judge call. OpenRouter lists `high` for both
+    # DeepSeek slugs, so no fallback is needed (DECISIONS M1).
+    eval_judge_reasoning_effort: str = "high"
+    # A score at or above this passes a case when the judge omits `passed`.
+    eval_pass_threshold: float = 0.7
+    # CI gate on the overall pass rate (Task 7).
+    eval_min_pass_rate: float = 0.8
+    # The vehicle that owns the eval manual. Supplied at run time, because the
+    # vehicle id is generated per upload; the runner reads `EVAL_VEHICLE_ID`.
+    eval_vehicle_id: str = ""
+    # CI gate on citation precision (Task 7 needs more than 0.9).
+    eval_citation_precision_min: float = 0.9
+
+    # --- LangSmith tracing (MVP+1 monitoring) ---
+    # Off until both LANGSMITH_TRACING=true and LANGSMITH_API_KEY are set.
+    # backend/tracing.py records one LLM run per OpenRouter call with the
+    # token usage, the wall-clock latency, and any error. A failed post is
+    # swallowed, so an unreachable LangSmith never breaks the chat.
+    langsmith_tracing: bool = False
+    langsmith_api_key: str = ""
+    langsmith_project: str = "manualchat"
+    langsmith_endpoint: str = "https://api.smith.langchain.com"
+
     @field_validator("model_options", mode="before")
     @classmethod
     def _split_model_options(cls, value):
@@ -163,6 +250,34 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
+
+    @field_validator("super_sub_tiers", "super_sub_slug_tiers", mode="before")
+    @classmethod
+    def _parse_json_dict(cls, value):
+        """Allow a JSON string (e.g. `SUPER_SUB_TIERS=...`) as well as a dict."""
+        if isinstance(value, str):
+            return json.loads(value)
+        return value
+
+    @field_validator("langsmith_tracing", mode="before")
+    @classmethod
+    def _empty_string_means_off(cls, value):
+        # Compose passes `LANGSMITH_TRACING=${LANGSMITH_TRACING:-}`, which is an
+        # empty string when the host shell leaves it unset; that means off.
+        if value == "":
+            return False
+        return value
+
+    def tier_for_model(self, model: str) -> SuperSubTier:
+        """Resolve a selected model slug to its supervisor/worker tier.
+
+        A slug that is not in `super_sub_slug_tiers` falls back to
+        `super_sub_default_tier` (DECISIONS M1).
+        """
+        name = self.super_sub_slug_tiers.get(model, self.super_sub_default_tier)
+        return self.super_sub_tiers.get(name) or self.super_sub_tiers[
+            self.super_sub_default_tier
+        ]
 
 
 @lru_cache

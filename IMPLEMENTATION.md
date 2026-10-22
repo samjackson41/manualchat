@@ -22,8 +22,10 @@ requirements. `README.md` holds the environment variable table.
 | Embeddings | `sentence-transformers` | `multi-qa-mpnet-base-dot-v1` for the first pass. |
 | Reranking | `sentence-transformers` | `cross-encoder/ms-marco-MiniLM-L-6-v2` for the second pass. |
 | Chunk token counting | tiktoken | The `cl100k_base` encoding. |
-| Agent orchestration | LangGraph `StateGraph` | A flat `chat -> tools -> chat` loop. |
-| LLM gateway | OpenRouter | `backend/llm.py` is the only module that calls OpenRouter. |
+| Agent orchestration | LangGraph `StateGraph` | A supervisor, worker, and synthesize topology. |
+| LLM gateway | OpenRouter | `backend/llm.py` is the only module that calls OpenRouter. The selected model picks a tier (DECISIONS M1). |
+| Evaluations | `backend/eval/` | An LLM judge scores the 16-question accuracy set. |
+| Monitoring | LangSmith | `backend/tracing.py` traces each OpenRouter call when enabled. |
 | API backend | FastAPI | Background ingest, Server-Sent Events, and file responses. |
 | Frontend | Next.js 14 App Router, Tailwind CSS v4, assistant-ui, react-pdf | Chat, citations, and the manual viewer. |
 
@@ -51,7 +53,7 @@ requirements. `README.md` holds the environment variable table.
               ┌─────────▼──┐  ┌─────▼──────┐  ┌─────▼──────────────┐
               │ LangGraph  │  │  Manual    │  │  retrieval.py      │
               │ agent      │  │  storage   │  │  chunk, embed,     │
-              │ chat/tools │  │  (disk)    │  │  rerank, search    │
+              │ supervisor │  │  (disk)    │  │  rerank, search    │
               └─────┬──────┘  └────────────┘  └─────┬──────────────┘
                     │                               │
             ┌───────▼───────┐             ┌─────────▼─────────┐
@@ -103,29 +105,41 @@ batch. The upload dialog reads that field and shows a bar with a time estimate.
 ### 2.3 Agent graph and tool loop (Task 4)
 
 `backend/agent/graph.py` builds the graph and compiles it at import. The shape
-is a flat loop.
+is a supervisor, worker, and synthesize topology.
 
 ```mermaid
 flowchart LR
-    START([START]) --> chat[chat]
-    chat -->|tool_calls present| tools[tools]
-    chat -->|no tool_calls| STOP([END])
-    tools --> chat
+    START([START]) --> supervisor[supervisor]
+    supervisor -->|route: worker| worker[worker]
+    supervisor -->|route: synthesize| synthesize[synthesize]
+    worker --> supervisor
+    synthesize --> STOP([END])
 ```
 
-The `chat` node prepends the grounding prompt and calls the model with the
-tool schemas bound. The `tools` node runs the model's tool calls. The loop
-repeats until the model answers with no tool call.
+The `supervisor` node reads the question and what the worker has found, then
+decides whether the worker keeps searching or the graph synthesizes. A hop cap
+(`AGENT_MAX_HOPS`) forces synthesis when the supervisor has not stopped. The
+`worker` node runs the tool loop over the calculator and the three RAG tools. A
+second cap (`AGENT_MAX_TOOL_STEPS`) bounds that loop. The `synthesize` node
+writes the final markdown answer with `[Page N]` citations.
+
+The model the user picked selects a tier (DECISIONS M1). The tier fixes two
+models: a working model that runs the supervisor routing check and the worker's
+tool loop, and an authoring model that writes the answer. The expensive model
+is spent only on the answer.
 
 The graph state is `AgentState`: `messages` (merged with `add_messages`),
-`model` (a per-request override), `vehicle_id`, and `stream`. When `stream` is
-true, the `chat` node streams content deltas through the stream writer and
-reassembles tool-call fragments. `POST /chat/stream` consumes those events.
+`model` (a per-request override), `vehicle_id`, `stream`, `gathered`, `next`,
+and `hops`. The `worker` node appends its findings to `gathered` so the
+supervisor sees them; `next` is the supervisor's routing decision; `hops`
+counts the worker runs. When `stream` is true, the `synthesize` node streams
+content deltas through the stream writer. `POST /chat/stream` consumes those
+events.
 
-The `tools` node merges the state's `vehicle_id` into every tool argument whose
-executor takes that parameter, and it overrides any value the model supplied.
-The model cannot know the vehicle id, so the state value is the only trusted
-source.
+The `worker` node merges the state's `vehicle_id` into every tool argument
+whose executor takes that parameter, and it overrides any value the model
+supplied. The model cannot know the vehicle id, so the state value is the only
+trusted source.
 
 The tools live in `backend/tools.py`.
 
@@ -414,10 +428,13 @@ environment variable table with defaults.
 
 The config groups are:
 
-- Model selection and generation: `MODEL_DEFAULT`, `MODEL_OPTIONS`, and the
-  `MODEL_*` generation parameters.
-- Agent graph: `AGENT_SYSTEM_PROMPT`.
+- Model selection and generation: `MODEL_DEFAULT`, `MODEL_OPTIONS`, the
+  `MODEL_*` generation parameters, and the `SUPER_SUB_*` tier table.
+- Agent graph: `AGENT_SYSTEM_PROMPT`, `AGENT_MAX_HOPS`, and
+  `AGENT_MAX_TOOL_STEPS`.
 - Local storage: `MANUALS_DIR`, `VEHICLES_DIR`.
 - Manual viewer: `THUMBNAIL_DPI`, `VIEWER_CACHE_MAX_AGE_SECONDS`.
 - Ingestion: the `INGEST_*` pipeline and chunking values.
 - Retrieval: the `QDRANT_*` and `RETRIEVAL_*` values.
+- Automated evals: the `EVAL_*` judge and gating values.
+- Monitoring: the `LANGSMITH_*` tracing values.

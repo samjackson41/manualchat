@@ -7,9 +7,11 @@ a streaming client or the full SDK without touching the graph.
 """
 
 import json
+from datetime import datetime, timezone
 
 import httpx
 
+from backend import tracing
 from backend.config import get_settings
 
 
@@ -69,19 +71,38 @@ def chat(
     url = f"{settings.openrouter_base_url.rstrip('/')}/chat/completions"
     headers = {"Authorization": f"Bearer {settings.openrouter_api_key}"}
 
+    started = datetime.now(timezone.utc)
+    output = None
+    usage = None
+    error = None
     try:
         resp = httpx.post(url, headers=headers, json=body, timeout=120.0)
+        if resp.is_error:
+            raise LLMError(f"OpenRouter error {resp.status_code}: {resp.text}")
+        data = resp.json()
+        try:
+            output = data["choices"][0]["message"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise LLMError(f"Unexpected OpenRouter response shape: {data}") from exc
+        usage = data.get("usage")
+        return output
+    except LLMError as exc:
+        error = str(exc)
+        raise
     except httpx.HTTPError as exc:
-        raise LLMError(f"OpenRouter request failed: {exc}") from exc
-
-    if resp.is_error:
-        raise LLMError(f"OpenRouter error {resp.status_code}: {resp.text}")
-
-    data = resp.json()
-    try:
-        return data["choices"][0]["message"]
-    except (KeyError, IndexError, TypeError) as exc:
-        raise LLMError(f"Unexpected OpenRouter response shape: {data}") from exc
+        error = f"OpenRouter request failed: {exc}"
+        raise LLMError(error) from exc
+    finally:
+        tracing.record(
+            name="chat",
+            model=model,
+            messages=messages,
+            started=started,
+            ended=datetime.now(timezone.utc),
+            output=output,
+            usage=usage,
+            error=error,
+        )
 
 
 def stream_chat(
@@ -114,6 +135,10 @@ def stream_chat(
     url = f"{settings.openrouter_base_url.rstrip('/')}/chat/completions"
     headers = {"Authorization": f"Bearer {settings.openrouter_api_key}"}
 
+    started = datetime.now(timezone.utc)
+    parts: list[str] = []
+    usage = None
+    error = None
     try:
         with httpx.stream(
             "POST", url, headers=headers, json=body, timeout=120.0
@@ -131,13 +156,33 @@ def stream_chat(
                     data = json.loads(payload)
                 except json.JSONDecodeError:
                     continue
+                if data.get("usage"):
+                    usage = data["usage"]
                 choices = data.get("choices") or []
                 if not choices:
                     continue
                 delta = choices[0].get("delta") or {}
+                content = delta.get("content")
+                if content:
+                    parts.append(content)
                 yield {
-                    "content": delta.get("content"),
+                    "content": content,
                     "tool_calls": delta.get("tool_calls"),
                 }
+    except LLMError as exc:
+        error = str(exc)
+        raise
     except httpx.HTTPError as exc:
-        raise LLMError(f"OpenRouter request failed: {exc}") from exc
+        error = f"OpenRouter request failed: {exc}"
+        raise LLMError(error) from exc
+    finally:
+        tracing.record(
+            name="stream_chat",
+            model=model,
+            messages=messages,
+            started=started,
+            ended=datetime.now(timezone.utc),
+            output="".join(parts) or None,
+            usage=usage,
+            error=error,
+        )
