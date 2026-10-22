@@ -225,7 +225,7 @@ export function ManualUpload() {
             <DialogTitle>Upload a manual</DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={submit} className="flex flex-col gap-3">
+          <form onSubmit={submit} className="flex min-w-0 flex-col gap-3">
             {locked ? (
               <div className="flex flex-col gap-3 py-2">
                 <p className="truncate text-sm font-medium">
@@ -319,7 +319,7 @@ export function ManualUpload() {
                     key={manual.manual_id}
                     className="flex items-center justify-between gap-2 text-sm"
                   >
-                    <span className="truncate">{manual.display_name}</span>
+                    <span className="min-w-0 truncate">{manual.display_name}</span>
                     <span className="text-muted-foreground shrink-0">
                       {statusText(manual)}
                     </span>
