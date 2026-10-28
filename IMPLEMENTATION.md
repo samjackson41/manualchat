@@ -133,22 +133,23 @@ The graph state is `AgentState`: `messages` (merged with `add_messages`),
 and `hops`. The `worker` node appends its findings to `gathered` so the
 supervisor sees them; `next` is the supervisor's routing decision; `hops`
 counts the worker runs. When `stream` is true, the `synthesize` node streams
-content deltas through the stream writer. `POST /chat/stream` consumes those
-events.
+content deltas through the stream writer and the `worker` node streams a
+`tool_call` event before each tool runs and a `tool_result` event after.
+`POST /chat/stream` consumes those events.
 
 The `worker` node merges the state's `vehicle_id` into every tool argument
-whose executor takes that parameter, and it overrides any value the model
-supplied. The model cannot know the vehicle id, so the state value is the only
-trusted source.
+whose executor takes that parameter. The model cannot know the vehicle id, so
+the state value is the only trusted source; the tool schemas do not expose
+`vehicle_id` to the model at all.
 
 The tools live in `backend/tools.py`.
 
 | Tool | Arguments | Returns |
 |---|---|---|
 | `calculator` | `expression` | The numeric result, or an error string. |
-| `search_manual` | `query`, `vehicle_id`, `manual_id?`, `top_k?` | `SearchResult` JSON: reranked chunks with page citations. |
-| `extract_specs` | `subject`, `vehicle_id`, `manual_id?` | `ExtractSpecsResult` JSON: verbatim table rows that match the subject. |
-| `get_page_text` | `page_numbers`, `manual_id`, `vehicle_id?` | `GetPageTextResult` JSON: the full text of each requested page. |
+| `search_manual` | `query`, `manual_id?`, `top_k?` | `SearchResult` JSON: reranked chunks with page citations. |
+| `extract_specs` | `subject`, `manual_id?` | `ExtractSpecsResult` JSON: verbatim table rows that match the subject. |
+| `get_page_text` | `page_numbers`, `manual_id` | `GetPageTextResult` JSON: the full text of each requested page. |
 
 `search_manual` calls `retrieval.search`. `extract_specs` reads `tables.json`
 and matches the subject against table captions and row labels. It skips
@@ -197,7 +198,11 @@ Status codes:
 - `304` for a page request whose `If-None-Match` matches the slice `ETag`.
 
 `POST /chat/stream` sends one JSON object per `data:` line. Content arrives as
-`{"type": "token", "content": "..."}`. The stream ends with
+`{"type": "token", "content": "..."}`. Tool activity arrives as
+`{"type": "tool_call", "tool_call_id": ..., "tool_name": ..., "args_text": ...}`
+before a tool runs and
+`{"type": "tool_result", "tool_call_id": ..., "result": ..., "error": ...}`
+after it finishes. The stream ends with
 `{"type": "done", "content": "<full reply>", "model": "<slug>"}`. A failure
 before any answer ends the stream with `{"type": "error", "message": "..."}`.
 

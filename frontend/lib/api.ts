@@ -37,7 +37,23 @@ export type IngestProgress = {
   total: number;
 };
 
-type ChatResponse = { reply: string; model: string };
+// One `data:` event from `POST /chat/stream` (see backend/api/main.py).
+export type ChatStreamEvent =
+  | { type: "token"; content: string }
+  | {
+      type: "tool_call";
+      tool_call_id: string;
+      tool_name: string;
+      args_text: string;
+    }
+  | {
+      type: "tool_result";
+      tool_call_id: string;
+      result: string;
+      error: boolean;
+    }
+  | { type: "done"; content: string; model: string }
+  | { type: "error"; message: string };
 
 async function errorDetail(res: Response): Promise<string> {
   const data = await res.json().catch(() => null);
@@ -157,11 +173,13 @@ export async function uploadManual(input: {
   return res.json();
 }
 
-export async function chat(
+// Stream one chat turn as SSE events from `POST /chat/stream`. Each `data:`
+// line is a JSON `ChatStreamEvent`; the generator yields them in order.
+export async function* chatStream(
   input: { query: string; model?: string; vehicleId?: string },
   signal?: AbortSignal,
-): Promise<ChatResponse> {
-  const res = await fetch(`${BACKEND_URL}/chat`, {
+): AsyncGenerator<ChatStreamEvent, void> {
+  const res = await fetch(`${BACKEND_URL}/chat/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -171,6 +189,31 @@ export async function chat(
     }),
     signal,
   });
-  if (!res.ok) throw new Error(await errorDetail(res));
-  return res.json();
+  if (!res.ok || !res.body) throw new Error(await errorDetail(res));
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  const yieldLine = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) return;
+    const payload = trimmed.slice("data:".length).trim();
+    if (!payload) return;
+    return JSON.parse(payload) as ChatStreamEvent;
+  };
+
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      const event = yieldLine(line);
+      if (event) yield event;
+    }
+  }
+  // Flush a complete event that ended without a trailing newline.
+  const event = yieldLine(buffer);
+  if (event) yield event;
 }
