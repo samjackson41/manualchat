@@ -71,13 +71,14 @@ const storage: AsyncStorageLike = {
   },
 };
 
-// One adapter instance for the whole app. It persists thread metadata and
-// per-thread messages to localStorage under the `manualchat:` prefix.
-const threadListAdapter = createLocalStorageAdapter({
-  storage,
-  prefix: "manualchat:",
-  titleGenerator: createSimpleTitleAdapter(),
-});
+// Generates a title for a new thread from its first message.
+const titleGenerator = createSimpleTitleAdapter();
+
+// The localStorage prefix that scopes chat history to one vehicle. Threads
+// and messages live under `manualchat:vehicle:<id>:`, so each vehicle keeps its
+// own history. The `default` bucket holds chats made with no vehicle selected.
+const threadListPrefix = (vehicleId: string | null) =>
+  `manualchat:vehicle:${vehicleId ?? "default"}:`;
 
 export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const [models, setModels] = useState<ModelOption[]>([]);
@@ -88,6 +89,18 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const { activeVehicleId } = useVehicles();
   const vehicleRef = useRef(activeVehicleId);
   vehicleRef.current = activeVehicleId;
+
+  // A new adapter per vehicle. Swapping it reloads the thread list and resets
+  // the active thread, so switching vehicles shows that vehicle's history.
+  const threadListAdapter = useMemo(
+    () =>
+      createLocalStorageAdapter({
+        storage,
+        prefix: threadListPrefix(activeVehicleId),
+        titleGenerator,
+      }),
+    [activeVehicleId],
+  );
 
   useEffect(() => {
     getModels()

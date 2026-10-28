@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { PencilIcon, TrashIcon } from "lucide-react";
+import { CheckIcon, PencilIcon, TrashIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,6 +18,7 @@ import { ingestStatusText } from "@/lib/ingest-progress";
 import {
   deleteManual,
   listManuals,
+  renameManual,
   setManualEnabled,
   type Manual,
   type Vehicle,
@@ -78,6 +79,9 @@ function ManageVehicleDialog({
   const [manualError, setManualError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [busyManualId, setBusyManualId] = useState<string | null>(null);
+  // The manual whose title is showing as an editable field, and the draft name.
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   const anyProcessing = manuals.some((manual) => manual.status === "processing");
 
@@ -172,6 +176,40 @@ function ManageVehicleDialog({
     }
   }
 
+  function startManualRename(manual: Manual) {
+    setRenamingId(manual.manual_id);
+    setRenameValue(manual.display_name);
+  }
+
+  function cancelManualRename() {
+    setRenamingId(null);
+    setRenameValue("");
+  }
+
+  async function submitManualRename(manual: Manual) {
+    const trimmed = renameValue.trim();
+    // An empty or unchanged draft is not a rename, so close without a request.
+    if (!trimmed || trimmed === manual.display_name) {
+      cancelManualRename();
+      return;
+    }
+    setBusyManualId(manual.manual_id);
+    setManualError(null);
+    try {
+      const updated = await renameManual(manual.manual_id, trimmed);
+      setManuals((prev) =>
+        prev.map((m) => (m.manual_id === updated.manual_id ? updated : m)),
+      );
+      cancelManualRename();
+    } catch (err) {
+      setManualError(
+        err instanceof Error ? err.message : "Could not rename manual",
+      );
+    } finally {
+      setBusyManualId(null);
+    }
+  }
+
   return (
     <>
       <Button
@@ -181,6 +219,7 @@ function ManageVehicleDialog({
         onClick={() => {
           setName(vehicle.display_name);
           setConfirmId(null);
+          cancelManualRename();
           setOpen(true);
         }}
       >
@@ -227,9 +266,60 @@ function ManageVehicleDialog({
                   className="flex min-w-0 items-center justify-between gap-2 rounded-md border p-2"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {manual.display_name}
-                    </p>
+                    {renamingId === manual.manual_id ? (
+                      <form
+                        className="flex items-center gap-1"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          void submitManualRename(manual);
+                        }}
+                      >
+                        <Input
+                          value={renameValue}
+                          onChange={(event) => setRenameValue(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Escape") cancelManualRename();
+                          }}
+                          autoFocus
+                          aria-label={`New name for ${manual.display_name}`}
+                          className="h-7 min-w-0 flex-1 text-sm"
+                        />
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="icon-xs"
+                          aria-label={`Save name for ${manual.display_name}`}
+                          disabled={busyManualId !== null}
+                        >
+                          <CheckIcon />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          aria-label="Cancel rename"
+                          onClick={cancelManualRename}
+                        >
+                          <XIcon />
+                        </Button>
+                      </form>
+                    ) : (
+                      <div className="flex min-w-0 items-center gap-1">
+                        <p className="truncate text-sm font-medium">
+                          {manual.display_name}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          aria-label={`Rename ${manual.display_name}`}
+                          disabled={busyManualId !== null}
+                          onClick={() => startManualRename(manual)}
+                        >
+                          <PencilIcon />
+                        </Button>
+                      </div>
+                    )}
                     <p className="break-words text-xs text-muted-foreground">
                       {manual.description ? `${manual.description} · ` : ""}
                       {manualStatusText(manual)}
