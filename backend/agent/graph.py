@@ -138,6 +138,20 @@ def _question(state: AgentState) -> str:
     return ""
 
 
+def _injected_args(call: dict, vehicle_id: str | None) -> dict:
+    """The tool arguments with the state's vehicle_id merged in.
+
+    The model cannot know the vehicle id, so the state's value overrides any
+    value the model supplied, for tools whose executor takes a ``vehicle_id``
+    parameter. Tools that do not (calculator) keep their raw arguments.
+    """
+    fn = TOOL_REGISTRY.get(call["name"])
+    args = dict(call["args"])
+    if fn is not None and "vehicle_id" in inspect.signature(fn).parameters:
+        args["vehicle_id"] = vehicle_id
+    return args
+
+
 def _execute_tool_calls(
     tool_calls: list[dict], vehicle_id: str | None
 ) -> list[ToolMessage]:
@@ -154,10 +168,7 @@ def _execute_tool_calls(
             output = f"Error: unknown tool '{call['name']}'"
         else:
             try:
-                args = dict(call["args"])
-                if "vehicle_id" in inspect.signature(fn).parameters:
-                    args["vehicle_id"] = vehicle_id
-                output = fn(**args)
+                output = fn(**_injected_args(call, vehicle_id))
             except TypeError as exc:
                 output = f"Error: bad arguments for '{call['name']}': {exc}"
         tool_messages.append(
@@ -253,7 +264,9 @@ def worker_node(state: AgentState) -> dict:
                         "type": "tool_call",
                         "tool_call_id": call_id,
                         "tool_name": call["name"],
-                        "args_text": json.dumps(call["args"]),
+                        "args_text": json.dumps(
+                            _injected_args(call, state.get("vehicle_id"))
+                        ),
                     }
                 )
         tool_messages = _execute_tool_calls(

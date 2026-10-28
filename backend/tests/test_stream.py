@@ -10,7 +10,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from backend import llm
+from backend import llm, retrieval
 from backend.api.main import app
 from backend.config import get_settings
 
@@ -162,6 +162,58 @@ def test_chat_stream_emits_tool_call_events(monkeypatch):
     assert results[0]["tool_call_id"] == calls[0]["tool_call_id"]
     assert results[0]["result"] == "23"
     assert results[0]["error"] is False
+
+
+def test_chat_stream_shows_injected_vehicle_id(monkeypatch):
+    """The streamed tool args show the state's vehicle, not the model's guess."""
+    grounding = get_settings().agent_system_prompt
+    worker_turns = iter(
+        [
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {
+                            "name": "search_manual",
+                            "arguments": '{"query": "valve adjustment", "vehicle_id": "demo_vehicle"}',
+                        },
+                    }
+                ],
+            },
+            {"role": "assistant", "content": "See the manual.", "tool_calls": None},
+        ]
+    )
+
+    def fake_chat(messages, model, params=None, tools=None):
+        if messages[0]["content"] != grounding:
+            return {"role": "assistant", "content": "synthesize", "tool_calls": None}
+        return next(worker_turns)
+
+    def fake_stream_chat(*args, **kwargs):
+        yield {"content": "See the manual.", "tool_calls": None}
+
+    def fake_search(query, vehicle_id, manual_id=None, top_n=None):
+        return []
+
+    monkeypatch.setattr(llm, "chat", fake_chat)
+    monkeypatch.setattr(llm, "stream_chat", fake_stream_chat)
+    monkeypatch.setattr(retrieval, "search", fake_search)
+    client = TestClient(app)
+
+    resp = client.post(
+        "/chat/stream",
+        json={"query": "how do I adjust the valves?", "vehicle_id": "outboard_vehicle"},
+    )
+    events = _events(resp)
+
+    calls = [e for e in events if e["type"] == "tool_call"]
+    assert len(calls) == 1
+    args = json.loads(calls[0]["args_text"])
+    assert args["vehicle_id"] == "outboard_vehicle"
+    assert args["query"] == "valve adjustment"
 
 
 def test_chat_stream_without_api_key_emits_error(monkeypatch):

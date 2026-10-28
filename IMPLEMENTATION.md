@@ -138,18 +138,18 @@ content deltas through the stream writer and the `worker` node streams a
 `POST /chat/stream` consumes those events.
 
 The `worker` node merges the state's `vehicle_id` into every tool argument
-whose executor takes that parameter, and it overrides any value the model
-supplied. The model cannot know the vehicle id, so the state value is the only
-trusted source.
+whose executor takes that parameter. The model cannot know the vehicle id, so
+the state value is the only trusted source; the tool schemas do not expose
+`vehicle_id` to the model at all.
 
 The tools live in `backend/tools.py`.
 
 | Tool | Arguments | Returns |
 |---|---|---|
 | `calculator` | `expression` | The numeric result, or an error string. |
-| `search_manual` | `query`, `vehicle_id`, `manual_id?`, `top_k?` | `SearchResult` JSON: reranked chunks with page citations. |
-| `extract_specs` | `subject`, `vehicle_id`, `manual_id?` | `ExtractSpecsResult` JSON: verbatim table rows that match the subject. |
-| `get_page_text` | `page_numbers`, `manual_id`, `vehicle_id?` | `GetPageTextResult` JSON: the full text of each requested page. |
+| `search_manual` | `query`, `manual_id?`, `top_k?` | `SearchResult` JSON: reranked chunks with page citations. |
+| `extract_specs` | `subject`, `manual_id?` | `ExtractSpecsResult` JSON: verbatim table rows that match the subject. |
+| `get_page_text` | `page_numbers`, `manual_id` | `GetPageTextResult` JSON: the full text of each requested page. |
 
 `search_manual` calls `retrieval.search`. `extract_specs` reads `tables.json`
 and matches the subject against table captions and row labels. It skips

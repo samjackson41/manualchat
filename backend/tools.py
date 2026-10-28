@@ -233,10 +233,6 @@ TOOL_SCHEMAS: list[dict] = [
                         "type": "string",
                         "description": "Natural-language search query, e.g. 'how to change the engine oil'.",
                     },
-                    "vehicle_id": {
-                        "type": "string",
-                        "description": "Vehicle identifier, e.g. 'demo_vehicle'.",
-                    },
                     "manual_id": {
                         "type": "string",
                         "description": "Optional manual identifier to narrow the search.",
@@ -246,7 +242,7 @@ TOOL_SCHEMAS: list[dict] = [
                         "description": "Optional number of chunks to return (default 5).",
                     },
                 },
-                "required": ["query", "vehicle_id"],
+                "required": ["query"],
             },
         },
     },
@@ -266,16 +262,12 @@ TOOL_SCHEMAS: list[dict] = [
                         "type": "string",
                         "description": "The spec to look up, e.g. 'engine oil drain bolt torque'.",
                     },
-                    "vehicle_id": {
-                        "type": "string",
-                        "description": "Vehicle identifier, e.g. 'demo_vehicle'.",
-                    },
                     "manual_id": {
                         "type": "string",
                         "description": "Optional manual identifier to narrow the lookup.",
                     },
                 },
-                "required": ["subject", "vehicle_id"],
+                "required": ["subject"],
             },
         },
     },
@@ -299,10 +291,6 @@ TOOL_SCHEMAS: list[dict] = [
                     "manual_id": {
                         "type": "string",
                         "description": "Manual identifier to fetch pages from.",
-                    },
-                    "vehicle_id": {
-                        "type": "string",
-                        "description": "Optional vehicle identifier (contextual).",
                     },
                 },
                 "required": ["page_numbers", "manual_id"],
