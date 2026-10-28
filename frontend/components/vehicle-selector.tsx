@@ -187,7 +187,7 @@ function ManageVehicleDialog({
         <PencilIcon />
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Manage vehicle</DialogTitle>
           </DialogHeader>
@@ -201,7 +201,7 @@ function ManageVehicleDialog({
               Rename
             </Button>
           </form>
-          <div className="space-y-0.5 text-xs text-muted-foreground">
+          <div className="min-w-0 space-y-0.5 break-words text-xs text-muted-foreground">
             <p>Vehicle ID: {vehicle.vehicle_id}</p>
             <p>User ID: {vehicle.user_id}</p>
             <p>
@@ -212,7 +212,7 @@ function ManageVehicleDialog({
               })}
             </p>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex min-w-0 flex-col gap-2">
             <p className="text-sm font-medium">Manuals</p>
             {manualError && (
               <p className="text-sm text-destructive">{manualError}</p>
@@ -220,17 +220,17 @@ function ManageVehicleDialog({
             {manuals.length === 0 && !manualError && (
               <p className="text-sm text-muted-foreground">No manuals yet.</p>
             )}
-            <ul className="flex max-h-64 flex-col gap-2 overflow-y-auto">
+            <ul className="flex max-h-[40vh] min-w-0 flex-col gap-2 overflow-y-auto">
               {manuals.map((manual) => (
                 <li
                   key={manual.manual_id}
-                  className="flex items-center justify-between gap-2 rounded-md border p-2"
+                  className="flex min-w-0 items-center justify-between gap-2 rounded-md border p-2"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
                       {manual.display_name}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="break-words text-xs text-muted-foreground">
                       {manual.description ? `${manual.description} · ` : ""}
                       {manualStatusText(manual)}
                     </p>
