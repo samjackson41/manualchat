@@ -48,3 +48,11 @@ services:
       - ./frontend:/app
       # Anonymous volume preserves the image's node_modules across the mount.
       - /app/node_modules
+      # tmpfs keeps the dev server's build output off the host copy, so a
+      # host-side `next build` cannot delete the assets a running dev server
+      # serves. A volume will not do: the image has no `.next`, so Docker
+      # seeds it root-owned and the `node` user cannot write into it.
+      - type: tmpfs
+        target: /app/.next
+        tmpfs:
+          mode: 0o1777
