@@ -113,6 +113,57 @@ def test_chat_stream_runs_the_tool_loop(monkeypatch):
     assert done["content"] == "3*7+2 is 23."
 
 
+def test_chat_stream_emits_tool_call_events(monkeypatch):
+    """A worker turn that runs a tool also streams its call and result events."""
+    grounding = get_settings().agent_system_prompt
+    worker_turns = iter(
+        [
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {
+                            "name": "calculator",
+                            "arguments": '{"expression": "3*7+2"}',
+                        },
+                    }
+                ],
+            },
+            {"role": "assistant", "content": "3*7+2 is 23.", "tool_calls": None},
+        ]
+    )
+
+    def fake_chat(messages, model, params=None, tools=None):
+        if messages[0]["content"] != grounding:
+            return {"role": "assistant", "content": "synthesize", "tool_calls": None}
+        return next(worker_turns)
+
+    def fake_stream_chat(*args, **kwargs):
+        yield {"content": "3*7+2 is 23.", "tool_calls": None}
+
+    monkeypatch.setattr(llm, "chat", fake_chat)
+    monkeypatch.setattr(llm, "stream_chat", fake_stream_chat)
+    client = TestClient(app)
+
+    resp = client.post("/chat/stream", json={"query": "what is 3*7+2?"})
+    events = _events(resp)
+
+    calls = [e for e in events if e["type"] == "tool_call"]
+    assert len(calls) == 1
+    assert calls[0]["tool_name"] == "calculator"
+    assert calls[0]["args_text"] == '{"expression": "3*7+2"}'
+    assert "tool_call_id" in calls[0]
+
+    results = [e for e in events if e["type"] == "tool_result"]
+    assert len(results) == 1
+    assert results[0]["tool_call_id"] == calls[0]["tool_call_id"]
+    assert results[0]["result"] == "23"
+    assert results[0]["error"] is False
+
+
 def test_chat_stream_without_api_key_emits_error(monkeypatch):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     client = TestClient(app)

@@ -310,9 +310,11 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
     """Stream the graph's reply as SSE JSON chunks (IMPLEMENTATION Task 5).
 
     Each event carries one JSON object on a ``data:`` line. Content arrives as
-    ``{"type": "token", "content": "..."}``, then a final
-    ``{"type": "done", "content": "<full reply>", "model": "<slug>"}``. An early
-    failure ends the stream with ``{"type": "error", "message": "..."}``.
+    ``{"type": "token", "content": "..."}``; the worker's tool activity arrives
+    as ``{"type": "tool_call", ...}`` before a tool runs and
+    ``{"type": "tool_result", ...}`` after it finishes. A final
+    ``{"type": "done", "content": "<full reply>", "model": "<slug>"}`` ends the
+    stream. An early failure ends it with ``{"type": "error", "message": ...}``.
     """
     model = req.model or get_settings().model_default
     initial_state = {
@@ -329,9 +331,11 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
         parts: list[str] = []
         try:
             for chunk in graph.stream(initial_state, stream_mode="custom"):
-                if isinstance(chunk, dict) and chunk.get("type") == "token":
+                if not isinstance(chunk, dict):
+                    continue
+                if chunk.get("type") == "token":
                     parts.append(chunk["content"])
-                    yield f"data: {json.dumps(chunk)}\n\n"
+                yield f"data: {json.dumps(chunk)}\n\n"
             done = {"type": "done", "content": "".join(parts), "model": model}
             yield f"data: {json.dumps(done)}\n\n"
         except LLMError as exc:

@@ -6,7 +6,9 @@ import {
   useRemoteThreadListRuntime,
   type ChatModelAdapter,
   type TextMessagePart,
+  type ThreadAssistantMessagePart,
   type ThreadUserMessage,
+  type ToolCallMessagePart,
 } from "@assistant-ui/react";
 import {
   createLocalStorageAdapter,
@@ -23,7 +25,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { chat, getModels, type ModelOption } from "@/lib/api";
+import { chatStream, getModels, type ModelOption } from "@/lib/api";
 import { useVehicles } from "./vehicle-runtime";
 
 type ModelSelection = {
@@ -40,6 +42,20 @@ export function useModelSelection(): ModelSelection {
     throw new Error("useModelSelection must be used inside ChatRuntimeProvider");
   }
   return ctx;
+}
+
+// Parse a tool-call argument string into the object shape the tool-call part
+// stores. Invalid or non-object JSON falls back to an empty object.
+function parseToolArgs(text: string): ToolCallMessagePart["args"] {
+  try {
+    const value: unknown = JSON.parse(text);
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return value as ToolCallMessagePart["args"];
+    }
+  } catch {
+    // Fall through to the empty default below.
+  }
+  return {};
 }
 
 // The browser localStorage behind the async interface the adapter expects.
@@ -86,9 +102,9 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
 
   const chatModelAdapter = useMemo<ChatModelAdapter>(
     () => ({
-      async run({ messages, abortSignal }) {
-        // The backend /chat takes a single query. Send the latest user turn;
-        // multi-turn context is left to the backend memory work.
+      async *run({ messages, abortSignal }) {
+        // The backend /chat/stream takes a single query. Send the latest user
+        // turn; multi-turn context is left to the backend memory work.
         const lastUser = [...messages]
           .reverse()
           .find(
@@ -101,16 +117,68 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
               .join("\n")
           : "";
 
-        const res = await chat(
+        const toolCalls: ToolCallMessagePart[] = [];
+        const toolIndexById = new Map<string, number>();
+        let answer = "";
+
+        // The message content is the full current snapshot: the tool calls so
+        // far, followed by the answer text once it starts streaming.
+        const snapshot = (): ThreadAssistantMessagePart[] => {
+          const parts: ThreadAssistantMessagePart[] = [...toolCalls];
+          if (answer !== "") parts.push({ type: "text", text: answer });
+          return parts;
+        };
+
+        for await (const event of chatStream(
           {
             query,
             model: modelRef.current || undefined,
             vehicleId: vehicleRef.current || undefined,
           },
           abortSignal,
-        );
-
-        return { content: [{ type: "text" as const, text: res.reply }] };
+        )) {
+          if (abortSignal.aborted) return;
+          switch (event.type) {
+            case "tool_call": {
+              toolIndexById.set(event.tool_call_id, toolCalls.length);
+              toolCalls.push({
+                type: "tool-call",
+                toolCallId: event.tool_call_id,
+                toolName: event.tool_name,
+                args: parseToolArgs(event.args_text),
+                argsText: event.args_text,
+              });
+              yield { content: snapshot() };
+              break;
+            }
+            case "tool_result": {
+              const index = toolIndexById.get(event.tool_call_id);
+              if (index !== undefined) {
+                toolCalls[index] = {
+                  ...toolCalls[index],
+                  result: event.result,
+                  isError: event.error,
+                };
+              }
+              yield { content: snapshot() };
+              break;
+            }
+            case "token":
+              answer += event.content;
+              yield { content: snapshot() };
+              break;
+            case "done":
+              // Tokens have already accumulated; keep the answer if the stream
+              // sent a done event without any token (a robustness guard).
+              if (answer === "" && event.content !== "") {
+                answer = event.content;
+                yield { content: snapshot() };
+              }
+              break;
+            case "error":
+              throw new Error(event.message);
+          }
+        }
       },
     }),
     [],

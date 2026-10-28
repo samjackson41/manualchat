@@ -24,6 +24,7 @@ One node does one job, and every model call goes through `backend.llm`.
 import inspect
 import json
 import operator
+import uuid
 from typing import Annotated, TypedDict
 
 from langchain_core.messages import (
@@ -214,11 +215,14 @@ def worker_node(state: AgentState) -> dict:
 
     Offers the tool schemas to the tier's sub model and runs the calculator and
     the three RAG tools, injecting the state's ``vehicle_id``. The findings are
-    the model's last text turn, once it stops asking for tools.
+    the model's last text turn, once it stops asking for tools. When streaming,
+    it emits a ``tool_call`` event per tool before it runs and a
+    ``tool_result`` event after, so the chat can show the tool activity.
     """
     settings = get_settings()
     tier = settings.tier_for_model(state["model"])
     gathered = state.get("gathered") or []
+    writer = get_stream_writer() if state.get("stream") else None
 
     user = _question(state)
     if gathered:
@@ -241,9 +245,31 @@ def worker_node(state: AgentState) -> dict:
         findings = message.content or findings
         if not message.tool_calls:
             break
-        messages.extend(
-            _execute_tool_calls(message.tool_calls, state.get("vehicle_id"))
+        call_ids = [uuid.uuid4().hex for _ in message.tool_calls]
+        if writer is not None:
+            for call, call_id in zip(message.tool_calls, call_ids):
+                writer(
+                    {
+                        "type": "tool_call",
+                        "tool_call_id": call_id,
+                        "tool_name": call["name"],
+                        "args_text": json.dumps(call["args"]),
+                    }
+                )
+        tool_messages = _execute_tool_calls(
+            message.tool_calls, state.get("vehicle_id")
         )
+        messages.extend(tool_messages)
+        if writer is not None:
+            for call_id, tool_message in zip(call_ids, tool_messages):
+                writer(
+                    {
+                        "type": "tool_result",
+                        "tool_call_id": call_id,
+                        "result": tool_message.content,
+                        "error": tool_message.content.startswith("Error:"),
+                    }
+                )
 
     return {"gathered": [findings], "hops": state.get("hops", 0) + 1}
 
@@ -281,7 +307,8 @@ def _stream_answer(messages: list[BaseMessage], tier: SuperSubTier) -> str:
 
     Each content delta goes through the custom stream writer, consumed by
     ``POST /chat/stream`` via ``stream_mode="custom"``. Supervisor and worker
-    reasoning is internal and is not streamed.
+    reasoning text is internal and is not streamed; the worker streams the tool
+    calls it runs instead, so the reader sees the agent's progress.
     """
     writer = get_stream_writer()
     parts: list[str] = []

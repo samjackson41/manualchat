@@ -39,8 +39,10 @@
   so. When the manual gives conflicting values, the agent shows each one with
   its own citation.
 
-- Streaming: `POST /chat/stream` sends the answer as Server-Sent Events, one
-  token at a time, then a final done event.
+- Streaming: `POST /chat/stream` sends the answer as Server-Sent Events. The
+  worker emits a `tool_call` event before each tool runs and a `tool_result`
+  event after, then the answer streams one token at a time and a final done
+  event ends the stream.
 
 - Page thumbnails: `GET /manuals/{id}/thumbnails/{page}` renders one page of the
   stored PDF as a PNG.
@@ -50,8 +52,10 @@
   1.00 and no fabricated out-of-scope answers.
 
 - Frontend chat: a Next.js chat built on assistant-ui. It shows messages and
-  markdown, and regenerates a reply. A sidebar keeps the chat history in the
-  browser across reloads.
+  markdown, and regenerates a reply. The answer forms token by token as the
+  stream arrives, and each agent tool call shows its name, arguments, and
+  result while it runs. A sidebar keeps the chat history in the browser across
+  reloads.
 
 - Vehicle and upload dialogs: a vehicle selector feeds a manual-upload button
   and a manual-viewer toggle. The selector can add a vehicle, and rename and
@@ -139,9 +143,10 @@ Planned work for the Manual viewer pane. None of it is built.
 
 Planned frontend work. None of it is built.
 
-- Stream the progress of the agent in the chat. Show the tool calls and the RAG
-  model weight loading the way the terminal shows them, so the reader sees
-  progress instead of a loading spinner.
+- Stream the progress of the agent in the chat. Show the RAG model weight
+  loading the way the terminal shows them, so the reader sees ingest progress
+  instead of a loading spinner. Tool calls are shown; this item remains for
+  the RAG model weight loading.
 - Let the reader rename a chat session in the frontend.
 - Add tooltips to the edit, theme, and manual upload buttons.
 - Make the threads sidebar collapsible with a small button that shows a
@@ -149,8 +154,6 @@ Planned frontend work. None of it is built.
 
 ## Known problems
 
-- The chat shows the whole answer in one flash. The frontend does not render
-  the token stream one chunk at a time, so the answer does not form smoothly.
 - DeepSeek `-latest` slugs need the `~` prefix, or OpenRouter returns 400.
   This is recorded in the `README.md` "Deviations" section and in
   `DECISIONS.md`.
