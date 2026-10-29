@@ -71,7 +71,9 @@
 
 - Manual viewer: each `[Page N]` in a reply is a clickable badge. Clicking one
   opens the viewer beside the chat at the cited page in the manual the citation
-  names, with selectable text and zoom.
+  names, with selectable text and zoom. The manual selector opens a wide
+  dropdown that shows a long name, and dragging the pane right past its minimum
+  snaps it closed.
 
 - Whole-manual view: a `View whole manual` button in the viewer opens the
   manual's stored PDF. Pages mount one at a time as the reader scrolls, so a

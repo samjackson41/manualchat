@@ -210,6 +210,7 @@ starts. Restart the frontend after a change to these variables.
 | NEXT_PUBLIC_VIEWER_WIDTH_MAX | `900` | DECISIONS V4. The widest the pane gets while the chat shows. |
 | NEXT_PUBLIC_CHAT_MIN_WIDTH | `360` | DECISIONS V4. The narrowest the chat gets before it hides and the pane fills the row. |
 | NEXT_PUBLIC_CHAT_RESTORE_TRAVEL | `24` | DECISIONS V4. The travel to the right, in pixels, that brings a hidden chat back. |
+| NEXT_PUBLIC_VIEWER_CLOSE_TRAVEL | `96` | DECISIONS V4. The travel past the pane minimum, in pixels, that snaps the pane closed. |
 | NEXT_PUBLIC_VIEWER_SLICE_CACHE_ENTRIES | `12` | DECISIONS V6. Slice byte windows kept in memory. |
 
 ## Where the next change goes

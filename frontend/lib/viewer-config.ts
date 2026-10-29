@@ -59,6 +59,13 @@ export const CHAT_RESTORE_TRAVEL = numberFromEnv(
   24,
 );
 
+// How far the reader pulls the pane right past its minimum before the pane
+// snaps closed (DECISIONS V4). Mirrors the snap open on the other edge.
+export const VIEWER_CLOSE_TRAVEL = numberFromEnv(
+  process.env.NEXT_PUBLIC_VIEWER_CLOSE_TRAVEL,
+  96,
+);
+
 export function clampPaneWidth(width: number): number {
   return Math.min(PANE_WIDTH_MAX, Math.max(PANE_WIDTH_MIN, width));
 }

@@ -19,8 +19,10 @@ import { loadSliceBytes, loadWholeManualBytes } from "@/lib/pdf-cache";
 import {
   CHAT_RESTORE_TRAVEL,
   PAGE_ASPECT,
+  PANE_WIDTH_MIN,
   SLICE_PAGES_AFTER,
   SLICE_PAGES_BEFORE,
+  VIEWER_CLOSE_TRAVEL,
   clampVisiblePaneWidth,
   visiblePaneMax,
   ZOOM_MAX,
@@ -472,6 +474,11 @@ export function ManualViewerPanel() {
       setChatHidden(true);
       return;
     }
+    if (wanted <= PANE_WIDTH_MIN - VIEWER_CLOSE_TRAVEL) {
+      dragStart.current = null;
+      close();
+      return;
+    }
     setPaneWidth(clampVisiblePaneWidth(wanted, rowWidth));
   };
 
@@ -543,7 +550,7 @@ export function ManualViewerPanel() {
               >
                 <SelectValue placeholder="Pick a manual" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="w-72">
                 {manuals.map((item) => (
                   <SelectItem key={item.manual_id} value={item.manual_id}>
                     <span className="block truncate">{item.display_name}</span>
