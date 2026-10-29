@@ -11,7 +11,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { VehiclePicker } from "@/components/vehicle-picker";
 import {
   getManual,
@@ -60,7 +59,6 @@ export function ManualUpload() {
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [displayName, setDisplayName] = useState("");
-  const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Manual | null>(null);
@@ -152,7 +150,6 @@ export function ManualUpload() {
       setDone(watched);
       setFile(null);
       setDisplayName("");
-      setDescription("");
     } else {
       setError("The ingest of this manual failed. Read the backend log.");
     }
@@ -164,7 +161,6 @@ export function ManualUpload() {
     setVehicleId(activeVehicleId);
     setFile(null);
     setDisplayName("");
-    setDescription("");
     setBusy(false);
     setError(null);
     setDone(null);
@@ -184,7 +180,6 @@ export function ManualUpload() {
         file,
         vehicleId,
         displayName: trimmed,
-        description: description.trim() || undefined,
       });
       setManuals((previous) => [
         manual,
@@ -280,12 +275,6 @@ export function ManualUpload() {
                   value={displayName}
                   onChange={(event) => setDisplayName(event.target.value)}
                   placeholder="Manual name, e.g. Factory Service Manual"
-                />
-                <Textarea
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  placeholder="Description (optional)"
-                  className="min-h-12"
                 />
 
                 {error && <p className="text-destructive text-sm">{error}</p>}

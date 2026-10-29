@@ -62,10 +62,10 @@
   and a manual-viewer toggle. The selector can add a vehicle, and rename and
   delete sit behind a pencil icon. The manage vehicle dialog is 32rem wide.
   A long manual name truncates and a long ID wraps, so each button stays
-  inside the dialog. The upload dialog takes an optional description and its
-  own vehicle picker. It lists the chosen vehicle's manuals with their ingest
-  status, and a guard stops a quick double click from starting
-  an ingest twice. Closing the dialog during an ingest keeps the run in view:
+  inside the dialog. The upload dialog has its own vehicle picker. It lists the
+  chosen vehicle's manuals and their ingest status. A guard stops a quick double
+  click from starting an ingest twice. Closing the dialog during an ingest keeps
+  the run in view:
   the Upload manual button reopens the progress panel, and a toast below the top
   bar does the same.
 

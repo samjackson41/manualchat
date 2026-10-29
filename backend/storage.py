@@ -51,7 +51,6 @@ def store_manual(
     vehicle_id: str,
     display_name: str,
     source_filename: str,
-    description: str | None = None,
     content_hash: str | None = None,
 ) -> Manual:
     """Write an uploaded manual and return its record.
@@ -70,7 +69,6 @@ def store_manual(
         vehicle_id=vehicle_id,
         display_name=display_name,
         source_filename=source_filename,
-        description=description,
         content_hash=content_hash,
         status="processing",
     )

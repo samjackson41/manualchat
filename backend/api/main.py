@@ -99,7 +99,6 @@ async def create_manual(
     file: UploadFile = File(...),
     vehicle_id: str = Form(...),
     display_name: str = Form(...),
-    description: str = Form(""),
 ) -> Manual:
     """Store an uploaded manual PDF and run ingest on it in the background.
 
@@ -131,7 +130,6 @@ async def create_manual(
         source_pdf=content,
         vehicle_id=vehicle_id.strip(),
         display_name=display_name.strip(),
-        description=description.strip() or None,
         source_filename=file.filename or "manual.pdf",
         content_hash=content_hash,
     )
