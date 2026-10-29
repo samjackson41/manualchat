@@ -279,7 +279,7 @@ export function ManualUpload() {
                 <Input
                   value={displayName}
                   onChange={(event) => setDisplayName(event.target.value)}
-                  placeholder="Manual name, e.g. Rhino 700 service manual"
+                  placeholder="Manual name, e.g. Factory Service Manual"
                 />
                 <Textarea
                   value={description}
