@@ -60,7 +60,10 @@ class VehicleUpdate(BaseModel):
 
 
 class ManualUpdate(BaseModel):
-    enabled: bool
+    """Manual fields a client may patch. An omitted or null field is left as is."""
+
+    enabled: bool | None = None
+    display_name: str | None = None
 
 
 @app.get("/health")
@@ -227,7 +230,17 @@ def get_manual_pdf(manual_id: str) -> FileResponse:
 
 @app.patch("/manuals/{manual_id}")
 def update_manual(manual_id: str, req: ManualUpdate) -> Manual:
-    manual = storage.update_manual(manual_id, enabled=req.enabled)
+    """Enable, disable, or rename a manual. Only the fields sent are changed."""
+
+    updates = req.model_dump(exclude_none=True)
+    if "display_name" in updates:
+        display_name = updates["display_name"].strip()
+        if not display_name:
+            raise HTTPException(status_code=400, detail="display_name is required")
+        updates["display_name"] = display_name
+    if not updates:
+        raise HTTPException(status_code=400, detail="no fields to update")
+    manual = storage.update_manual(manual_id, **updates)
     if manual is None:
         raise HTTPException(status_code=404, detail="manual not found")
     return manual

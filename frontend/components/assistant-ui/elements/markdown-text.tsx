@@ -21,15 +21,30 @@ import { TooltipIconButton } from "@/components/assistant-ui/elements/tooltip-ic
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { cn } from "@/lib/utils";
 
-// Citations come back from the model as plain `[Page 82]` text. This plugin
-// rewrites each one into a link whose `#page-82` URL the `a` renderer below
-// turns into a clickable badge that opens the manual viewer at that page
-// (DECISIONS V1, IMPLEMENTATION Task 6).
+// Citations come back from the model as `[Page 82]` text, optionally with a
+// manual id: `[Page 82] (manual <id>)`. This plugin rewrites each one into a
+// link whose `#page-82` or `#manual-<id>-page-82` URL the `a` renderer below
+// turns into a clickable badge that opens the manual viewer at that page in
+// the right manual (DECISIONS V1, IMPLEMENTATION Task 6).
 
 // The marker must be a fragment: react-markdown's URL sanitizer drops an
 // unknown scheme, and a stripped URL renders as a link to the current page.
 const CITATION_URL_PREFIX = "#page-";
-const CITATION_PATTERN = /\[Page\s+(\d+)\]/g;
+const CITATION_PATTERN = /\[Page\s+(\d+)\](?:\s*\(manual\s+([a-f0-9-]+)\))?/g;
+
+// A citation link URL is either `#page-N` (no manual) or
+// `#manual-<id>-page-N` (a specific manual). This returns the page and, when
+// present, the manual id.
+function parseCitationHref(
+  href: string,
+): { page: number; manualId?: string } | null {
+  const manual = href.match(/^#manual-([a-f0-9-]+)-page-(\d+)$/);
+  if (manual) return { page: Number(manual[2]), manualId: manual[1] };
+  if (href.startsWith(CITATION_URL_PREFIX)) {
+    return { page: Number(href.slice(CITATION_URL_PREFIX.length)) };
+  }
+  return null;
+}
 
 type CitationNode = {
   type: string;
@@ -51,7 +66,9 @@ function splitCitations(value: string): CitationNode[] | null {
     }
     parts.push({
       type: "link",
-      url: `${CITATION_URL_PREFIX}${match[1]}`,
+      url: match[2]
+        ? `#manual-${match[2]}-page-${match[1]}`
+        : `${CITATION_URL_PREFIX}${match[1]}`,
       children: [{ type: "text", value: match[0] }],
     });
     cursor = match.index + match[0].length;
@@ -223,20 +240,20 @@ const defaultComponents = memoizeMarkdownComponents({
   ),
   a: ({ className, href, children, ...props }) => {
     const { openPage } = useViewer();
-    if (href && href.startsWith(CITATION_URL_PREFIX)) {
-      const page = Number(href.slice(CITATION_URL_PREFIX.length));
+    const citation = href ? parseCitationHref(href) : null;
+    if (citation) {
       return (
         <button
           type="button"
-          onClick={() => openPage(page)}
-          aria-label={`Open page ${page} in the manual viewer`}
+          onClick={() => openPage(citation.page, citation.manualId)}
+          aria-label={`Open page ${citation.page} in the manual viewer`}
           className={cn(
             "aui-md-citation text-primary border-primary/30 bg-primary/10 hover:bg-primary/20 inline-flex cursor-pointer items-center gap-1 rounded-md border px-1.5 py-0.5 align-baseline text-xs font-medium no-underline transition-colors",
             className,
           )}
         >
           <BookOpenIcon className="size-3" aria-hidden />
-          Page {page}
+          Page {citation.page}
         </button>
       );
     }

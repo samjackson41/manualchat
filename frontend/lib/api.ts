@@ -132,6 +132,19 @@ export async function setManualEnabled(
   return res.json();
 }
 
+export async function renameManual(
+  manual_id: string,
+  display_name: string,
+): Promise<Manual> {
+  const res = await fetch(`${BACKEND_URL}/manuals/${manual_id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ display_name }),
+  });
+  if (!res.ok) throw new Error(await errorDetail(res));
+  return res.json();
+}
+
 export async function deleteManual(manual_id: string): Promise<void> {
   const res = await fetch(`${BACKEND_URL}/manuals/${manual_id}`, {
     method: "DELETE",

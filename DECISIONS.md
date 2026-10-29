@@ -173,14 +173,14 @@ Last-checked: 2026-10-15
 | ID | Decision | Value | Configuration key |
 |---|---|---|---|
 | A1 | The graph is a supervisor, worker, and synthesize topology. The supervisor routes between the retrieval worker and synthesis, capped by a hop limit. The worker runs the tool loop. `synthesize` writes the answer. | see IMPLEMENTATION §2.3 | `agent.max_hops`, `agent.max_tool_steps` |
-| A2 | The agent answers in markdown text with `[Page N]` citations. The structured `AgentAnswer` is future work (see the Deferred section). | (none) | (none) |
+| A2 | The agent answers in markdown text with `[Page N]` citations. Each citation names its manual: `[Page N] (manual <manual_id>)`, so a click opens the right manual. The structured `AgentAnswer` is future work (see the Deferred section). | (none) | (none) |
 | A3 | The system prompt carries the grounding rules: every claim and step names its page, the answer states plainly when the manual holds no answer, and conflicting values show both pages. The prompt text lives in the configuration (field `agent_system_prompt`, env `AGENT_SYSTEM_PROMPT`), and the graph prepends it before the first chat call. | (none) | `agent.system_prompt` |
 
 The graph runs as a supervisor, a retrieval worker, and a synthesize node.
 The supervisor plans and decides when to stop; the worker gathers manual evidence with the calculator and the three RAG tools; `synthesize` writes the final answer.
 The routing check in the supervisor and the tool loop in the worker run on the tier's working model and effort.
 `Synthesize` writes the answer on the tier's authoring model and effort, so the expensive model is spent only on the answer (M1).
-`/chat` returns markdown text with `[Page N]` citations.
+`/chat` returns markdown text with `[Page N] (manual <manual_id>)` citations.
 The structured `AgentAnswer` and the confidence gate are future work (see the Deferred section).
 
 ## Automated evals
@@ -230,7 +230,7 @@ T4 keeps the default run offline: the eval calls OpenRouter and reads an indexed
 
 | Item | Decision |
 |---|---|
-| V1 | The Manual Viewer is a dedicated mode. A UI toggle opens the page set the agent deemed relevant: the top-scored `search_manual` chunk page set, gated by a rerank-score threshold. The set renders in a pane beside the chat with `react-pdf` in four-page slices (one page before the cited page, two after). The window sizes are the `NEXT_PUBLIC_VIEWER_SLICE_BEFORE` and `NEXT_PUBLIC_VIEWER_SLICE_AFTER` configuration values. The pane opens at the cited page, so the pages held before it scroll out of view. (See SPECIFICATION §2.1 and IMPLEMENTATION Tasks 2 and 6.) |
+| V1 | The Manual Viewer is a dedicated mode. A UI toggle opens the page set the agent deemed relevant: the top-scored `search_manual` chunk page set, gated by a rerank-score threshold. The set renders in a pane beside the chat with `react-pdf` in four-page slices (one page before the cited page, two after). The window sizes are the `NEXT_PUBLIC_VIEWER_SLICE_BEFORE` and `NEXT_PUBLIC_VIEWER_SLICE_AFTER` configuration values. The pane opens at the cited page, so the pages held before it scroll out of view. A citation carries its manual id, so the pane opens the manual the citation came from, not the last manual the reader opened. (See SPECIFICATION §2.1 and IMPLEMENTATION Tasks 2 and 6.) |
 | V2 | The pane can open the whole PDF of a manual on demand, so the reader can read the full manual in the app. A `View whole manual` button in the pane fetches `GET /manuals/{id}/pdf`, which streams the stored `source.pdf`. The button carries the tooltip `Whole manual may be slow to load`. The pages mount lazily as the reader scrolls, so a large manual stays responsive. |
 | V3 | The pane carries zoom controls over the pages. One click steps the zoom by `NEXT_PUBLIC_VIEWER_ZOOM_STEP` (default `0.25`), inside the range from `NEXT_PUBLIC_VIEWER_ZOOM_MIN` (`0.5`) to `NEXT_PUBLIC_VIEWER_ZOOM_MAX` (`3`). A zoom of `1` fits a page to the pane width. A click on the shown percentage resets the zoom to `1`. |
 | V4 | The reader sets the chat and pane split by dragging the left edge of the pane, or with the arrow keys on that edge. While the chat shows, the pane stays between `NEXT_PUBLIC_VIEWER_WIDTH_MIN` (`280`) and `NEXT_PUBLIC_VIEWER_WIDTH_MAX` (`900`) pixels and leaves the chat at least `NEXT_PUBLIC_CHAT_MIN_WIDTH` (`360`). Dragging past that point hides the chat, so the pane fills the row beside the thread sidebar. A short pull right of `NEXT_PUBLIC_CHAT_RESTORE_TRAVEL` (`24`) pixels brings the chat back at the width it last had. Closing the pane brings the chat back too. The width survives reloads in `localStorage`, and the pane opens with the chat showing. |

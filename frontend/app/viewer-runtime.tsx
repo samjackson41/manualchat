@@ -28,7 +28,7 @@ type ViewerState = {
   // The active vehicle's enabled, fully-ingested manuals, newest first.
   manuals: Manual[];
   loading: boolean;
-  openPage: (page: number) => void;
+  openPage: (page: number, manualId?: string) => void;
   selectManual: (id: string) => void;
   clearCitation: () => void;
   setPaneWidth: (width: number) => void;
@@ -112,7 +112,8 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
     };
   }, [activeVehicleId, open]);
 
-  const openPage = useCallback((page: number) => {
+  const openPage = useCallback((page: number, manualId?: string) => {
+    if (manualId) setManualId(manualId);
     setCitedPage(page);
     setOpen(true);
   }, []);

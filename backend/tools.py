@@ -171,6 +171,7 @@ def extract_specs(
                             value=value,
                             unit="",
                             page_number=table.page_number,
+                            manual_id=mid,
                         )
                     )
     return ExtractSpecsResult(subject=subject, specs=specs).model_dump_json()

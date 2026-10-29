@@ -131,6 +131,7 @@ class SpecItem(BaseModel):
     value: str  # "30"
     unit: str  # "N·m (22 ft·lb)"
     page_number: int
+    manual_id: str
 
 
 class PageText(BaseModel):

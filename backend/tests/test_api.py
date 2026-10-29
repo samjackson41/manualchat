@@ -405,6 +405,69 @@ def test_update_manual_toggles_enabled(manuals_dir, no_ingest):
     assert resp.json()["enabled"] is True
 
 
+def test_update_manual_renames(manuals_dir, no_ingest):
+    client = TestClient(app)
+    manual = client.post(
+        "/manuals",
+        files=_pdf(),
+        data={"vehicle_id": "v1", "display_name": "Rhino 700"},
+    ).json()
+    assert manual["display_name"] == "Rhino 700"
+
+    resp = client.patch(
+        f"/manuals/{manual['manual_id']}", json={"display_name": " Rhino 700 Shop "},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["display_name"] == "Rhino 700 Shop"
+    # The enabled flag is left untouched when only a name is sent.
+    assert resp.json()["enabled"] is True
+
+    # The rename is persisted, not just returned.
+    fetched = client.get(f"/manuals/{manual['manual_id']}")
+    assert fetched.json()["display_name"] == "Rhino 700 Shop"
+
+
+def test_update_manual_rejects_blank_name(manuals_dir, no_ingest):
+    client = TestClient(app)
+    manual = client.post(
+        "/manuals",
+        files=_pdf(),
+        data={"vehicle_id": "v1", "display_name": "Rhino 700"},
+    ).json()
+
+    resp = client.patch(f"/manuals/{manual['manual_id']}", json={"display_name": "   "})
+    assert resp.status_code == 400
+
+
+def test_update_manual_with_no_fields_returns_400(manuals_dir, no_ingest):
+    client = TestClient(app)
+    manual = client.post(
+        "/manuals",
+        files=_pdf(),
+        data={"vehicle_id": "v1", "display_name": "Rhino 700"},
+    ).json()
+
+    resp = client.patch(f"/manuals/{manual['manual_id']}", json={})
+    assert resp.status_code == 400
+
+
+def test_update_manual_renames_and_toggles(manuals_dir, no_ingest):
+    client = TestClient(app)
+    manual = client.post(
+        "/manuals",
+        files=_pdf(),
+        data={"vehicle_id": "v1", "display_name": "Rhino 700"},
+    ).json()
+
+    resp = client.patch(
+        f"/manuals/{manual['manual_id']}",
+        json={"display_name": "FJ40", "enabled": False},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["display_name"] == "FJ40"
+    assert resp.json()["enabled"] is False
+
+
 def test_update_unknown_manual_returns_404(manuals_dir):
     client = TestClient(app)
     resp = client.patch("/manuals/does-not-exist", json={"enabled": False})

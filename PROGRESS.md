@@ -20,11 +20,11 @@
 - Vehicle profiles: `GET/POST /vehicles` and `PATCH/DELETE /vehicles/{id}`
   create, rename, and delete vehicles. A chat can be scoped to one vehicle.
 
-- Manual management: `PATCH /manuals/{id}` enables or disables a manual, and
-  `DELETE /manuals/{id}` removes it. A delete is permanent. Search skips the
-  chunks of a disabled manual. The vehicle dialog shows each manual's
-  description, status, page count, and chunk count, with an enable switch and a
-  two-step delete.
+- Manual management: `PATCH /manuals/{id}` enables, disables, or renames a
+  manual, and `DELETE /manuals/{id}` removes it. A delete is permanent. Search
+  skips the chunks of a disabled manual. The vehicle dialog shows each manual's
+  description, status, page count, and chunk count, with an enable switch, a
+  rename behind a pencil icon on the title, and a two-step delete.
 
 - Agent graph: the agent runs a supervisor, worker, and synthesize topology.
   The supervisor decides whether the worker keeps searching the manual or the
@@ -35,9 +35,9 @@
   manual's tables.
 
 - Grounding: the agent answers only from the manual. Every claim and step
-  carries a `[Page N]` citation. When the manual holds no answer, the agent says
-  so. When the manual gives conflicting values, the agent shows each one with
-  its own citation.
+  carries a `[Page N] (manual <manual_id>)` citation, so a click opens the right
+  manual. When the manual holds no answer, the agent says so. When the manual
+  gives conflicting values, the agent shows each one with its own citation.
 
 - Streaming: `POST /chat/stream` sends the answer as Server-Sent Events. The
   worker emits a `tool_call` event before each tool runs and a `tool_result`
@@ -55,20 +55,23 @@
   markdown, and regenerates a reply. The answer forms token by token as the
   stream arrives, and each agent tool call shows its name, arguments, and
   result while it runs. A sidebar keeps the chat history in the browser across
-  reloads.
+  reloads. History is scoped per vehicle: each vehicle keeps its own threads,
+  and the sidebar shows a "<Vehicle Name> Chat History" header.
 
 - Vehicle and upload dialogs: a vehicle selector feeds a manual-upload button
   and a manual-viewer toggle. The selector can add a vehicle, and rename and
-  delete sit behind a pencil icon. The upload dialog takes an optional
-  description and its own vehicle picker. It lists the chosen vehicle's manuals
-  with their ingest status, and a guard stops a quick double click from starting
+  delete sit behind a pencil icon. The manage vehicle dialog is 32rem wide.
+  A long manual name truncates and a long ID wraps, so each button stays
+  inside the dialog. The upload dialog takes an optional description and its
+  own vehicle picker. It lists the chosen vehicle's manuals with their ingest
+  status, and a guard stops a quick double click from starting
   an ingest twice. Closing the dialog during an ingest keeps the run in view:
   the Upload manual button reopens the progress panel, and a toast below the top
   bar does the same.
 
 - Manual viewer: each `[Page N]` in a reply is a clickable badge. Clicking one
-  opens the viewer beside the chat at the cited page, with selectable text and
-  zoom.
+  opens the viewer beside the chat at the cited page in the manual the citation
+  names, with selectable text and zoom.
 
 - Whole-manual view: a `View whole manual` button in the viewer opens the
   manual's stored PDF. Pages mount one at a time as the reader scrolls, so a
