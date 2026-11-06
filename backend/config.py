@@ -10,6 +10,9 @@ env vars case-insensitively, so:
     agent_system_prompt     <- AGENT_SYSTEM_PROMPT
     manuals_dir             <- MANUALS_DIR
     vehicles_dir            <- VEHICLES_DIR
+    storage_backend         <- STORAGE_BACKEND   (local or gcs)
+    gcs_bucket              <- GCS_BUCKET        (gcs backend only)
+    cors_origins            <- CORS_ORIGINS      (comma-separated)
     model_default           <- MODEL_DEFAULT
     model_options           <- MODEL_OPTIONS   (comma-separated)
     super_sub_tiers         <- SUPER_SUB_TIERS         (JSON)
@@ -34,6 +37,7 @@ env vars case-insensitively, so:
 
 from functools import lru_cache
 import json
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -90,6 +94,13 @@ class Settings(BaseSettings):
 
     # OpenRouter base URL (chat completions endpoint is appended in llm.py).
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
+
+    # --- CORS (browser origins allowed to call the API) ---
+    # Development defaults to the Next.js dev server. A deployment sets the
+    # frontend origin, comma-separated, via CORS_ORIGINS.
+    cors_origins: list[str] = Field(
+        default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"]
+    )
 
     # --- Model selection (DECISIONS M1-M3) ---
     model_default: str = _FLASH
@@ -156,6 +167,12 @@ class Settings(BaseSettings):
         "Use the retrieval tools (search_manual, extract_specs, get_page_text) "
         "when the question needs facts or steps from the manual."
     )
+
+    # --- Storage backend (local disk or GCS) ---
+    # `storage_backend` picks local disk (`local`) or Google Cloud Storage
+    # (`gcs`). `gcs_bucket` names the bucket for the `gcs` backend.
+    storage_backend: Literal["local", "gcs"] = "local"
+    gcs_bucket: str = ""
 
     # --- Local manual storage (DECISIONS U1) ---
     # Directory that holds one `{manual_id}/` subdirectory per uploaded manual,
@@ -250,10 +267,10 @@ class Settings(BaseSettings):
     langsmith_project: str = "manualchat"
     langsmith_endpoint: str = "https://api.smith.langchain.com"
 
-    @field_validator("model_options", mode="before")
+    @field_validator("model_options", "cors_origins", mode="before")
     @classmethod
-    def _split_model_options(cls, value):
-        """Allow `MODEL_OPTIONS=a,b,c` (comma-separated) in addition to a list."""
+    def _split_comma_list(cls, value):
+        """Allow `X=a,b,c` (comma-separated) in addition to a list."""
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value

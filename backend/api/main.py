@@ -35,11 +35,11 @@ from backend.schemas import Manual, Vehicle
 
 app = FastAPI(title="ManualChat API", version="0.1.0")
 
-# The Next.js dev server (localhost:3000) calls this API from the browser, so
-# allow that origin during local development.
+# The Next.js dev server (localhost:3000) calls this API from the browser; the
+# allowed origins come from CORS_ORIGINS in the configuration.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=get_settings().cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
