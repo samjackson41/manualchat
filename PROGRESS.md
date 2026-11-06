@@ -116,18 +116,37 @@
 
 ## What is left
 
-- The RAG pipeline, in phases. The ingest stage (Task 1), chunking and
+- The RAG pipeline: expand the 16-question eval set and tune the LLM judge.
+  The phased work is complete: the ingest stage (Task 1), chunking and
   indexing (Task 3), real retrieval behind the tools (Task 4), and the
-  automated eval (Task 7) are done. The prototype runs against the 56-page
-  `pl.pdf`. The graph runs the supervisor, worker, and synthesize topology,
-  and the answer stays markdown text with `[Page N]` citations. The ratified
-  values are in `DECISIONS.md` (D9 to D13, R3 to R9, A1 to A3, E1 to E6,
+  automated eval (Task 7). The prototype runs against the 56-page `pl.pdf`.
+  The graph runs the supervisor, worker, and synthesize topology, and the
+  answer stays markdown text with `[Page N]` citations. The ratified values
+  are in `DECISIONS.md` (D9 to D13, R3 to R10, A1 to A3, E1 to E6,
   T1 to T4).
 - The chunk-size and overlap sweep: the eval scores one chunk configuration.
   A later run scores other sizes (DECISIONS D10) and overlaps (D11) and
   compares them.
 - Future work (DECISIONS Deferred): the structured `AgentAnswer`, the
   spec ledger, the scanned-manual OCR path, and the Docker work.
+- Figure and image grounding. The index stores page text only, so the agent
+  cannot see the manual's diagrams and images. Many manuals number their
+  figures and name them in the fix steps (for example "see figure E" or "see
+  figures 32454-32461"). The agent cannot yet point to the right figure in an
+  answer. The work is to let the agent recognize the manual's figures and cite
+  them in its responses.
+- Web search as an opt-in tool. A toggle lets the reader turn on a
+  `web_search` tool, default off. When the manual cannot answer a question,
+  the toggle opens a second avenue: the agent searches the web and cites the
+  source. Today the agent answers only from the manual, and a search tool
+  would need a way to carry web citations next to the existing
+  `[Page N] (manual <manual_id>)` citations.
+- A speculation mode. A second toggle lets the reader turn off the canned
+  "The manual does not contain information on [topic]." reply and allow the
+  agent to speculate from web results and reasoning instead. The canned text
+  is ground-truth-tied to the eval's out-of-scope rubric (DECISIONS A2, A3,
+  E5), so this mode must stay clearly off by default and mark its answer as
+  speculation, not manual fact.
 - Memory: the summary field, the compaction node, and a checkpointer per
   `MEMORY_DESIGN.md`.
 - The scanned-manual OCR path. Deferred past MVP per DECISIONS S1.
@@ -143,6 +162,9 @@ Planned work for the Manual viewer pane. None of it is built.
 - MVP+1: add a page-number offset. The reader shifts the page numbers to
   repair an off-by-n error, so the numbers match the citations.
 - MVP+1: make the pane reactive, so it works on a phone.
+- Add in-manual search (find on page). The reader searches the whole manual
+  from the viewer instead of the browser search, which only finds text on the
+  pages already loaded.
 
 ### Frontend backlog
 
@@ -156,6 +178,9 @@ Planned frontend work. None of it is built.
 - Add tooltips to the edit, theme, and manual upload buttons.
 - Make the threads sidebar collapsible with a small button that shows a
   double right chevron icon to expand it.
+- Streamline onboarding: after the reader adds a vehicle, move them straight
+  to the upload-manual dialog for that vehicle. Today they add the vehicle,
+  then open the upload dialog and pick the vehicle again.
 
 ## Known problems
 

@@ -137,6 +137,7 @@ function ManageVehicleDialog({
       setOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete vehicle");
+    } finally {
       setBusy(false);
     }
   }
