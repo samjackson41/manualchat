@@ -248,7 +248,6 @@ def test_upload_list_and_get_manual(manuals_dir, no_ingest):
         data={
             "vehicle_id": "v1",
             "display_name": "Rhino 700",
-            "description": "Full service manual",
         },
     )
     assert resp.status_code == 200
@@ -256,7 +255,7 @@ def test_upload_list_and_get_manual(manuals_dir, no_ingest):
     assert manual["vehicle_id"] == "v1"
     assert manual["display_name"] == "Rhino 700"
     assert manual["source_filename"] == "rhino.pdf"
-    assert manual["description"] == "Full service manual"
+    assert manual["description"] is None
     assert manual["status"] == "processing"
     # The dialog reads this straight after the upload, before ingest reports.
     assert manual["progress"] == {"stage": "probe", "completed": 0, "total": 0}
@@ -368,12 +367,16 @@ def test_upload_detects_duplicate_of_manual_without_stored_hash(manuals_dir, no_
     assert json.loads(record_path.read_text())["content_hash"]
 
 
-def test_upload_description_is_optional(manuals_dir, no_ingest):
+def test_upload_ignores_description_field(manuals_dir, no_ingest):
     client = TestClient(app)
     resp = client.post(
         "/manuals",
         files=_pdf(),
-        data={"vehicle_id": "v1", "display_name": "Rhino 700"},
+        data={
+            "vehicle_id": "v1",
+            "display_name": "Rhino 700",
+            "description": "Full service manual",
+        },
     )
     assert resp.status_code == 200
     assert resp.json()["description"] is None

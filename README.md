@@ -63,6 +63,7 @@ manualchat/
   IMPLEMENTATION.md  # the phased implementation plan
   DECISIONS.md       # the ratified decision log
   PROGRESS.md        # what works, what is left, and known problems
+  DEPLOYMENT.md      # the Cloud Run and GCS deployment plan
   MEMORY_DESIGN.md   # the memory design for later phases
   SCANNED_OCR_RUNBOOK.md # the OCR recipe for scanned manuals (MVP+1, S1)
   SPIKE_FINDINGS.md  # the findings from the FJ40 OCR spike
@@ -155,6 +156,7 @@ OpenRouter request entirely.
 | AGENT_MAX_HOPS | `4` | DECISIONS A1. The supervisor forces synthesis after this many worker hops. |
 | AGENT_MAX_TOOL_STEPS | `4` | DECISIONS A1. The cap on the worker's tool loop. |
 | AGENT_SYSTEM_PROMPT | the grounding prompt in `backend/config.py` | DECISIONS A3. The grounding rules for the agent. |
+| CORS_ORIGINS | `http://localhost:3000,http://127.0.0.1:3000` | The browser origins allowed to call the API, comma-separated. `backend/api/main.py` passes the list to `CORSMiddleware`. A deployment sets the frontend origin here. |
 | MANUALS_DIR | `manuals` | DECISIONS U1. One `{manual_id}/` subdirectory per manual, with the PDF and its JSON record. In Docker: `/data/manuals`. |
 | VEHICLES_DIR | `vehicles` | One `{vehicle_id}/` subdirectory per vehicle profile. In Docker: `/data/vehicles`. |
 | THUMBNAIL_DPI | `150` | The PNG page preview resolution in dots per inch (IMPLEMENTATION Task 5). |
@@ -210,6 +212,7 @@ starts. Restart the frontend after a change to these variables.
 | NEXT_PUBLIC_VIEWER_WIDTH_MAX | `900` | DECISIONS V4. The widest the pane gets while the chat shows. |
 | NEXT_PUBLIC_CHAT_MIN_WIDTH | `360` | DECISIONS V4. The narrowest the chat gets before it hides and the pane fills the row. |
 | NEXT_PUBLIC_CHAT_RESTORE_TRAVEL | `24` | DECISIONS V4. The travel to the right, in pixels, that brings a hidden chat back. |
+| NEXT_PUBLIC_VIEWER_CLOSE_TRAVEL | `96` | DECISIONS V4. The travel past the pane minimum, in pixels, that snaps the pane closed. |
 | NEXT_PUBLIC_VIEWER_SLICE_CACHE_ENTRIES | `12` | DECISIONS V6. Slice byte windows kept in memory. |
 
 ## Where the next change goes

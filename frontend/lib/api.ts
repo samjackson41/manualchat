@@ -171,13 +171,11 @@ export async function uploadManual(input: {
   file: File;
   vehicleId: string;
   displayName: string;
-  description?: string;
 }): Promise<Manual> {
   const form = new FormData();
   form.append("file", input.file);
   form.append("vehicle_id", input.vehicleId);
   form.append("display_name", input.displayName);
-  if (input.description) form.append("description", input.description);
   const res = await fetch(`${BACKEND_URL}/manuals`, {
     method: "POST",
     body: form,
