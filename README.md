@@ -263,6 +263,23 @@ The workspace agent files are local only. The `applyTo` globs are relative to
 the workspace root, so the workspace `.github/` folder is the right place for
 them.
 
+### Code graph (graphify)
+
+[graphify](https://github.com/Graphify-Labs/graphify) maps the code and docs
+into a queryable knowledge graph. Code is parsed locally with tree-sitter. The
+Markdown docs get a semantic pass. The output is `graphify-out/`, which is
+git-ignored.
+
+- Install once: `uv tool install graphifyy`
+- Build or refresh code: `make graph`
+- Refresh docs: `/graphify --update` in the assistant
+- Ask a question: `graphify query "how does a chat request reach the tools?"`
+- Trace a link: `graphify path "build_graph" "search_manual"`
+- Explain a symbol: `graphify explain "build_graph"`
+
+The project-scoped skill is `.claude/skills/graphify/`. `CLAUDE.md` tells the
+agent to query the graph before a broad search.
+
 ## Deviations from DECISIONS.md (flagged, not silent)
 
 1. Config surface: env vars, not a `.env` file. DECISIONS P1 says "Pydantic
