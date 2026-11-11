@@ -374,8 +374,27 @@ def index_manual(manual_id: str, *, embed=None, on_progress=None) -> int:
     client.upsert(
         collection_name=get_settings().qdrant_collection, points=points, wait=True
     )
+    _persist_chunks_and_vectors(manual_id, chunks, vectors)
     storage.update_manual(manual_id, chunk_count=len(chunks))
     return len(chunks)
+
+
+def _persist_chunks_and_vectors(
+    manual_id: str, chunks: list[ChunkPayload], vectors: list[list[float]]
+) -> None:
+    """Write the ordered chunks and their vectors for the export zip (DEPLOYMENT M2)."""
+    import io
+
+    import numpy as np
+
+    storage.write_manual_text(
+        manual_id,
+        "chunks.json",
+        json.dumps([c.model_dump(mode="json") for c in chunks], indent=2),
+    )
+    buf = io.BytesIO()
+    np.savez(buf, vectors=np.asarray(vectors, dtype="float32"))
+    storage.write_manual_bytes(manual_id, "vectors.npz", buf.getvalue())
 
 
 def search(
