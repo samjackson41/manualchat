@@ -354,26 +354,7 @@ def index_manual(manual_id: str, *, embed=None, on_progress=None) -> int:
         vectors.extend(embed_fn(texts))
         if on_progress is not None:
             on_progress(min(start + batch, len(chunks)), len(chunks))
-    dim = len(vectors[0])
-
-    client = _client()
-    _ensure_collection(client, dim)
-    _delete_manual_points(client, manual_id)
-    from qdrant_client.models import PointStruct
-
-    points = [
-        # IDs must be unique across the whole collection, so they are derived
-        # from the manual id; a bare chunk index would collide between manuals.
-        PointStruct(
-            id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{manual_id}:chunk:{i}")),
-            vector=[float(x) for x in vec],
-            payload=_payload(chunk),
-        )
-        for i, (chunk, vec) in enumerate(zip(chunks, vectors))
-    ]
-    client.upsert(
-        collection_name=get_settings().qdrant_collection, points=points, wait=True
-    )
+    upsert_vectors(manual_id, chunks, vectors)
     _persist_chunks_and_vectors(manual_id, chunks, vectors)
     storage.update_manual(manual_id, chunk_count=len(chunks))
     return len(chunks)
@@ -395,6 +376,35 @@ def _persist_chunks_and_vectors(
     buf = io.BytesIO()
     np.savez(buf, vectors=np.asarray(vectors, dtype="float32"))
     storage.write_manual_bytes(manual_id, "vectors.npz", buf.getvalue())
+
+
+def upsert_vectors(
+    manual_id: str, chunks: list[ChunkPayload], vectors: list[list[float]]
+) -> int:
+    """Store precomputed vectors without re-embedding (DEPLOYMENT M2).
+
+    ``index_manual`` calls this with freshly embedded vectors; the import path
+    calls it with the vectors it read from the zip. The point ids derive from
+    the manual id, so re-upserting replaces the same manual's points.
+    """
+    from qdrant_client.models import PointStruct
+
+    client = _client()
+    _ensure_collection(client, len(vectors[0]))
+    _delete_manual_points(client, manual_id)
+
+    points = [
+        PointStruct(
+            id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{manual_id}:chunk:{i}")),
+            vector=[float(x) for x in vec],
+            payload=_payload(chunk),
+        )
+        for i, (chunk, vec) in enumerate(zip(chunks, vectors))
+    ]
+    client.upsert(
+        collection_name=get_settings().qdrant_collection, points=points, wait=True
+    )
+    return len(chunks)
 
 
 def search(

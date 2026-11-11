@@ -31,7 +31,7 @@ from backend import retrieval
 from backend import slicer
 from backend import storage
 from backend import thumbnails
-from backend.schemas import Manual, Vehicle
+from backend.schemas import ChunkPayload, ImportManifest, Manual, Vehicle
 
 app = FastAPI(title="ManualChat API", version="0.1.0")
 
@@ -140,6 +140,115 @@ async def create_manual(
     )
     background_tasks.add_task(ingest.ingest_in_background, manual.manual_id)
     return manual
+
+
+@app.post("/manuals/import")
+async def import_manual(
+    vehicle_id: str = Form(...),
+    file: UploadFile = File(...),
+) -> Manual:
+    """Import an exported manual zip without re-embedding (DEPLOYMENT M2).
+
+    The zip is the output of `python -m backend.export <id>`. The manifest is
+    checked (per-file hashes, the embedding model, and the vector dimension),
+    the files are stored under a fresh manual id for the given vehicle, and the
+    vectors are upserted as-is.
+    """
+    import io
+    import zipfile
+
+    import numpy as np
+    import pymupdf
+
+    if not vehicle_id.strip():
+        raise HTTPException(status_code=400, detail="vehicle_id is required")
+    if storage.get_vehicle(vehicle_id.strip()) is None:
+        raise HTTPException(status_code=404, detail="vehicle not found")
+
+    content = await file.read()
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(content))
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="file is not a valid zip") from None
+
+    with zf:
+        names = set(zf.namelist())
+        if "manifest.json" not in names:
+            raise HTTPException(status_code=400, detail="zip is missing manifest.json")
+        manifest = ImportManifest.model_validate_json(zf.read("manifest.json"))
+
+        settings = get_settings()
+        if manifest.embed_model != settings.retrieval_embed_model:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"embedding model mismatch: zip uses {manifest.embed_model}, "
+                    f"service expects {settings.retrieval_embed_model}"
+                ),
+            )
+        if manifest.vector_dim != settings.retrieval_embed_dim:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"vector dimension mismatch: zip uses {manifest.vector_dim}, "
+                    f"service expects {settings.retrieval_embed_dim}"
+                ),
+            )
+
+        for name, digest in manifest.files.items():
+            if name not in names:
+                raise HTTPException(status_code=400, detail=f"zip is missing {name}")
+            if hashlib.sha256(zf.read(name)).hexdigest() != digest:
+                raise HTTPException(status_code=400, detail=f"hash mismatch for {name}")
+
+        source_pdf = zf.read("source.pdf")
+        try:
+            pymupdf.open(stream=source_pdf, filetype="pdf").close()
+        except Exception:
+            raise HTTPException(status_code=400, detail="source.pdf does not open") from None
+
+        chunks = [ChunkPayload.model_validate(c) for c in json.loads(zf.read("chunks.json"))]
+        vectors_bytes = zf.read("vectors.npz")
+        vectors = np.load(io.BytesIO(vectors_bytes))["vectors"]
+        if len(chunks) != manifest.chunk_count or vectors.shape[0] != manifest.chunk_count:
+            raise HTTPException(status_code=400, detail="chunk and vector counts do not match")
+
+        source = Manual.model_validate_json(zf.read("manual.json"))
+
+        extra: dict[str, bytes] = {}
+        for name in manifest.files:
+            if name not in ("manual.json", "source.pdf", "chunks.json", "vectors.npz"):
+                extra[name] = zf.read(name)
+
+    manual = storage.store_manual(
+        source_pdf=source_pdf,
+        vehicle_id=vehicle_id.strip(),
+        display_name=source.display_name,
+        source_filename=source.source_filename,
+        content_hash=hashlib.sha256(source_pdf).hexdigest(),
+    )
+    storage.update_manual(
+        manual.manual_id,
+        status="ready",
+        page_count=manifest.page_count,
+        chunk_count=manifest.chunk_count,
+    )
+
+    for chunk in chunks:
+        chunk.manual_id = manual.manual_id
+        chunk.vehicle_id = vehicle_id.strip()
+
+    for name, data in extra.items():
+        storage.write_manual_text(manual.manual_id, name, data.decode())
+    storage.write_manual_text(
+        manual.manual_id,
+        "chunks.json",
+        json.dumps([c.model_dump(mode="json") for c in chunks], indent=2),
+    )
+    storage.write_manual_bytes(manual.manual_id, "vectors.npz", vectors_bytes)
+
+    retrieval.upsert_vectors(manual.manual_id, chunks, vectors.tolist())
+    return storage.get_manual(manual.manual_id)
 
 
 @app.get("/manuals")

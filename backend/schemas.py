@@ -160,3 +160,19 @@ class GetPageTextResult(BaseModel):
 
     manual_id: str
     pages: list[PageText]
+
+
+class ImportManifest(BaseModel):
+    """The manifest inside an exported zip (DEPLOYMENT M2).
+
+    Records a SHA-256 per stored file, the page and chunk counts, the vector
+    dimension, and the embedding model, so the import can refuse a corrupt or
+    mismatched zip.
+    """
+
+    manual_id: str
+    page_count: int
+    chunk_count: int
+    vector_dim: int
+    embed_model: str
+    files: dict[str, str]
