@@ -24,6 +24,10 @@ vehicles/*/
 # vehicles. Keep it out of git.
 qdrant/
 
+# The graphify knowledge graph is generated from source and docs. Rebuild it with
+# `graphify update .`; like the stores above, it is not source.
+graphify-out/
+
 Makefile.local
 
 # Spike experiments (moved to ../spikes)

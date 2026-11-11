@@ -1,0 +1,4 @@
+# graphify's own generated rules and assets carry no project knowledge.
+.claude/
+CLAUDE.md
+*.svg

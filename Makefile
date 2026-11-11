@@ -13,7 +13,7 @@ MODEL ?= ~deepseek/deepseek-flash-latest
 .DEFAULT_GOAL := help
 
 .PHONY: help build backend frontend down ps status health models chat \
-        logs-backend logs-frontend backend-shell clean
+        logs-backend logs-frontend backend-shell clean graph
 
 help: ## List all documented targets (shared + local)
 	@grep -hE '^[a-zA-Z0-9_.-]+:.*## .*$$' $(MAKEFILE_LIST) | sort | awk -F ':.*## ' '{printf "  %-18s %s\n", $$1, $$2}'
@@ -87,6 +87,9 @@ backend-shell: ## Open a bash shell in the backend container
 
 clean: ## Stop containers and remove orphans
 	docker compose down --remove-orphans
+
+graph: ## Rebuild the code and docs knowledge graph (graphify-out/)
+	graphify update .
 
 # Personal aliases (git-ignored) are loaded last so they can add/shadow targets.
 # The leading '-' means a missing Makefile.local is not an error.
