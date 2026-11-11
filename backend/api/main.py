@@ -212,6 +212,8 @@ async def import_manual(
         vectors = np.load(io.BytesIO(vectors_bytes))["vectors"]
         if len(chunks) != manifest.chunk_count or vectors.shape[0] != manifest.chunk_count:
             raise HTTPException(status_code=400, detail="chunk and vector counts do not match")
+        if vectors.shape[1] != manifest.vector_dim:
+            raise HTTPException(status_code=400, detail="vector dimension does not match the manifest")
 
         source = Manual.model_validate_json(zf.read("manual.json"))
 
