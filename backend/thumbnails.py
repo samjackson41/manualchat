@@ -26,11 +26,12 @@ def thumbnail_png(manual_id: str, page: int, dpi: int) -> bytes:
     if manual is None:
         raise ThumbnailError(f"manual not found: {manual_id}")
 
-    source = storage.manual_dir(manual_id) / "source.pdf"
-    if not source.is_file():
+    if not storage.manual_file_exists(manual_id, "source.pdf"):
         raise ThumbnailError(f"source.pdf is missing for manual {manual_id}")
 
-    doc = pymupdf.open(source)
+    doc = pymupdf.open(
+        stream=storage.read_manual_bytes(manual_id, "source.pdf"), filetype="pdf"
+    )
     try:
         if page > doc.page_count:
             raise ThumbnailError(f"page {page} is outside 1-{doc.page_count}")

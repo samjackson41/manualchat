@@ -19,7 +19,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response, StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
@@ -158,8 +158,8 @@ def _slice_etag(manual_id: str, start: int, end: int) -> str:
     the page range are stable, because a manual never changes after upload
     (DECISIONS U1, V5).
     """
-    stat = (storage.manual_dir(manual_id) / "source.pdf").stat()
-    seed = f"{manual_id}:{start}-{end}:{stat.st_size}:{stat.st_mtime_ns}"
+    size, mtime_ns = storage.manual_file_stat(manual_id, "source.pdf")
+    seed = f"{manual_id}:{start}-{end}:{size}:{mtime_ns}"
     return '"' + hashlib.sha256(seed.encode()).hexdigest()[:32] + '"'
 
 
@@ -208,19 +208,18 @@ def get_page_slice(
 
 
 @app.get("/manuals/{manual_id}/pdf")
-def get_manual_pdf(manual_id: str) -> FileResponse:
+def get_manual_pdf(manual_id: str) -> Response:
     """Serve the manual's whole stored PDF (DECISIONS V2).
 
     The viewer shows the full manual on demand, so the reader can read it in
-    the app. The bytes are the uploaded ``source.pdf``, streamed as-is.
+    the app. The bytes are the uploaded ``source.pdf``.
     """
     if storage.get_manual(manual_id) is None:
         raise HTTPException(status_code=404, detail="manual not found")
-    source = storage.manual_dir(manual_id) / "source.pdf"
-    if not source.is_file():
+    if not storage.manual_file_exists(manual_id, "source.pdf"):
         raise HTTPException(status_code=404, detail="source.pdf is missing")
-    return FileResponse(
-        source,
+    return Response(
+        content=storage.read_manual_bytes(manual_id, "source.pdf"),
         media_type="application/pdf",
         headers=_viewer_cache_headers(),
     )
