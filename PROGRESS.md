@@ -114,6 +114,14 @@
   `LANGSMITH_API_KEY` are both set; a failed post is swallowed, so an
   unreachable LangSmith never breaks the chat (DECISIONS O1).
 
+- Deployment packaging (DEPLOYMENT M1+M2): `backend/storage.py` adds a
+  byte-level storage backend with local and GCS backends, so the serving
+  image reads manuals from GCS. `/health` checks storage and Qdrant. A slim
+  `backend/Dockerfile` serves on Cloud Run without Docling or torchvision;
+  the dev image is `backend/Dockerfile.dev`. `python -m backend.export <id>`
+  zips a processed manual and `POST /manuals/import` loads it without
+  re-embedding. Ingest and indexing stay local. See `DEPLOYMENT.md`.
+
 ## What is left
 
 - The RAG pipeline: expand the 16-question eval set and tune the LLM judge.
@@ -128,7 +136,8 @@
   A later run scores other sizes (DECISIONS D10) and overlaps (D11) and
   compares them.
 - Future work (DECISIONS Deferred): the structured `AgentAnswer`, the
-  spec ledger, the scanned-manual OCR path, and the Docker work.
+  spec ledger, the scanned-manual OCR path, and the online ingest job
+  (DEPLOYMENT M3).
 - Figure and image grounding. The index stores page text only, so the agent
   cannot see the manual's diagrams and images. Many manuals number their
   figures and name them in the fix steps (for example "see figure E" or "see

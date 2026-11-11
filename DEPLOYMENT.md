@@ -5,8 +5,9 @@ the aie-cohort-202609 project. A stateless Cloud Run service runs the backend.
 GCS holds the manual and vehicle files. Qdrant Cloud holds the chunk index.
 Secret Manager holds the keys.
 
-The deployment has three milestones. Milestone 1 makes the backend cloud-ready.
-Milestone 2 adds the zip import. Milestone 3 adds the online ingest job.
+Milestones 1 (cloud-ready serving) and 2 (zip import) are implemented. Milestone
+3 (the online ingest job) is deferred. The runbook below deploys the finished
+shape.
 
 ## Architecture
 
@@ -44,8 +45,8 @@ Add the slim serving image. Make the CORS list a configuration value.
 | `backend/slicer.py` | Read `source.pdf` from the storage backend. PyMuPDF opens a byte stream. |
 | `backend/thumbnails.py` | Read `source.pdf` from the storage backend. |
 | `backend/tools.py` | Read `tables.json` and `page_text/` from the storage backend. |
-| `backend/retrieval.py` | Read the pages and tables from the storage backend. |
-| `backend/ingest.py` | Write the ingest output through the storage backend. |
+| `backend/retrieval.py` | Add `qdrant_health` for the `/health` check. Indexing stays local. |
+| `backend/ingest.py` | Ingest stays local: it needs Docling and a real file path. |
 | `backend/api/main.py` | Build the CORS list from `cors_origins`. Extend `/health` to check GCS and Qdrant. |
 | `backend/Dockerfile` | New slim serving image. Multi-stage, non-root, uvicorn on `$PORT`. |
 | `backend/Dockerfile.dev` | The current image, renamed. Docker Compose uses it for development. |
@@ -58,7 +59,7 @@ manual. The import endpoint checks the zip and loads it without re-embedding.
 
 | File | Change |
 |---|---|
-| `backend/export.py` | New. `python -m backend.export_manual <id>` writes the zip. The zip holds `manual.json`, `ingest.json`, `source.pdf`, `page_text/`, `tables.json`, `chunks.json`, `vectors.npz`, and `manifest.json`. |
+| `backend/export.py` | New. `python -m backend.export <id>` writes the zip. The zip holds `manual.json`, `ingest.json`, `source.pdf`, `page_text/`, `tables.json`, `chunks.json`, `vectors.npz`, and `manifest.json`. |
 | `backend/retrieval.py` | Add `upsert_vectors`. It stores the uploaded vectors without embedding. |
 | `backend/api/main.py` | Add `POST /manuals/import`. The endpoint checks the manifest, then stores the files and upserts the vectors. |
 | `backend/schemas.py` | Add the manifest model. |
@@ -117,8 +118,10 @@ deploy the services.
 10. Restrict access with Identity-Aware Proxy and an email allowlist. The app
     must not be open to the public, so gate both the API and the frontend
     origin. Set an OpenRouter spending cap.
-11. To load a manual, run `python -m backend.export_manual <id>` on the machine
-    that ingested it, then upload the zip through `POST /manuals/import`.
+11. To load a manual, run `python -m backend.export <id>` on the machine that
+    ingested it, then upload the zip through `POST /manuals/import` with the
+    target vehicle's `vehicle_id` (the vehicle must already exist on the
+    serving side).
 
 ## Ratified deployment decisions
 
@@ -127,5 +130,5 @@ deploy the services.
 - Access: Identity-Aware Proxy with an email allowlist, on both the API and the
   frontend origin. There is no shared API key in the bundle.
 - Embedding model: the export machine and the service pin the same
-  `RETRIEVAL_EMBED_MODEL`. The manifest records the model and its revision, and
-  the import refuses a mismatch.
+  `RETRIEVAL_EMBED_MODEL`. The manifest records the model and the vector
+  dimension, and the import refuses a mismatch.
