@@ -64,6 +64,7 @@ manualchat/
   DECISIONS.md       # the ratified decision log
   PROGRESS.md        # what works, what is left, and known problems
   DEPLOYMENT.md      # the Cloud Run and GCS deployment plan
+  MOBILE_ONDEVICE.md # the mobile port and on-device model exploration
   MEMORY_DESIGN.md   # the memory design for later phases
   SCANNED_OCR_RUNBOOK.md # the OCR recipe for scanned manuals (MVP+1, S1)
   SPIKE_FINDINGS.md  # the findings from the FJ40 OCR spike

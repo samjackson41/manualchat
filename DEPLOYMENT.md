@@ -93,8 +93,9 @@ deploy the services.
    `Cloud Build Editor`.
 4. Create the GCS bucket `manualchat-data`. Keep it private. The service account
    alone holds access.
-5. Create a Qdrant Cloud cluster in `us-east-1`. Record the URL and the API key.
-   If the free tier is too small for the manuals, self-host Qdrant on a GCE VM.
+5. Create a Qdrant Cloud cluster in `us-east-1` on the free tier. Record the URL
+   and the API key. Self-hosting on a GCE VM is the fallback if the free tier
+   caps out.
 6. In Secret Manager, create `openrouter-api-key` and `qdrant-api-key`.
 7. From `manualchat/`, run:
 
@@ -113,16 +114,18 @@ deploy the services.
    the GCS and Qdrant checks as healthy.
 9. Build the frontend with `NEXT_PUBLIC_BACKEND_URL` set to the Cloud Run URL.
    Publish the static output to Firebase Hosting.
-10. Restrict access. The app must not be open to the public. A shared API key
-    header on the backend is the simple gate. Identity-Aware Proxy is the
-    stronger gate. Set an OpenRouter spending cap.
+10. Restrict access with Identity-Aware Proxy and an email allowlist. The app
+    must not be open to the public, so gate both the API and the frontend
+    origin. Set an OpenRouter spending cap.
 11. To load a manual, run `python -m backend.export_manual <id>` on the machine
     that ingested it, then upload the zip through `POST /manuals/import`.
 
-## Open decisions
+## Ratified deployment decisions
 
-- Qdrant: use the Qdrant Cloud free tier or self-host on a small GCE VM. The
-  free tier may not hold several large manuals.
-- Access: a shared API key header or Identity-Aware Proxy.
-- The embedding model and its 768-vector dimension must match on both sides of
-  an import. The export and the service must pin the same model version.
+- Qdrant: the Qdrant Cloud free tier in `us-east-1`. Self-host on a GCE VM only
+  if the tier caps out.
+- Access: Identity-Aware Proxy with an email allowlist, on both the API and the
+  frontend origin. There is no shared API key in the bundle.
+- Embedding model: the export machine and the service pin the same
+  `RETRIEVAL_EMBED_MODEL`. The manifest records the model and its revision, and
+  the import refuses a mismatch.
