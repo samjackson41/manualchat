@@ -19,7 +19,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response, StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
@@ -31,7 +31,7 @@ from backend import retrieval
 from backend import slicer
 from backend import storage
 from backend import thumbnails
-from backend.schemas import Manual, Vehicle
+from backend.schemas import ChunkPayload, ImportManifest, Manual, Vehicle
 
 app = FastAPI(title="ManualChat API", version="0.1.0")
 
@@ -68,7 +68,12 @@ class ManualUpdate(BaseModel):
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok"}
+    checks = {
+        "storage": "ok" if storage.storage_health() else "error",
+        "qdrant": "ok" if retrieval.qdrant_health() else "error",
+    }
+    status = "ok" if all(v == "ok" for v in checks.values()) else "degraded"
+    return {"status": status, "checks": checks}
 
 
 @app.get("/models")
@@ -137,6 +142,117 @@ async def create_manual(
     return manual
 
 
+@app.post("/manuals/import")
+async def import_manual(
+    vehicle_id: str = Form(...),
+    file: UploadFile = File(...),
+) -> Manual:
+    """Import an exported manual zip without re-embedding (DEPLOYMENT M2).
+
+    The zip is the output of `python -m backend.export <id>`. The manifest is
+    checked (per-file hashes, the embedding model, and the vector dimension),
+    the files are stored under a fresh manual id for the given vehicle, and the
+    vectors are upserted as-is.
+    """
+    import io
+    import zipfile
+
+    import numpy as np
+    import pymupdf
+
+    if not vehicle_id.strip():
+        raise HTTPException(status_code=400, detail="vehicle_id is required")
+    if storage.get_vehicle(vehicle_id.strip()) is None:
+        raise HTTPException(status_code=404, detail="vehicle not found")
+
+    content = await file.read()
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(content))
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="file is not a valid zip") from None
+
+    with zf:
+        names = set(zf.namelist())
+        if "manifest.json" not in names:
+            raise HTTPException(status_code=400, detail="zip is missing manifest.json")
+        manifest = ImportManifest.model_validate_json(zf.read("manifest.json"))
+
+        settings = get_settings()
+        if manifest.embed_model != settings.retrieval_embed_model:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"embedding model mismatch: zip uses {manifest.embed_model}, "
+                    f"service expects {settings.retrieval_embed_model}"
+                ),
+            )
+        if manifest.vector_dim != settings.retrieval_embed_dim:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"vector dimension mismatch: zip uses {manifest.vector_dim}, "
+                    f"service expects {settings.retrieval_embed_dim}"
+                ),
+            )
+
+        for name, digest in manifest.files.items():
+            if name not in names:
+                raise HTTPException(status_code=400, detail=f"zip is missing {name}")
+            if hashlib.sha256(zf.read(name)).hexdigest() != digest:
+                raise HTTPException(status_code=400, detail=f"hash mismatch for {name}")
+
+        source_pdf = zf.read("source.pdf")
+        try:
+            pymupdf.open(stream=source_pdf, filetype="pdf").close()
+        except Exception:
+            raise HTTPException(status_code=400, detail="source.pdf does not open") from None
+
+        chunks = [ChunkPayload.model_validate(c) for c in json.loads(zf.read("chunks.json"))]
+        vectors_bytes = zf.read("vectors.npz")
+        vectors = np.load(io.BytesIO(vectors_bytes))["vectors"]
+        if len(chunks) != manifest.chunk_count or vectors.shape[0] != manifest.chunk_count:
+            raise HTTPException(status_code=400, detail="chunk and vector counts do not match")
+        if vectors.shape[1] != manifest.vector_dim:
+            raise HTTPException(status_code=400, detail="vector dimension does not match the manifest")
+
+        source = Manual.model_validate_json(zf.read("manual.json"))
+
+        extra: dict[str, bytes] = {}
+        for name in manifest.files:
+            if name not in ("manual.json", "source.pdf", "chunks.json", "vectors.npz"):
+                extra[name] = zf.read(name)
+
+    manual = storage.store_manual(
+        source_pdf=source_pdf,
+        vehicle_id=vehicle_id.strip(),
+        display_name=source.display_name,
+        source_filename=source.source_filename,
+        content_hash=hashlib.sha256(source_pdf).hexdigest(),
+    )
+    storage.update_manual(
+        manual.manual_id,
+        status="ready",
+        page_count=manifest.page_count,
+        chunk_count=manifest.chunk_count,
+    )
+
+    for chunk in chunks:
+        chunk.manual_id = manual.manual_id
+        chunk.vehicle_id = vehicle_id.strip()
+
+    for name, data in extra.items():
+        storage.write_manual_text(manual.manual_id, name, data.decode())
+    storage.write_manual_text(
+        manual.manual_id,
+        "chunks.json",
+        json.dumps([c.model_dump(mode="json") for c in chunks], indent=2),
+    )
+    storage.write_manual_bytes(manual.manual_id, "vectors.npz", vectors_bytes)
+
+    retrieval.upsert_vectors(manual.manual_id, chunks, vectors.tolist())
+    return storage.get_manual(manual.manual_id)
+
+
 @app.get("/manuals")
 def list_manuals() -> list[Manual]:
     return storage.list_manuals()
@@ -158,8 +274,15 @@ def _slice_etag(manual_id: str, start: int, end: int) -> str:
     the page range are stable, because a manual never changes after upload
     (DECISIONS U1, V5).
     """
-    stat = (storage.manual_dir(manual_id) / "source.pdf").stat()
-    seed = f"{manual_id}:{start}-{end}:{stat.st_size}:{stat.st_mtime_ns}"
+    size, mtime_ns = storage.manual_file_stat(manual_id, "source.pdf")
+    seed = f"{manual_id}:{start}-{end}:{size}:{mtime_ns}"
+    return '"' + hashlib.sha256(seed.encode()).hexdigest()[:32] + '"'
+
+
+def _pdf_etag(manual_id: str) -> str:
+    """A strong ETag for the whole stored PDF."""
+    size, mtime_ns = storage.manual_file_stat(manual_id, "source.pdf")
+    seed = f"{manual_id}:{size}:{mtime_ns}"
     return '"' + hashlib.sha256(seed.encode()).hexdigest()[:32] + '"'
 
 
@@ -208,21 +331,25 @@ def get_page_slice(
 
 
 @app.get("/manuals/{manual_id}/pdf")
-def get_manual_pdf(manual_id: str) -> FileResponse:
+def get_manual_pdf(manual_id: str, request: Request) -> Response:
     """Serve the manual's whole stored PDF (DECISIONS V2).
 
     The viewer shows the full manual on demand, so the reader can read it in
-    the app. The bytes are the uploaded ``source.pdf``, streamed as-is.
+    the app. The bytes are the uploaded ``source.pdf``.
     """
     if storage.get_manual(manual_id) is None:
         raise HTTPException(status_code=404, detail="manual not found")
-    source = storage.manual_dir(manual_id) / "source.pdf"
-    if not source.is_file():
+    if not storage.manual_file_exists(manual_id, "source.pdf"):
         raise HTTPException(status_code=404, detail="source.pdf is missing")
-    return FileResponse(
-        source,
+
+    etag = _pdf_etag(manual_id)
+    headers = _viewer_cache_headers(etag)
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=headers)
+    return Response(
+        content=storage.read_manual_bytes(manual_id, "source.pdf"),
         media_type="application/pdf",
-        headers=_viewer_cache_headers(),
+        headers=headers,
     )
 
 

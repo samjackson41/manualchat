@@ -6,7 +6,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     environment:
       # Passed through from the host shell. Never hardcoded or committed.
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}

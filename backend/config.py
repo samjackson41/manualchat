@@ -233,6 +233,7 @@ class Settings(BaseSettings):
     qdrant_collection: str = "manualchat_chunks"  # R4
     qdrant_api_key: str = ""  # R5 (empty in dev; production sets it via env)
     retrieval_embed_model: str = "multi-qa-mpnet-base-dot-v1"  # R6
+    retrieval_embed_dim: int = 768  # the pinned embedder's vector size (import check)
     # Chunks embedded per call while indexing. Batches keep peak memory low on
     # a large manual and carry the upload dialog's indexing progress (U3).
     retrieval_embed_batch_size: int = 64

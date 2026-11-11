@@ -264,6 +264,17 @@ def _client():
     )
 
 
+def qdrant_health() -> bool:
+    """True when the configured Qdrant is reachable (local mode is always)."""
+    if not get_settings().qdrant_url:
+        return True
+    try:
+        _client().get_collections()
+        return True
+    except Exception:
+        return False
+
+
 def _payload(chunk: ChunkPayload) -> dict:
     return {
         "text": chunk.text,
@@ -343,16 +354,46 @@ def index_manual(manual_id: str, *, embed=None, on_progress=None) -> int:
         vectors.extend(embed_fn(texts))
         if on_progress is not None:
             on_progress(min(start + batch, len(chunks)), len(chunks))
-    dim = len(vectors[0])
+    upsert_vectors(manual_id, chunks, vectors)
+    _persist_chunks_and_vectors(manual_id, chunks, vectors)
+    storage.update_manual(manual_id, chunk_count=len(chunks))
+    return len(chunks)
 
-    client = _client()
-    _ensure_collection(client, dim)
-    _delete_manual_points(client, manual_id)
+
+def _persist_chunks_and_vectors(
+    manual_id: str, chunks: list[ChunkPayload], vectors: list[list[float]]
+) -> None:
+    """Write the ordered chunks and their vectors for the export zip (DEPLOYMENT M2)."""
+    import io
+
+    import numpy as np
+
+    storage.write_manual_text(
+        manual_id,
+        "chunks.json",
+        json.dumps([c.model_dump(mode="json") for c in chunks], indent=2),
+    )
+    buf = io.BytesIO()
+    np.savez(buf, vectors=np.asarray(vectors, dtype="float32"))
+    storage.write_manual_bytes(manual_id, "vectors.npz", buf.getvalue())
+
+
+def upsert_vectors(
+    manual_id: str, chunks: list[ChunkPayload], vectors: list[list[float]]
+) -> int:
+    """Store precomputed vectors without re-embedding (DEPLOYMENT M2).
+
+    ``index_manual`` calls this with freshly embedded vectors; the import path
+    calls it with the vectors it read from the zip. The point ids derive from
+    the manual id, so re-upserting replaces the same manual's points.
+    """
     from qdrant_client.models import PointStruct
 
+    client = _client()
+    _ensure_collection(client, len(vectors[0]))
+    _delete_manual_points(client, manual_id)
+
     points = [
-        # IDs must be unique across the whole collection, so they are derived
-        # from the manual id; a bare chunk index would collide between manuals.
         PointStruct(
             id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{manual_id}:chunk:{i}")),
             vector=[float(x) for x in vec],
@@ -363,7 +404,6 @@ def index_manual(manual_id: str, *, embed=None, on_progress=None) -> int:
     client.upsert(
         collection_name=get_settings().qdrant_collection, points=points, wait=True
     )
-    storage.update_manual(manual_id, chunk_count=len(chunks))
     return len(chunks)
 
 

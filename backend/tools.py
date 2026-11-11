@@ -83,10 +83,12 @@ def _tokens(text: str) -> set[str]:
 
 def _read_tables(manual_id: str) -> list[IngestTable]:
     """Read one manual's extracted tables, or an empty list when absent."""
-    path = storage.manual_dir(manual_id) / "tables.json"
-    if not path.is_file():
+    if not storage.manual_file_exists(manual_id, "tables.json"):
         return []
-    return [IngestTable.model_validate(t) for t in json.loads(path.read_text())]
+    return [
+        IngestTable.model_validate(t)
+        for t in json.loads(storage.read_manual_text(manual_id, "tables.json"))
+    ]
 
 
 def _enabled_manual_ids(vehicle_id: str, manual_id: str | None) -> list[str]:
@@ -189,9 +191,11 @@ def get_page_text(
     """
     pages: list[PageText] = []
     for page_number in page_numbers:
-        path = storage.manual_dir(manual_id) / "page_text" / f"page_{page_number:04d}.txt"
-        if path.is_file():
-            pages.append(PageText(page_number=page_number, text=path.read_text()))
+        name = storage.page_text_name(page_number)
+        if storage.manual_file_exists(manual_id, name):
+            pages.append(
+                PageText(page_number=page_number, text=storage.read_manual_text(manual_id, name))
+            )
     return GetPageTextResult(manual_id=manual_id, pages=pages).model_dump_json()
 
 
