@@ -88,7 +88,7 @@ backend-shell: ## Open a bash shell in the backend container
 clean: ## Stop containers and remove orphans
 	docker compose down --remove-orphans
 
-graph: ## Rebuild the code and docs knowledge graph (graphify-out/)
+graph: ## Rebuild the code graph (docs: /graphify --update in the assistant)
 	graphify update .
 
 # Personal aliases (git-ignored) are loaded last so they can add/shadow targets.

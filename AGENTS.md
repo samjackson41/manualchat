@@ -40,8 +40,9 @@ request without a clear instruction. Never read or print a secret, key, token, o
 
 `graphify-out/` holds a graph of the code and docs. When it exists, query it
 before a broad search or a source-file read: `graphify query "<question>"`,
-`graphify path "<A>" "<B>"`, or `graphify explain "<concept>"`. Refresh it with
-`make graph` after changing code or docs. The output is git-ignored.
+`graphify path "<A>" "<B>"`, or `graphify explain "<concept>"`. Refresh code
+with `make graph` and docs with `/graphify --update` in the assistant. The
+output is git-ignored.
 
 ## Testing
 
