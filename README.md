@@ -28,13 +28,14 @@ manualchat/
     api/main.py      # routes: /health, /models, /chat, /chat/stream,
                      # /manuals, /vehicles, page slices, whole manual,
                      # thumbnails
-    storage.py       # local manual and vehicle storage (DECISIONS U1)
+    storage.py       # the storage backend: local disk or GCS (DEPLOYMENT M1)
     slicer.py        # on-demand PDF page slices with PyMuPDF
     schemas.py       # the shared Pydantic contracts
     tests/           # unit tests and the eval question set
     pyproject.toml   # the uv project (deps only, no package)
     uv.lock          # the generated lockfile
-    Dockerfile
+    Dockerfile       # the slim serving image (Cloud Run)
+    Dockerfile.dev   # the dev image with hot-reload and ingest
   frontend/          # Next.js 14 App Router, Tailwind v4, shadcn/ui,
                      # assistant-ui, react-pdf
     app/page.tsx     # top bar, thread-list sidebar, chat, and side viewer
