@@ -195,6 +195,17 @@ def _backend() -> StorageBackend:
     return LocalStorage(manuals_root(), vehicles_root())
 
 
+def storage_health() -> bool:
+    """True when the configured storage backend is reachable."""
+    settings = get_settings()
+    if settings.storage_backend == "gcs":
+        try:
+            return _gcs().bucket(settings.gcs_bucket).exists()
+        except Exception:
+            return False
+    return True
+
+
 # --- Byte-level manual accessors (the serving read/write surface) ----------
 
 

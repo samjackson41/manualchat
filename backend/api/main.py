@@ -68,7 +68,12 @@ class ManualUpdate(BaseModel):
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok"}
+    checks = {
+        "storage": "ok" if storage.storage_health() else "error",
+        "qdrant": "ok" if retrieval.qdrant_health() else "error",
+    }
+    status = "ok" if all(v == "ok" for v in checks.values()) else "degraded"
+    return {"status": status, "checks": checks}
 
 
 @app.get("/models")
@@ -163,6 +168,13 @@ def _slice_etag(manual_id: str, start: int, end: int) -> str:
     return '"' + hashlib.sha256(seed.encode()).hexdigest()[:32] + '"'
 
 
+def _pdf_etag(manual_id: str) -> str:
+    """A strong ETag for the whole stored PDF."""
+    size, mtime_ns = storage.manual_file_stat(manual_id, "source.pdf")
+    seed = f"{manual_id}:{size}:{mtime_ns}"
+    return '"' + hashlib.sha256(seed.encode()).hexdigest()[:32] + '"'
+
+
 def _viewer_cache_headers(etag: str | None = None) -> dict[str, str]:
     """Headers for the stored page bytes, which never change after upload."""
     max_age = get_settings().viewer_cache_max_age_seconds
@@ -208,7 +220,7 @@ def get_page_slice(
 
 
 @app.get("/manuals/{manual_id}/pdf")
-def get_manual_pdf(manual_id: str) -> Response:
+def get_manual_pdf(manual_id: str, request: Request) -> Response:
     """Serve the manual's whole stored PDF (DECISIONS V2).
 
     The viewer shows the full manual on demand, so the reader can read it in
@@ -218,10 +230,15 @@ def get_manual_pdf(manual_id: str) -> Response:
         raise HTTPException(status_code=404, detail="manual not found")
     if not storage.manual_file_exists(manual_id, "source.pdf"):
         raise HTTPException(status_code=404, detail="source.pdf is missing")
+
+    etag = _pdf_etag(manual_id)
+    headers = _viewer_cache_headers(etag)
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=headers)
     return Response(
         content=storage.read_manual_bytes(manual_id, "source.pdf"),
         media_type="application/pdf",
-        headers=_viewer_cache_headers(),
+        headers=headers,
     )
 
 

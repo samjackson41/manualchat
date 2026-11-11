@@ -264,6 +264,17 @@ def _client():
     )
 
 
+def qdrant_health() -> bool:
+    """True when the configured Qdrant is reachable (local mode is always)."""
+    if not get_settings().qdrant_url:
+        return True
+    try:
+        _client().get_collections()
+        return True
+    except Exception:
+        return False
+
+
 def _payload(chunk: ChunkPayload) -> dict:
     return {
         "text": chunk.text,
