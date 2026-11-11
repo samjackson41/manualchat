@@ -108,10 +108,13 @@ Last-checked: 2026-10-20
 |---|---|
 | R1 | The region is us-east-1, the closest one. GCP `us-east1` for Cloud Run and GCS. Qdrant Cloud runs in us-east-1. |
 | R2 | Redis stays on its existing AWS us-east-1 Essentials tier. The cross-cloud hop is accepted. Latency results in the eval reopen the question. |
+| R11 | Production Qdrant uses the Qdrant Cloud free tier in `us-east-1` (`QDRANT_URL`, `QDRANT_API_KEY`). Self-hosting on a GCE VM is the fallback if the tier caps out. |
+| R12 | Access is Identity-Aware Proxy with an email allowlist, on both the API and the frontend origin. The app is not public, and no shared API key ships in the frontend bundle. |
+| R13 | The export machine and the serving service pin the same `RETRIEVAL_EMBED_MODEL` revision. The export manifest records the model and revision, and the import refuses a mismatch, so stored and query vectors share one space. |
 
 For prototyping, everything except OpenRouter runs on the development machine (16 GB of RAM).
 Qdrant, storage, and the models run locally.
-R1 and R2 hold for a production deployment.
+R1, R2, and R11 to R13 hold for a production deployment.
 
 ## Upload idempotency
 
