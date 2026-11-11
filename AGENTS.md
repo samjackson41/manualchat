@@ -36,6 +36,13 @@ request without a clear instruction. Never read or print a secret, key, token, o
   workspace as `manualchat.wiki/`, and the page file is `manualchat.wiki/Home.md`
   (rendered at https://github.com/samjackson41/manualchat/wiki/Home).
 
+## Code graph
+
+`graphify-out/` holds a graph of the code and docs. When it exists, query it
+before a broad search or a source-file read: `graphify query "<question>"`,
+`graphify path "<A>" "<B>"`, or `graphify explain "<concept>"`. Refresh it with
+`make graph` after changing code or docs. The output is git-ignored.
+
 ## Testing
 
 - Prefer end-to-end and feature tests over unit tests. Write a unit test only
