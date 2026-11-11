@@ -1,6 +1,6 @@
-# Build and run the ManualChat backend with uv + uvicorn hot-reload.
-# Source (`backend/` = the package) is bind-mounted at run time for --reload;
-# the image just carries the resolved dependencies.
+# Slim serving image for Cloud Run. Carries only the serving dependencies —
+# the `ingest` group (Docling, torchvision) is omitted, so this image cannot
+# run ingest. It serves, searches, and imports preprocessed zips (DEPLOYMENT M1).
 
 FROM ghcr.io/astral-sh/uv:latest AS uv
 
@@ -11,20 +11,24 @@ COPY --from=uv /uv /uvx /bin/
 
 WORKDIR /app
 
-# `backend` is the Python package (its __init__.py/config.py/... live directly
-# in the mounted source dir), so its PARENT (/app) is on PYTHONPATH.
+# `backend` is the Python package, copied to /app/backend below; its parent is
+# on PYTHONPATH so `import backend` resolves.
 ENV PYTHONPATH=/app \
     UV_PROJECT_ENVIRONMENT=/app/.venv
 
-# Install dependencies (layer-cached). The package itself is NOT installed —
-# `[tool.uv] package = false` — and the source is bind-mounted by compose, so
-# there is no `COPY backend` here.
+# Serving dependencies only: no dev group, no ingest group.
 COPY pyproject.toml uv.lock ./
-# Persist uv's download cache across builds so a changed uv.lock re-resolves
-# from already-downloaded wheels instead of fetching them again.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+    uv sync --frozen --no-dev --no-group ingest
 
-EXPOSE 8000
+# The package source (the build context is `backend/`).
+COPY . ./backend
 
-CMD ["/app/.venv/bin/uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/backend"]
+# The service is stateless — it reads and writes GCS and Qdrant Cloud, never
+# local disk — so it runs as a non-root user.
+RUN useradd --create-home appuser
+USER appuser
+
+EXPOSE 8080
+
+CMD exec /app/.venv/bin/uvicorn backend.api.main:app --host 0.0.0.0 --port "${PORT:-8080}"
