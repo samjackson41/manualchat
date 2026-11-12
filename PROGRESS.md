@@ -20,6 +20,10 @@
 - Vehicle profiles: `GET/POST /vehicles` and `PATCH/DELETE /vehicles/{id}`
   create, rename, and delete vehicles. A chat can be scoped to one vehicle.
 
+- Code graph: `make graph` rebuilds a graphify knowledge graph of the code and
+  docs into `graphify-out/`, which is git-ignored. Agents query it with
+  `graphify query`, `path`, and `explain` instead of grepping.
+
 - Manual management: `PATCH /manuals/{id}` enables, disables, or renames a
   manual, and `DELETE /manuals/{id}` removes it. A delete is permanent. Search
   skips the chunks of a disabled manual. The vehicle dialog shows each manual's
